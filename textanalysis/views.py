@@ -495,14 +495,14 @@ def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', b
         wordlists = True
     if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'flatpage', 'resource', 'text',]:
         return HttpResponseForbidden()
+    description = ''
     if file_key:
-        pass
+        data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
     else:
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
         elif obj_type == 'resource':
             title = ''
-            description = ''
             body, response, err = get_web_resource_text(obj_id)
             if not body:
                 if err:
@@ -516,23 +516,27 @@ def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', b
         if contexts:
             return {'text': body}
         data = json.dumps({'text': body})
-        endpoint = nlp_url + '/api/analyze'
-        try:
-            response = requests.post(endpoint, data=data)
-        except:
-            response = None
-        if not response or response.status_code!=200:
-            return text_dashboard_return(request, {})
-        analyze_dict = response.json()
+    endpoint = nlp_url + '/api/analyze'
+    try:
+        response = requests.post(endpoint, data=data)
+        print('text_dashboard ok')
+    except:
+        response = None
+        print('text_dashboard ko')
+    if not response or response.status_code!=200:
+        print('text_dashboard', response.status_code)
+        return text_dashboard_return(request, {})
+    analyze_dict = response.json()
+    if contexts:
+        return {'text': analyze_dict['text'], 'language': analyze_dict['language']}
         
     language_code = analyze_dict['language']
-    # language = Language.objects.get(code=language_code).name
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
     analyzed_text = analyze_dict['text']
     summary = analyze_dict['summary']
     obj_type_label = obj_type_label_dict[obj_type]
-    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body, 'analyzed_text': analyzed_text, 'summary': summary }
+    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text, 'summary': summary }
     if summarization:
         return var_dict
     if nounchunks:
@@ -635,7 +639,6 @@ def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', b
         lc_dict = add_level_to_frequencies(adverb_frequencies, 'adverb')
         for item in lc_dict.items():
             levels_counts[item[0]] += item[1]
-        print(levels_counts)
 
     var_dict.update({'verb_frequencies': verb_frequencies, 'noun_frequencies': noun_frequencies,
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
@@ -835,6 +838,7 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
                 'obj_type_label', 'title', 'language']
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
+        print('text_wordlists', dashboard_dict.keys())
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
@@ -848,11 +852,8 @@ to find and sort document or corpus keywords and to list keyword in context
 def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
     if request.is_ajax():
-        """
-        if not file_key:
-            var_dict['text'] = request.session.get('text', '')
-        """
         var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
+        print('context_dashboard', var_dict.keys())
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
@@ -864,31 +865,14 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     else:
         return render(request, 'vue/context_dashboard.html', var_dict)
 
-"""
-def text_summarization(request, params={}):
-    var_dict = params
-    text = request.session.get('text', '')
-    data = json.dumps({'text': text})
-    endpoint = nlp_url + '/api/analyze'
-    try:
-        response = requests.post(endpoint, data=data)
-    except:
-        response = None
-    if response and response.status_code == 200:
-        analyze_dict = response.json()
-        var_dict['language'] = analyze_dict['language']
-        var_dict['text'] = text
-        var_dict['summary'] = analyze_dict['summary']
-    else:
-        var_dict['error'] = off_error
-"""
 def text_summarization(request, params):
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], summarization=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
     else:
-        var_dict.update(params)
+        # var_dict.update(params)
+        pass
     return render(request, 'text_summarization.html', var_dict)
 
 """
@@ -1007,12 +991,13 @@ def text_analysis_input(request):
             data = form.cleaned_data
             function = data['function']
             request.session['text'] = data['text']
-            return text_analyze(request, function, 'text', 0)
+            # return text_analyze(request, function, 'text', 0)
             if function == 'dashboard': # Text Analysis Dashboard
                 var_dict = {'obj_type': 'text', 'obj_id': 0}
                 return render(request, 'vue/text_dashboard.html', var_dict)
             else:
-                return text_analyze(request, function, 'text', 0)
+                # return text_analyze(request, function, 'text', 0)
+                return text_analyze(request, function, obj_type='text', obj_id=0)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
@@ -1029,7 +1014,8 @@ def text_analysis_input(request):
             var_dict['error'] = off_error
     return render(request, 'text_analysis_input.html', var_dict)
 
-def text_analyze(request, function, obj_type, obj_id, file_key='', text=''):
+# def text_analyze(request, function, obj_type, obj_id, file_key='', text=''):
+def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'title': '' }
     if file_key:
         if obj_type == 'corpus':
