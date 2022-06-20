@@ -31,6 +31,8 @@ obj_type_label_dict = {
 'lp': _('learning path'),
 'resource': _('remote web resource'),
 'text': _('manually input text'),
+'corpus': _('text corpus'),
+'': '?',
 }
 
 # from NLPBuddy
@@ -489,7 +491,8 @@ def text_dashboard_return(request, var_dict):
     else:
         return var_dict # only for manual test
 
-def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
+# def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
+def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -535,7 +538,7 @@ def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', b
     map_token_pos_to_level(language_code)
     analyzed_text = analyze_dict['text']
     summary = analyze_dict['summary']
-    obj_type_label = obj_type_label_dict[obj_type]
+    obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text, 'summary': summary }
     if summarization:
         return var_dict
@@ -838,7 +841,6 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
                 'obj_type_label', 'title', 'language']
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
-        print('text_wordlists', dashboard_dict.keys())
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
@@ -853,7 +855,6 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
     if request.is_ajax():
         var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
-        print('context_dashboard', var_dict.keys())
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
