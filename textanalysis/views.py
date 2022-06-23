@@ -18,7 +18,7 @@ from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 
 from textanalysis.forms import TextAnalysisInputForm
-from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4
+from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 
 nlp_url = settings.NLP_URL
 # nlp_url = 'http://localhost:8001'
@@ -486,7 +486,8 @@ def add_level_to_frequencies(frequencies, pos):
 def text_dashboard_return(request, var_dict):
     if not var_dict:
         var_dict = { 'error': off_error }
-    if request.is_ajax():
+    # if request.is_ajax():
+    if is_ajax(request):
         return JsonResponse(var_dict)
     else:
         return var_dict # only for manual test
@@ -835,7 +836,8 @@ def ajax_delete_corpus(request):
 @csrf_exempt
 def text_wordlists(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-    if request.is_ajax():
+    # if request.is_ajax():
+    if is_ajax(request):
         keys = ['verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
                 'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',
                 'obj_type_label', 'title', 'language']
@@ -853,7 +855,8 @@ to find and sort document or corpus keywords and to list keyword in context
 @csrf_exempt
 def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-    if request.is_ajax():
+    # if request.is_ajax():
+    if is_ajax(request):
         var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)

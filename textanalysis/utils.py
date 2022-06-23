@@ -36,3 +36,6 @@ class GenericSyllabizer():
             return hyphenated.split('-')
         else:
             return []
+
+def is_ajax(request): 
+    return request.headers.get('x-requested-with') == 'XMLHttpRequest'
