@@ -875,8 +875,7 @@ def text_summarization(request, params):
     if error:
         print('error:', error)
     else:
-        # var_dict.update(params)
-        pass
+        var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
 
 """
@@ -890,7 +889,6 @@ def text_nounchunks(request, params):
         print('error:', error)
     else:
         var_dict.update(params)
-    language_code = var_dict['language_code']
     return render(request, 'text_nounchunks.html', var_dict)
 
 readability_indexes = {
