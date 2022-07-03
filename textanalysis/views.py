@@ -19,6 +19,7 @@ from django.views.decorators.csrf import csrf_exempt
 
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
+from textanalysis.utils import add_to_default_dict, MATTR
 
 nlp_url = settings.NLP_URL
 # nlp_url = 'http://localhost:8001'
@@ -423,14 +424,6 @@ def index_entities(ents, tokens, entity_dict):
         if not '_' in text and not text in entity_dict[label]:
             entity_dict[label].append(text)
 
-def add_to_default_dict(default_dict, token, case_dict=None):
-    if (len(token)>1 and token.isupper()) or token.islower():
-        default_dict[token] +=1
-    elif default_dict.get(token.lower(), ''):
-        default_dict[token.lower()] +=1
-    else:
-        default_dict[token] +=1
-
 def sorted_frequencies(d):
     sd =  OrderedDict(sorted(d.items(), key = itemgetter(1), reverse = True))
     return [{'key': key, 'freq': freq} for key, freq in sd.items()]
@@ -571,34 +564,36 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     sconj_frequencies = defaultdict(int)
     n_lexical = 0
     if readability:
+        mattr = MATTR(text, tokens)
         n_words = 0
         n_hard_words = 0
         n_word_characters = 0
         n_word_syllables = 0
-    for item in tokens:
-        token = text[item['start']:item['end']]
-        item['text'] = token 
-        pos = item['pos']
+    for i_token, token in enumerate(tokens):
+        token_text = text[token['start']:token['end']]
+        token['text'] = token_text 
+        pos = token['pos']
+        add_to_default_dict(kw_frequencies, token_text)
         if readability: # and not pos in ['SPACE', 'PUNCT',]:
+            mattr.add_token()
             n_words += 1
-            word_characters = len(token)
+            word_characters = len(token_text)
             n_word_characters += word_characters
-            word_syllables = count_word_syllables(token, language_code)
+            word_syllables = count_word_syllables(token_text, language_code)
             n_word_syllables += word_syllables
             if word_syllables > 2:
                 n_hard_words += 1
         if pos in ['NOUN', 'PROPN', 'VERB', 'ADJ', 'ADV',]:
             n_lexical += 1
-        lemma = item['lemma']
+        lemma = token['lemma']
         if wordlists:
             if pos == 'CCONJ':
                 add_to_default_dict(cconj_frequencies, lemma)
             elif pos == 'SCONJ':
                 add_to_default_dict(sconj_frequencies, lemma)
-        if token.isnumeric() or pos in EMPTY_POS or item['stop']:
+        if token_text.isnumeric() or pos in EMPTY_POS or token['stop']:
             continue
-        # n_lexical += 1
-        add_to_default_dict(kw_frequencies, token)
+        # add_to_default_dict(kw_frequencies, token_text)
         if pos in ['NOUN',]:
             add_to_default_dict(noun_frequencies, lemma)
         elif pos == 'VERB':
@@ -610,13 +605,15 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
                 add_to_default_dict(propn_frequencies, lemma)
             elif pos == 'ADV':
                 add_to_default_dict(adverb_frequencies, lemma)
+    n_unique = len(kw_frequencies)
     if readability:
         var_dict['n_words'] = n_words
         var_dict['n_hard_words'] = n_hard_words
         var_dict['n_word_characters'] = n_word_characters
         var_dict['n_word_syllables'] = n_word_syllables
-    n_unique = len(kw_frequencies)
-    voc_density = n_tokens and n_unique/n_tokens or 0
+        voc_density = mattr.get_average()
+    else:
+        voc_density = n_tokens and n_unique/n_tokens or 0
     lex_density = n_tokens and n_lexical/n_tokens or 0
     kw_frequencies = sorted_frequencies(kw_frequencies)
     verb_frequencies = sorted_frequencies(verb_frequencies)

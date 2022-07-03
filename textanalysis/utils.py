@@ -1,6 +1,7 @@
 import re
 import pyphen
 import string
+from collections import defaultdict
 from bs4 import BeautifulSoup
 
 def extract_annotate_with_bs4(html):
@@ -39,3 +40,58 @@ class GenericSyllabizer():
 
 def is_ajax(request): 
     return request.headers.get('x-requested-with') == 'XMLHttpRequest'
+
+def add_to_default_dict(default_dict, text):
+    """ If text all UPPER or all lower, add it as is.
+        If it is mixed-case, add it lowered if already present lower
+                        else add it as it is.
+    """
+    if (len(text)>1 and text.isupper()) or text.islower():
+        default_dict[text] += 1
+    elif default_dict.get(text.lower(), ''):
+        default_dict[text.lower()] += 1
+    else:
+        default_dict[text] += 1
+
+def token_text(token, text):
+    return text[token['start']:token['end']]
+
+class MATTR():
+    """ Implementation of the Moving-Average Type–Token Ratio (MATTR) algorithm
+        see: Michael A. Covington & Joe D. McFall (2010) Cutting the Gordian Knot:
+        The Moving-Average Type–Token Ratio (MATTR),
+        Journal of Quantitative Linguistics, 17:2, 94-100, DOI: 10.1080/09296171003643098
+        As a border case, returns the traditional TTR ratio.
+    """
+
+    def __init__(self, text, tokens, W=500):
+        self.text = text
+        self.tokens = tokens
+        self.W = W # the window size
+        self.frequencies = defaultdict(int)
+        self.i_token = 0
+        self.n_words = 0
+        self.total_words = 0
+
+    def add_token(self):
+        text_in = token_text(self.tokens[self.i_token], self.text)
+        n = self.frequencies[text_in]
+        if n == 0:
+            self.n_words += 1
+        self.frequencies[text_in] += 1
+        if self.i_token >= self.W:
+            text_out = token_text(self.tokens[self.i_token - self.W], self.text)
+            n = self.frequencies[text_out]
+            if n == 1:
+                self.n_words -= 1
+            self.frequencies[text_out] -= 1
+            self.total_words += self.n_words
+        self.i_token +=1
+
+    def get_average(self):
+        n_tokens = len(self.tokens)
+        n_windows = n_tokens - self.W + 1
+        if self.W and n_windows >= 1:
+            return self.total_words / n_windows / self.W
+        else:
+            return self.n_words / n_tokens
