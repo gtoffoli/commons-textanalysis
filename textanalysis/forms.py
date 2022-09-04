@@ -5,6 +5,7 @@ from django import forms
 TA_FUNCTION_CHOICES = (
     ('context', _('Keywords In Context')),
     ('wordlists', _('Word Lists by POS')),
+    ('annotations', _('Annotated text')),
     ('nounchunks', _('Noun chunks')),
     ('readability', _('Text Readability')),
     ('summarization', _('Text Summarization')),

@@ -486,7 +486,8 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 # def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
-def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
+# def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
+def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -888,6 +889,15 @@ def text_nounchunks(request, params):
         var_dict.update(params)
     return render(request, 'text_nounchunks.html', var_dict)
 
+def text_annotations(request, params):
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], analyzed_text=True)
+    error = var_dict.get('error', None)
+    if error:
+        print('error:', error)
+    else:
+        var_dict.update(params)
+    return render(request, 'text_annotations.html', var_dict)
+
 readability_indexes = {
   'flesch_easy': { 'languages': ['en'], 'title': "Flesch Reading Ease score for English (0-100)", 'ref': 'https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests' },
   'franchina_vacca_1972': { 'languages': ['it'], 'title': "Franchina-Vacca readability index for Italian (0-100)", 'ref': 'https://it.wikipedia.org/wiki/Formula_di_Flesch' },
@@ -1028,6 +1038,9 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
     elif function == 'context':
         var_dict['VUE'] = True
         return render(request, 'vue/context_dashboard.html', var_dict)
+    elif function == 'annotations':
+        var_dict['VUE'] = True
+        return text_annotations(request, params=var_dict)
     elif function == 'summarization':
         var_dict['VUE'] = True
         return text_summarization(request, params=var_dict)
