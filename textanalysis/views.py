@@ -21,8 +21,8 @@ from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR
 
-# nlp_url = settings.NLP_URL
-nlp_url = 'http://localhost:8001'
+nlp_url = settings.NLP_URL
+# nlp_url = 'http://localhost:8001'
 
 obj_type_label_dict = {
 'project': _('commonspaces project'),
