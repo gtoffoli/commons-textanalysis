@@ -21,8 +21,8 @@ from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR
 
-nlp_url = settings.NLP_URL
-# nlp_url = 'http://localhost:8001'
+# nlp_url = settings.NLP_URL
+nlp_url = 'http://localhost:8001'
 
 obj_type_label_dict = {
 'project': _('commonspaces project'),
@@ -487,7 +487,7 @@ def text_dashboard_return(request, var_dict):
 
 # def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
 # def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
-def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False):
+def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -514,7 +514,10 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         if contexts:
             return {'text': body}
         data = json.dumps({'text': body})
-    endpoint = nlp_url + '/api/analyze'
+    if text_cohesion:
+        endpoint = nlp_url + '/api/text_cohesion'
+    else:
+        endpoint = nlp_url + '/api/analyze'
     try:
         response = requests.post(endpoint, data=data)
         print('text_dashboard ok')
@@ -532,10 +535,10 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
     analyzed_text = analyze_dict['text']
-    summary = analyze_dict['summary']
     obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
-    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text, 'summary': summary }
+    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text }
     if summarization:
+        var_dict['summary'] = analyze_dict['summary']
         return var_dict
     if nounchunks:
         ncs = analyze_dict['noun_chunks']
@@ -548,6 +551,9 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         noun_chunks = [nc for nc in noun_chunks if len(nc.split())>1]
         var_dict['noun_chunks'] = noun_chunks
         return var_dict
+    if text_cohesion:
+        for k in ['paragraphs', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
+            var_dict[k] = analyze_dict[k]
     text = analyze_dict['text']
     sentences = analyze_dict['sents']
     var_dict['n_sentences'] = n_sentences = len(sentences)
@@ -898,6 +904,15 @@ def text_annotations(request, params):
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
 
+def text_cohesion(request, params):
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], text_cohesion=True)
+    error = var_dict.get('error', None)
+    if error:
+        print('error:', error)
+    else:
+        var_dict.update(params)
+    return render(request, 'text_cohesion.html', var_dict)
+
 readability_indexes = {
   'flesch_easy': { 'languages': ['en'], 'title': "Flesch Reading Ease score for English (0-100)", 'ref': 'https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests' },
   'franchina_vacca_1972': { 'languages': ['it'], 'title': "Franchina-Vacca readability index for Italian (0-100)", 'ref': 'https://it.wikipedia.org/wiki/Formula_di_Flesch' },
@@ -1047,6 +1062,9 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
     elif function == 'readability':
         var_dict['VUE'] = True
         return text_readability(request, params=var_dict)
+    elif function == 'cohesion':
+        var_dict['VUE'] = True
+        return text_cohesion(request, params=var_dict)
     elif function == 'nounchunks':
         var_dict['VUE'] = True
         return text_nounchunks(request, params=var_dict)

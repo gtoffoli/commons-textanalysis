@@ -8,6 +8,7 @@ TA_FUNCTION_CHOICES = (
     ('annotations', _('Annotated text')),
     ('nounchunks', _('Noun chunks')),
     ('readability', _('Text Readability')),
+    ('cohesion', _('Text Cohesion')),
     ('summarization', _('Text Summarization')),
     ('dashboard', _('Text Analysis Dashboard')),
 )
