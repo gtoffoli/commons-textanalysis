@@ -534,11 +534,14 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
-    analyzed_text = analyze_dict['text']
+    # analyzed_text = analyze_dict['text']
+    analyzed_text = analyze_dict.get('analyzed_text', '')
     obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
-    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text }
+    # var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text }
+    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
+    var_dict['summary'] = analyze_dict.get('summary', '')
     if summarization:
-        var_dict['summary'] = analyze_dict['summary']
+        # var_dict['summary'] = analyze_dict['summary']
         return var_dict
     if nounchunks:
         ncs = analyze_dict['noun_chunks']
@@ -552,12 +555,16 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         var_dict['noun_chunks'] = noun_chunks
         return var_dict
     if text_cohesion:
-        for k in ['paragraphs', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
+        for k in ['paragraphs', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'repeated_lemmas', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
-    text = analyze_dict['text']
-    sentences = analyze_dict['sents']
+        print('text_dashboard', var_dict['repeated_lemmas'])
+    # text = analyze_dict['text']
+    text = analyze_dict['doc']['text']
+    # sentences = analyze_dict['sents']
+    sentences = analyze_dict['doc']['sents']
     var_dict['n_sentences'] = n_sentences = len(sentences)
-    tokens = analyze_dict['tokens']
+    # tokens = analyze_dict['tokens']
+    tokens = analyze_dict['doc']['tokens']
     var_dict['n_tokens'] = n_tokens = len(tokens)
     ents = analyze_dict.get('ents', [])
 
