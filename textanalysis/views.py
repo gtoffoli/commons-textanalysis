@@ -21,19 +21,21 @@ from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR
 
-nlp_url = settings.NLP_URL
-# nlp_url = 'http://localhost:8001'
+if settings.DEBUG:
+    nlp_url = 'http://localhost:8001'
+else:
+    nlp_url = settings.NLP_URL
 
 obj_type_label_dict = {
-'project': _('commonspaces project'),
-'doc': _('document file'),
-'oer': _('open educational resource'),
-'pathnode': _('node of learning path'),
-'lp': _('learning path'),
-'resource': _('remote web resource'),
-'text': _('manually input text'),
-'corpus': _('text corpus'),
-'': '?',
+    'project': _('commonspaces project'),
+    'doc': _('document file'),
+    'oer': _('open educational resource'),
+    'pathnode': _('node of learning path'),
+    'lp': _('learning path'),
+    'resource': _('remote web resource'),
+    'text': _('manually input text'),
+    'corpus': _('text corpus'),
+    '': '?',
 }
 
 # from NLPBuddy
@@ -479,7 +481,6 @@ def add_level_to_frequencies(frequencies, pos):
 def text_dashboard_return(request, var_dict):
     if not var_dict:
         var_dict = { 'error': off_error }
-    # if request.is_ajax():
     if is_ajax(request):
         return JsonResponse(var_dict)
     else:
@@ -528,20 +529,18 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         print('text_dashboard', response.status_code)
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
+    print(analyze_dict)
     if contexts:
         return {'text': analyze_dict['text'], 'language': analyze_dict['language']}
         
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
-    # analyzed_text = analyze_dict['text']
     analyzed_text = analyze_dict.get('analyzed_text', '')
     obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
-    # var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or analyzed_text, 'analyzed_text': analyzed_text }
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
     var_dict['summary'] = analyze_dict.get('summary', '')
     if summarization:
-        # var_dict['summary'] = analyze_dict['summary']
         return var_dict
     if nounchunks:
         ncs = analyze_dict['noun_chunks']
@@ -557,13 +556,10 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     if text_cohesion:
         for k in ['paragraphs', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'repeated_lemmas', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
-        print('text_dashboard', var_dict['repeated_lemmas'])
-    # text = analyze_dict['text']
+        return var_dict
     text = analyze_dict['doc']['text']
-    # sentences = analyze_dict['sents']
     sentences = analyze_dict['doc']['sents']
     var_dict['n_sentences'] = n_sentences = len(sentences)
-    # tokens = analyze_dict['tokens']
     tokens = analyze_dict['doc']['tokens']
     var_dict['n_tokens'] = n_tokens = len(tokens)
     ents = analyze_dict.get('ents', [])
@@ -911,14 +907,18 @@ def text_annotations(request, params):
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
 
-def text_cohesion(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], text_cohesion=True)
-    error = var_dict.get('error', None)
-    if error:
-        print('error:', error)
+@csrf_exempt
+def text_cohesion(request, file_key='', obj_type='', obj_id=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+    if is_ajax(request):
+        keys = ['paragraphs', 'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'repeated_lemmas', 'cohesion_by_similarity', 
+                'obj_type_label', 'title', 'language']
+        data = var_dict
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
+        data.update([[key, dashboard_dict[key]] for key in keys])
+        return JsonResponse(data)
     else:
-        var_dict.update(params)
-    return render(request, 'text_cohesion.html', var_dict)
+        return render(request, 'text_cohesion.html', var_dict)
 
 readability_indexes = {
   'flesch_easy': { 'languages': ['en'], 'title': "Flesch Reading Ease score for English (0-100)", 'ref': 'https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests' },
@@ -1071,7 +1071,8 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
         return text_readability(request, params=var_dict)
     elif function == 'cohesion':
         var_dict['VUE'] = True
-        return text_cohesion(request, params=var_dict)
+        # return text_cohesion(request, params=var_dict)
+        return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
         var_dict['VUE'] = True
         return text_nounchunks(request, params=var_dict)
