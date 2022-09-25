@@ -19,7 +19,8 @@ from django.views.decorators.csrf import csrf_exempt
 
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
-from textanalysis.utils import add_to_default_dict, MATTR
+from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
+from textanalysis.models import distinct_colors
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -529,7 +530,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         print('text_dashboard', response.status_code)
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
-    print(analyze_dict)
     if contexts:
         return {'text': analyze_dict['text'], 'language': analyze_dict['language']}
         
@@ -554,13 +554,14 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         var_dict['noun_chunks'] = noun_chunks
         return var_dict
     if text_cohesion:
-        for k in ['paragraphs', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'repeated_lemmas', 'cohesion_by_entity_graph']:
+        for k in ['doc', 'paragraphs', 'repeated_lemmas', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
         return var_dict
     text = analyze_dict['doc']['text']
     sentences = analyze_dict['doc']['sents']
     var_dict['n_sentences'] = n_sentences = len(sentences)
     tokens = analyze_dict['doc']['tokens']
+    var_dict['tokens'] = tokens
     var_dict['n_tokens'] = n_tokens = len(tokens)
     ents = analyze_dict.get('ents', [])
 
@@ -911,11 +912,17 @@ def text_annotations(request, params):
 def text_cohesion(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
     if is_ajax(request):
-        keys = ['paragraphs', 'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'repeated_lemmas', 'cohesion_by_similarity', 
+        keys = ['paragraphs', 'repeated_lemmas',
+                'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'cohesion_by_similarity', 
                 'obj_type_label', 'title', 'language']
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
+        data['tokens'] = dashboard_dict['doc']['tokens']
+        data['colors'] = distinct_colors
+        repeated_lemmas = dashboard_dict['repeated_lemmas'][:20]
+        data['repeated_lemmas'] = repeated_lemmas
+        data['lemma_color_map'] = lemmas_to_colors(repeated_lemmas, distinct_colors)
         return JsonResponse(data)
     else:
         return render(request, 'text_cohesion.html', var_dict)
