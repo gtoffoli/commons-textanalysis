@@ -854,7 +854,8 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
-        return render(request, 'vue/text_wordlists.html', var_dict)
+        # return render(request, 'vue/text_wordlists.html', var_dict)
+        return render(request, 'text_wordlists.html', var_dict)
 
 """
 called from contents_dashboard or text_analysis template
@@ -875,7 +876,8 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
         var_dict['kwics'] = result['kwics']
         return JsonResponse(var_dict)
     else:
-        return render(request, 'vue/context_dashboard.html', var_dict)
+        # return render(request, 'vue/context_dashboard.html', var_dict)
+        return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], summarization=True)
@@ -1032,7 +1034,8 @@ def text_analysis_input(request):
             # return text_analyze(request, function, 'text', 0)
             if function == 'dashboard': # Text Analysis Dashboard
                 var_dict = {'obj_type': 'text', 'obj_id': 0}
-                return render(request, 'vue/text_dashboard.html', var_dict)
+                # return render(request, 'vue/text_dashboard.html', var_dict)
+                return render(request, 'text_dashboard.html', var_dict)
             else:
                 # return text_analyze(request, function, 'text', 0)
                 return text_analyze(request, function, obj_type='text', obj_id=0)
@@ -1063,10 +1066,12 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
     if function == 'dashboard':
-        return render(request, 'vue/text_dashboard.html', var_dict)
+        # return render(request, 'vue/text_dashboard.html', var_dict)
+        return render(request, 'text_dashboard.html', var_dict)
     elif function == 'context':
         var_dict['VUE'] = True
-        return render(request, 'vue/context_dashboard.html', var_dict)
+        # return render(request, 'vue/context_dashboard.html', var_dict)
+        return render(request, 'context_dashboard.html', var_dict)
     elif function == 'annotations':
         var_dict['VUE'] = True
         return text_annotations(request, params=var_dict)
@@ -1085,4 +1090,5 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
         return text_nounchunks(request, params=var_dict)
     elif function == 'wordlists':
         var_dict['VUE'] = True
-        return render(request, 'vue/text_wordlists.html', var_dict)
+        # return render(request, 'vue/text_wordlists.html', var_dict)
+        return render(request, 'text_wordlists.html', var_dict)
