@@ -16,10 +16,10 @@ At present, CommonSpaces hosts also a few *mini-sites* dedicated to the communit
 
 ***Architecture***
 
-*commons-textanalysis* was designed as part of a software stack:
-- it gets higher level services from the Django application **commons-language**, which integrates **spaCy**, with the associated language resources, extends someway its functionality and runs as a distict service exposing *HTTP API*;
-- it provides directly **a set of views**: an input view for selecting the analysis of interest and for inserting or specifying the text to be analyzed; many output views displaying the results of the analysis;
-- it exposes **HTTP API** to be called by other applications; currently, these API are exploited by the Commons Platform (see above), which in this case acts as a **Content Management System** (CMS), allowing a user to analyze also stored contents, such as learning resources and shared documents.
+*commons-textanalysis* was designed as part of a software stack; it:
+- gets higher level services from the Django application **commons-language**, which integrates **spaCy**, with the associated language resources, extends someway its functionality and runs as a distict service exposing *HTTP API*;
+- provides directly **a set of views**: an input view for selecting the analysis of interest and for inserting or specifying the text to be analyzed; many output views displaying the results of the analysis; doesn't define any Django model; 
+- exposes **HTTP API** to be called by other applications; currently, these API are exploited by the Commons Platform (see above), which in this case acts as a **Content Management System** (CMS), allowing a user to analyze also stored contents, such as learning resources and shared documents.
 
 ***Dependencies***
 
@@ -30,14 +30,14 @@ It also includes many **language resources**, mostly concerning specific languag
 **Functionality**
 
 Currently the following ouput views are implemented:
-1. ++Keywords in Context++; thanks to the exploitation of a function of **tmtoolkit** in *commons-language*;
-2. ++Word lists by POS++; sorted lists are produced based on lexical resources concerning word frequencies and/or *CEFR* vocabulary levels;
-3. ++Annotated text++, interactively showing individual attributes of the text *tokens* and the result of *Named Entity Recognition* (NER); at present it reuses some code of **NlpBuddy**;
-4. ++Noun chunks++; this comes directly from *spaCy*;
-5. ++Text readability++; this is a provisional view putting together some raw (shallow) text features - mainly counts and means -, lexical features and syntactic features, with the results of classical *readability formulas* also based on raw text features;
-6. ++Text Cohesion++; this view puts together *text coherence* scores computed with the *entity graph method* (Guinaudeau and Strube), as implemented by **TRUNAJOD**, with *local cohesion* scores based on the lexicon shared among contiguous paragraphs (visual detail is provided) and on *similarity scores* coming directly from spaCy;
-7. ++Text Summarization++; this is the result of a very simple extractive algorithm;
-8. ++Text Analysis Dashboard++; this is a tentative view putting together some results from 2, 3, 5 and 7; it also includes a sophisticated visualisation of the text structure derived with *dependency parsing*.
+1. <u>Keywords in Context</u> thanks to the exploitation of a function of **tmtoolkit** in *commons-language*;
+2. <u>ord lists by POS</u>; sorted lists are produced based on lexical resources concerning word frequencies and/or *CEFR* vocabulary levels;
+3. <u>Annotated text<u>, interactively showing individual attributes of the text *tokens* and the result of *Named Entity Recognition* (NER); at present it reuses some code of **NlpBuddy**;
+4. <u>Noun chunks</u> this comes directly from *spaCy*;
+5. <u>Text readability</u> this is a provisional view putting together some raw (shallow) text features - mainly counts and means -, lexical features and syntactic features, with the results of classical *readability formulas* also based on raw text features;
+6. <u>Text Cohesion</u> this view puts together *text coherence* scores computed with the *entity graph method* (Guinaudeau and Strube), as implemented by **TRUNAJOD**, with *local cohesion* scores based on the lexicon shared among contiguous paragraphs (visual detail is provided) and on *similarity scores* coming directly from spaCy;
+7. <u>Text Summarization</u> this is the result of a very simple extractive algorithm;
+8. <u>Text Analysis Dashboard</u> this is a tentative view putting together some results from 2, 3, 5 and 7; it also includes a sophisticated visualisation of the text structure derived with *dependency parsing*.
 
 **Plans**
 
