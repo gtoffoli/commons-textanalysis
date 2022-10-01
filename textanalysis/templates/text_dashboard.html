@@ -332,9 +332,9 @@ var webFontURLs = [
         mounted: function () {
           $this = this;
           if (`{{ file_key }}`)
-            url = `/text_dashboard/{{ file_key }}/`;
+            url = `/textanalysis/text_dashboard/{{ file_key }}/`;
           else
-            url = `/text_dashboard/{{ obj_type }}/`+encodeURIComponent(`{{ obj_id }}`);
+            url = `/textanalysis/text_dashboard/{{ obj_type }}/`+encodeURIComponent(`{{ obj_id }}`);
 		  $.ajax({
 	        type:'GET',
 	        url: url,

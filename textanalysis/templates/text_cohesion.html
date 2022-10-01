@@ -160,7 +160,7 @@ th, td {
           $this = this;
           if (! this['obj_id'])
             this['obj_id'] = 0;
-            fetch('/text_cohesion/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+            fetch('/textanalysis/cohesion/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
             method: 'GET',
             headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
           })

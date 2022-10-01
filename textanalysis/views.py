@@ -852,6 +852,7 @@ def ajax_delete_corpus(request):
 @csrf_exempt
 def text_wordlists(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+    var_dict['VUE'] = True
     # if request.is_ajax():
     if is_ajax(request):
         keys = ['verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
@@ -862,7 +863,6 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
-        # return render(request, 'vue/text_wordlists.html', var_dict)
         return render(request, 'text_wordlists.html', var_dict)
 
 """
@@ -921,6 +921,7 @@ def text_annotations(request, params):
 @csrf_exempt
 def text_cohesion(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+    var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['paragraphs', 'repeated_lemmas',
                 'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'cohesion_by_similarity', 
@@ -1031,7 +1032,8 @@ def text_readability(request, params):
         var_dict['readability_indexes']['gagatsis_1985'] = index
     return render(request, 'text_readability.html', var_dict)
 
-def text_analysis_input(request):
+# def text_analysis_input(request):
+def ta_input(request):
     var_dict = {}
     if request.POST:
         form = TextAnalysisInputForm(request.POST)
@@ -1045,8 +1047,8 @@ def text_analysis_input(request):
                 # return render(request, 'vue/text_dashboard.html', var_dict)
                 return render(request, 'text_dashboard.html', var_dict)
             else:
-                # return text_analyze(request, function, 'text', 0)
-                return text_analyze(request, function, obj_type='text', obj_id=0)
+                # return text_analyze(request, function, obj_type='text', obj_id=0)
+                return ta(request, function, obj_type='text', obj_id=0)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
@@ -1061,10 +1063,10 @@ def text_analysis_input(request):
             var_dict['form'] = form
         else:
             var_dict['error'] = off_error
-    return render(request, 'text_analysis_input.html', var_dict)
+    return render(request, 'ta_input.html', var_dict)
 
-# def text_analyze(request, function, obj_type, obj_id, file_key='', text=''):
-def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''):
+# def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''):
+def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'title': '' }
     if file_key:
         if obj_type == 'corpus':
@@ -1074,11 +1076,9 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
     if function == 'dashboard':
-        # return render(request, 'vue/text_dashboard.html', var_dict)
         return render(request, 'text_dashboard.html', var_dict)
     elif function == 'context':
         var_dict['VUE'] = True
-        # return render(request, 'vue/context_dashboard.html', var_dict)
         return render(request, 'context_dashboard.html', var_dict)
     elif function == 'annotations':
         var_dict['VUE'] = True
@@ -1091,12 +1091,10 @@ def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''
         return text_readability(request, params=var_dict)
     elif function == 'cohesion':
         var_dict['VUE'] = True
-        # return text_cohesion(request, params=var_dict)
         return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
         var_dict['VUE'] = True
         return text_nounchunks(request, params=var_dict)
     elif function == 'wordlists':
         var_dict['VUE'] = True
-        # return render(request, 'vue/text_wordlists.html', var_dict)
         return render(request, 'text_wordlists.html', var_dict)
