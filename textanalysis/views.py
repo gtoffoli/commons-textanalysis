@@ -495,8 +495,6 @@ def text_dashboard_return(request, var_dict):
     else:
         return var_dict # only for manual test
 
-# def text_dashboard(request, obj_type, obj_id, file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
-# def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, nounchunks=False, contexts=False, summarization=False):
 def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='', wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
@@ -550,17 +548,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     var_dict['summary'] = analyze_dict.get('summary', '')
     if summarization:
         return var_dict
-    if nounchunks:
-        ncs = analyze_dict['noun_chunks']
-        noun_chunks = []
-        for nc in ncs:
-            nc = nc.replace('\n', ' ').replace('\xa0', ' ')
-            tokens = nc.split()
-            if len(tokens)>1:
-                noun_chunks.append(' '.join(tokens))
-        noun_chunks = [nc for nc in noun_chunks if len(nc.split())>1]
-        var_dict['noun_chunks'] = noun_chunks
-        return var_dict
     if text_cohesion:
         for k in ['doc', 'paragraphs', 'repeated_lemmas', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
@@ -572,6 +559,21 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     var_dict['tokens'] = tokens
     var_dict['n_tokens'] = n_tokens = len(tokens)
     ents = analyze_dict.get('ents', [])
+    if nounchunks:
+        noun_chunks = analyze_dict['noun_chunks']
+        chunks_index = []
+        for i, chunk in enumerate(noun_chunks):
+            chunk_range = []
+            for k in range(chunk[0], chunk[1]):
+                chunk_range.append(k)
+                token = tokens[k]
+                token['chunk'] = i
+                tokens[k] = token
+            chunks_index.append(chunk_range)
+        var_dict['chunks_index'] = chunks_index
+        var_dict['tokens'] = tokens
+        var_dict['paragraphs'] = analyze_dict['paragraphs']
+        return var_dict
 
     kw_frequencies = defaultdict(int)
     adjective_frequencies = defaultdict(int)
@@ -896,19 +898,6 @@ def text_summarization(request, params):
         var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
 
-"""
-def text_nounchunks(request, params={}):
-    var_dict = text_dashboard(request, 'text', 0, nounchunks=True)
-"""
-def text_nounchunks(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], nounchunks=True)
-    error = var_dict.get('error', None)
-    if error:
-        print('error:', error)
-    else:
-        var_dict.update(params)
-    return render(request, 'text_nounchunks.html', var_dict)
-
 def text_annotations(request, params):
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], analyzed_text=True)
     error = var_dict.get('error', None)
@@ -917,6 +906,21 @@ def text_annotations(request, params):
     else:
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
+
+@csrf_exempt
+def text_nounchunks(request, file_key='', obj_type='', obj_id=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+    var_dict['VUE'] = True
+    if is_ajax(request):
+        keys = ['paragraphs', 'tokens', 'chunks_index',
+                'obj_type_label', 'title', 'language']
+        data = var_dict
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
+        data.update([[key, dashboard_dict[key]] for key in keys])
+        # data['tokens'] = dashboard_dict['doc']['tokens']
+        return JsonResponse(data)
+    else:
+        return render(request, 'text_nounchunks.html', var_dict)
 
 @csrf_exempt
 def text_cohesion(request, file_key='', obj_type='', obj_id=''):
@@ -981,11 +985,6 @@ def compute_lexical_rarity(levels_counts):
         absolute_rarity += count*level_rarity_factors[level]
     return total_count and absolute_rarity/total_count or 0
 
-"""
-def text_readability(request, params={}):
-    var_dict = text_dashboard(request, 'text', 0, readability=True)
-    error = var_dict.get('error', None)
-"""
 def text_readability(request, params):
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], readability=True)
     error = var_dict.get('error', None)
@@ -994,7 +993,6 @@ def text_readability(request, params):
     else:
         var_dict.update(params)
     language_code = var_dict['language_code']
-    n_tokens = var_dict['n_tokens'] or 1
     n_words = var_dict['n_words'] or 1
     var_dict['mean_chars_per_word'] = var_dict['n_word_characters'] / n_words
     var_dict['mean_syllables_per_word'] = var_dict['n_word_syllables'] / n_words
@@ -1032,7 +1030,6 @@ def text_readability(request, params):
         var_dict['readability_indexes']['gagatsis_1985'] = index
     return render(request, 'text_readability.html', var_dict)
 
-# def text_analysis_input(request):
 def ta_input(request):
     var_dict = {}
     if request.POST:
@@ -1041,14 +1038,11 @@ def ta_input(request):
             data = form.cleaned_data
             function = data['function']
             request.session['text'] = data['text']
-            # return text_analyze(request, function, 'text', 0)
             if function == 'dashboard': # Text Analysis Dashboard
                 var_dict = {'obj_type': 'text', 'obj_id': 0}
-                # return render(request, 'vue/text_dashboard.html', var_dict)
                 return render(request, 'text_dashboard.html', var_dict)
             else:
-                # return text_analyze(request, function, obj_type='text', obj_id=0)
-                return ta(request, function, obj_type='text', obj_id=0)
+                 return ta(request, function, obj_type='text', obj_id=0)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
@@ -1065,7 +1059,6 @@ def ta_input(request):
             var_dict['error'] = off_error
     return render(request, 'ta_input.html', var_dict)
 
-# def text_analyze(request, function, obj_type='', obj_id='', file_key='', text=''):
 def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'title': '' }
     if file_key:
@@ -1094,7 +1087,7 @@ def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
         return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
         var_dict['VUE'] = True
-        return text_nounchunks(request, params=var_dict)
+        return render(request, 'text_nounchunks.html', var_dict)
     elif function == 'wordlists':
         var_dict['VUE'] = True
         return render(request, 'text_wordlists.html', var_dict)

@@ -29,23 +29,86 @@
 {% block body_class %}nlp-vue-body{% endblock %}
 
 {% block body_base %}
-<div class="panel panel-c4 text-left marginTB30">
-  <div  class="padding1020">
+<div class="container-fluid">
+  <div id="app" class='components-container'>
+  {% verbatim %}
+    <template v-if="error===null">
     <div class="marginB10">
-      {% if obj_type_label %}<b>{{ obj_type_label|capfirst }}</b>{% endif %}
-      {% if title %}: <i>{{ title }}</i></span>{% endif %}
-      {% if obj_id %}(id = {{ obj_id }})</span>{% endif %}
+      <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
+      <span v-if="title">: <i>{{ title }}</i></span>
+      <span v-if="id">(id = {{ obj_id }})</span>
     </div>
-    <div><label>{% trans "language"|capfirst %}</label> {{ language }}</div>
-    <div class="marginT5"><label>{% trans "chunk list"|capfirst %}</label> (*)</div>
-    <div style="margin-left: 10px;">
-      {% for nc in noun_chunks %}
-        <div>{{ nc }}</div>
-      {% endfor %}    
-    </div>
-    <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "simple noun phrases without subordinates"|capfirst %}</span></div>
+    <div v-if="language"><label>language</label> {{ language }}</div>
+
+    <table style="margin: 0 auto; border-collapse: collapse;">
+      <thead>
+         <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
+      </thead>
+      <tbody>
+        <tr v-for="(p, index) in paragraphs">
+          <td style="vertical-align:top; text-align:center;">{{ p[0] }}</td>
+          <td>
+              <span v-for="token in tokens.slice(p[2], p[3])">
+                <template v-if="token['chunk']==null">
+                  {{ token['text'] }}
+                </template>
+                <template v-else>
+                  <span style="background-color: pink">
+                    {{ token['text'] }}</span>
+                </template>
+              </span>
+          </td>
+          </tr>
+        </tr>
+      {% endverbatim %}
+      </tbody>
+    </table>
+    </template>
+    <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "noun chunks are noun phrases without subordinates"|capfirst %}</span></div>
   </div>
 </div>
 {% endblock %}
 
 {% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
+  <script>
+      var app = new Vue({
+        name: 'test',
+        data: {
+          file_key: '{{ file_key }}',
+          obj_type: '{{ obj_type }}',
+          obj_id: '{{ obj_id }}',
+          obj_type_label: '{{ obj_type_label }}',
+          title: '{{ title }}',
+          language: '{{ language }}',
+          tokens: null, paragraphs: null, chunks_index: null,
+          error: null,
+          label_paragraph: "{% trans "paragraph"|capfirst %}",
+          label_see: "{% trans "see"|capfirst %}",
+        },
+        el: '#app',
+        methods: {
+          resize() {
+            console.log('resize')
+          }
+        },
+        mounted: function () {
+          $this = this;
+          if (! this['obj_id'])
+            this['obj_id'] = 0;
+            fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+            method: 'GET',
+            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+          })
+          .then(response => response.json())
+          .then(data => {
+             for (var key in data) {
+              this[key] = data[key];
+             };
+           })
+          .catch(err => (this['error'] = err))
+        },
+      });
+ </script>
+{% endblock script_base %}
