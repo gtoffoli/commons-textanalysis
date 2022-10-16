@@ -1,0 +1,267 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Dependency parse" %}{% endblock %}
+
+{% block extra_style %}
+<link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+<link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
+<link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+
+<link rel="stylesheet" type="text/css" href="/static/brat_client/style-vis.css">
+<link rel="shortcut icon" href="favicon.png">
+<!-- override a few style-vis.css settings for the embedded version to make things larger -->
+<style type="text/css">
+  text { font-size: 12px; }
+  .span text { font-size: 11px; }
+  .arcs text { font-size: 9px; }
+</style>
+{% endblock extra_style %}
+
+{% block extra_head %}
+    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
+    <script src="{% static "nlp/js/scripts.js" %}"></script>
+    <script src='https://unpkg.com/vue@2.2.6'></script>
+
+<script type="text/javascript" src="/static/brat_client/client/lib/head.load.min.js"></script>
+<script type="text/javascript">
+var bratLocation = '{% static "brat_client" %}';
+var webFontURLs = [
+                bratLocation + '/fonts/Astloch-Bold.ttf',
+                   bratLocation + '/fonts/PT_Sans-Caption-Web-Regular.ttf',
+                   bratLocation + '/fonts/Liberation_Sans-Regular.ttf'
+               ];
+</script>
+<script type="text/javascript" src="/static/brat_client/client/lib/jquery.min.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/lib/jquery.svg.min.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/lib/jquery.svgdom.min.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/configuration.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/util.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/annotation_log.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/lib/webfont.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/dispatcher.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/url_monitor.js"></script>
+<script type="text/javascript" src="/static/brat_client/client/src/visualizer.js"></script>
+
+<script src="https://use.fontawesome.com/d391635073.js"></script>
+{% endblock extra_head %}
+
+{% block user %}{% endblock user %}
+
+{% block nav_vue %}
+  {% include "_header_bar.html" %}
+  <div class="navbar">
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Dependency parse" %}</h3>
+  </div>
+{% endblock nav_vue %}
+
+{% block body_class %}nlp-vue-body{% endblock %}
+
+{% block body_base %}
+
+  {% verbatim %}
+  <div id="app" class='components-container'>
+    <div class="marginB10">
+      <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
+      <span v-if="title">: <i>{{ title }}</i></span>
+      <span v-if="id">(id = {{ obj_id }})</span>
+      <span v-if="language"><br><label>language</label> {{ language }}</span>
+    </div>
+
+    <div style="text-align:center; font-weight:bold;"><span style="color:cornflowerBlue;">Part-Of-Speech (POS) Tags</span>,
+    <span style="color:purple;">Syntactic Dependencies</span> and <span style="color:tomato;">Named Entities</span></div>
+
+    <template v-if="error===null">
+      <div id="embedding-live-example"></div>
+	</template>
+    <template v-else>
+      <h3 style="color: red; text-align: center; margin: 10px;">{{ error }}</h3>
+    </template>
+  </div>
+  {% endverbatim %}
+{% endblock %}
+
+{% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
+  <script>
+    // from BRAT; see http://brat.nlplab.org/configuration.html and https://brat.nlplab.org/embed.html
+    var collData = {
+       	entity_types: [],
+    };
+    var docData = {
+    	text: '',
+    	entities : [],
+    	relations : [],
+    };
+
+	function process_postags(tokens, i) {
+		app.tokens.forEach(function (token) {
+			if (['SPACE', 'PUNCT', 'SYM', 'X'].indexOf(token['pos']) < 0)
+     			docData['entities'].push(['T'+i.toString(), token['pos'], [[token['start'], token['end']]]]);
+			i++;
+		});
+		return i;
+	}
+
+	function process_entities(entities, i) {
+		app.entities.forEach(function (entity) {
+     		docData['entities'].push(['T'+i.toString(), entity['label'], [[entity['start'], entity['end']]]]);
+     		i++;			
+		});
+		return i;
+	}
+
+	function process_dependencies(tokens) {
+		i = 1;
+		app.tokens.forEach(function (token) {
+			if (token['dep'] != 'ROOT')
+				if (['SPACE', 'PUNCT', 'SYM', 'X'].indexOf(token['pos']) < 0)
+					if (['SPACE', 'PUNCT', 'SYM', 'X'].indexOf(tokens[token['head']]['pos']) < 0)
+		     			docData['relations'].push(['R'+i.toString(), token['dep'], [['', 'T'+(1+token['head']).toString()], ['', 'T'+i.toString()]]]);
+ 			i++;
+		});
+	}
+
+    // head.ready(function() {
+    function do_brat() {
+    	docData['text'] = app.text;
+    	i = 1;
+    	i = process_postags(app.tokens, i);
+    	i = process_entities(app.entities, i);
+    	process_dependencies(app.tokens)
+        // Evaluate the code from the examples and show it to the user ...
+        // Fuck it! We'll do it live!
+        var collInput = $('#coll-input');
+        var docInput = $('#doc-input');
+        var liveDiv = $('#embedding-live-example');
+
+        // Time for some "real" brat coding, let's hook into the dispatcher
+        var liveDispatcher = Util.embed('embedding-live-example',
+                $.extend({'collection': null}, collData),
+                $.extend({}, docData), webFontURLs);
+
+        var renderError = function() {
+            collInput.css({'border': '2px solid red'});
+            docInput.css({'border': '2px solid red'});
+        };
+
+        liveDispatcher.on('renderError: Fatal', renderError);
+
+        var collInputHandler = function() {
+            var collJSON;
+            try {
+                collJSON = JSON.parse(collInput.val());
+                collInput.css({'border': '2px inset'});
+            } catch (e) {
+                // Not properly formatted JSON...
+                collInput.css({'border': '2px solid red'});
+                return;
+            }
+
+            try {
+                liveDispatcher.post('collectionLoaded',
+                        [$.extend({'collection': null}, collJSON)]);
+                docInput.css({'border': '2px inset'});
+            } catch(e) {
+                console.error('collectionLoaded went down with:', e);
+                collInput.css({'border': '2px solid red'});
+            }
+        };
+
+        var docInputHandler = function() {
+            var docJSON;
+            try {
+                docJSON = JSON.parse(docInput.val());
+                docInput.css({'border': '2px inset'});
+            } catch (e) {
+                docInput.css({'border': '2px solid red'});
+                return;
+            }
+
+            try {
+                liveDispatcher.post('requestRenderData', [$.extend({}, docJSON)]);
+                collInput.css({'border': '2px inset'});
+            } catch(e) {
+                console.error('requestRenderData went down with:', e);
+                collInput.css({'border': '2px solid red'});
+            }
+        };
+
+        // Inject our current example as a start
+        var collJSON = JSON.stringify(collData, undefined, '    ');
+        docJSON = JSON.stringify(docData, undefined, '    ')
+        // pack those just a bit
+        var packJSON = function(s) {
+            // replace any space with ' ' in non-nested curly brackets
+            s = s.replace(/(\{[^\{\}\[\]]*\})/g, 
+                          function(a, b) { return b.replace(/\s+/g, ' '); });
+            // replace any space with ' ' in [] up to nesting depth 1
+            s = s.replace(/(\[(?:[^\[\]\{\}]|\[[^\[\]\{\}]*\])*\])/g, 
+                          function(a, b) { return b.replace(/\s+/g, ' '); });
+            return s
+        }
+        collInput.text(packJSON(collJSON));
+        docInput.text(packJSON(docJSON));
+
+        var listenTo = 'propertychange keyup input paste';
+        collInput.bind(listenTo, collInputHandler);
+        docInput.bind(listenTo, docInputHandler);
+    };
+
+    var app = new Vue({
+      name: 'test',
+      data: {
+        file_key: '{{ file_key }}',
+        obj_type: '{{ obj_type }}',
+        obj_id: '{{ obj_id }}',
+        obj_type_label: '{{ obj_type_label }}',
+        title: '{{ title }}',
+        language: '{{ language }}',
+        sentences: null,
+        tokens: null,
+        text: null,
+        noun_chunks: null,
+        entity_lists: null,
+        entities: null,
+        analyzed_text: null,
+        error: null,
+	},
+    el: '#app',
+    methods: {
+      resize() {
+        console.log('resize')
+      }
+    },
+
+    mounted: function () {
+      $this = this;
+      if (! this['obj_id'])
+        this['obj_id'] = 0;
+      fetch('/textanalysis/dependency/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+        method: 'GET',
+        headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+      })
+      .then(response => response.json())
+      .then(data => {
+         for (var key in data) {
+        	if (key == 'collData')
+        		collData = data[key];
+        	else
+        	  this[key] = data[key];
+         };
+         do_brat();
+       })
+      .catch(err => (this['error'] = err))
+    },
+
+    updated: function () {
+        this.$nextTick(initTooltips(document.querySelectorAll('.tooltip')));
+        if (this.text)
+        	do_brat();
+    }
+  });
+</script>
+{% endblock script_base %}

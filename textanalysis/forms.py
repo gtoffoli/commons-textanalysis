@@ -3,6 +3,7 @@ from django.utils.translation import gettext_lazy as _
 from django import forms
 
 TA_FUNCTION_CHOICES = (
+    ('dependency', _('Dependency parse')),
     ('context', _('Keywords In Context')),
     ('wordlists', _('Word Lists by POS')),
     ('annotations', _('Annotated text')),
