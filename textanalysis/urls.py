@@ -26,7 +26,9 @@ urlpatterns = [
     url(r"^text_dashboard/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\d]+)$", views.text_dashboard, name="text_dashboard_unterminated"),
     url(r"^text_dashboard/(?P<obj_type>[\w\.-]+)/(?P<obj_id>.+)$", views.text_dashboard, name="text_dashboard_by_url"),
     url(r"^text_dashboard/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_dashboard, name="text_dashboard_by_url"),
-    #
+
+    url(r"^corpus_dashboard/(?P<file_key>[\w\.-]+)/$", views.corpus_dashboard, name="corpus_dashboard"),
+#
     url(r"^(?P<function>[\w\.-]+)/(?P<file_key>[\w\.-]+)/$", views.ta, name="text_analysis_1"),
     url(r"^(?P<function>[\w\.-]+)/(?P<file_key>[\w\.-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\d-]+)/$", views.ta, name="text_analysis_3"),
     url(r"^(?P<function>[\w\.-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\d-]+)/$", views.ta, name="text_analysis_2"),

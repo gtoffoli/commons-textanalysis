@@ -20,6 +20,7 @@ from django.views.decorators.csrf import csrf_exempt
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
+from textanalysis.utils import LemmaPosDict
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -861,6 +862,55 @@ def ajax_delete_corpus(request):
     else:
         return propagate_remote_server_error(response)
 
+def corpus_dashboard_return(request, var_dict):
+    if not var_dict:
+        var_dict = { 'error': off_error }
+    return JsonResponse(var_dict)
+
+def corpus_dashboard(request, file_key=''):
+    print('file_key', file_key)
+    data = json.dumps({'file_key': file_key})
+    endpoint = nlp_url + '/api/get_corpus'
+    try:
+        response = requests.post(endpoint, data=data)
+        print('corpus_dasboard ok')
+    except:
+        response = None
+        print('corpus_dasboard ko')
+    if not response or response.status_code!=200:
+        print('corpus_dasboard', response.status_code)
+        return corpus_dashboard_return(request, {})
+    corpus_dict = response.json()
+    n_docs = len(corpus_dict)
+    assert n_docs
+    language = corpus_dict[0]['language']
+    for doc_dict in corpus_dict:
+        doc_dict['n_tokens'] = len(doc_dict['tokens'])
+    lemma_pos_dict = LemmaPosDict(corpus_dict)
+    lemma_pos_dict.make()
+    cross_table = []
+    for i in range(n_docs):
+        row = []
+        counts_i = lemma_pos_dict.get_counts(i)
+        count_self = counts_i['n_self']
+        count_unique = counts_i['n_diff_1']
+        for j in range(n_docs):
+            col = []
+            if j == i:
+                col.append(count_self)
+                col.append(count_unique)
+                col.append(int((count_unique * 100)/count_self))
+            else:
+                counts_i_j = lemma_pos_dict.get_counts(i, [j])
+                diff_i_j = counts_i_j['n_diff_1']
+                col.append(diff_i_j)
+                col.append(int((diff_i_j * 100)/count_self))
+            row.append(col)
+        cross_table.append(row)
+    print('corpus_dashboard', cross_table)
+    var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
+    return corpus_dashboard_return(request, var_dict)
+
 @csrf_exempt
 def text_wordlists(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
@@ -1092,7 +1142,10 @@ def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
         var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
-    if function == 'dashboard':
+    if function == 'corpus':
+        var_dict['VUE'] = True
+        return render(request, 'corpus_dashboard.html', var_dict)
+    elif function == 'dashboard':
         return render(request, 'text_dashboard.html', var_dict)
     elif function == 'dependency':
         var_dict['VUE'] = True
