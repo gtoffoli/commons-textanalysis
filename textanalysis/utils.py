@@ -2,7 +2,61 @@ import re
 import pyphen
 import string
 from collections import defaultdict
+from textract import process
 from bs4 import BeautifulSoup
+
+def get_document_text(document, return_has_text=False):
+    has_text = False
+    text = ''
+    version = document.latest_version
+    mimetype = version.mimetype
+    encoding = 'utf8'
+    if mimetype.count('text'): # if mimetype.endswith('text'):
+        has_text = True
+    if mimetype.count('text/plain'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='txt')
+    elif mimetype.count('pdf'): # elif mimetype.endswith('pdf'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='pdf')
+    elif mimetype.count('rtf'): # elif mimetype.endswith('rtf'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='rtf')
+    elif mimetype.count('msword'): # elif mimetype.endswith('msword'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='doc')
+    elif mimetype.count('officedocument.wordprocessingml') and mimetype.count('document'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='docx')
+    elif mimetype.count('officedocument.presentationml'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='pptx')
+    elif mimetype.count('officedocument.spreadsheetml'):
+        has_text = True
+        if not return_has_text:
+            text = process(version.file.path, encoding=encoding, extension='xlsx')
+    else:
+        split_label = document.label.split('.')
+        if len(split_label) > 1:
+            extension = split_label[-1]
+            if extension in ['csv', 'doc', 'docx', 'eml', 'epub', 'htm', 'html', 'json', 'msg', 'odt', 'pdf', 'pptx', 'ps', 'rtf', 'txt', 'xslx', 'xss',]:
+                has_text = True
+                if not return_has_text:
+                    text = process(version.file.path, encoding=encoding, extension=extension)
+    if return_has_text:
+        return has_text
+    else:
+        try:
+            text = text.decode()
+        except (UnicodeDecodeError, AttributeError):
+            pass
+        return text
 
 def extract_annotate_with_bs4(html):
     soup = BeautifulSoup(html, 'lxml')

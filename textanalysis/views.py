@@ -17,6 +17,8 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
 
+from commons.user_spaces import project_contents, user_contents
+
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
@@ -545,6 +547,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
+    if file_key:
+        text = analyze_dict.get('text', '')
     analyzed_text = analyze_dict.get('analyzed_text', '')
     obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
@@ -736,6 +740,26 @@ def propagate_remote_server_error(response):
     ajax_response = JsonResponse({"error": "Remote server error"})
     ajax_response.status_code = response.status_code
     return ajax_response
+
+@csrf_exempt
+def ajax_contents(request):
+    user = request.user
+    data = json.loads(request.body.decode('utf-8'))
+    project_id = data['project_id']
+    user_key = '{id:05d}'.format(id=request.user.id)
+    endpoint = nlp_url + '/api/get_corpora/'
+    data = json.dumps({'user_key': user_key})
+    response = requests.post(endpoint, data=data)
+    if not response.status_code==200:
+        return propagate_remote_server_error(response)
+    data = response.json()
+    corpora = data['corpora']
+    if project_id:
+        data = project_contents(project_id)
+    else: # if user.is_authenticated:
+        data = user_contents(user)
+    data['corpora'] = corpora
+    return JsonResponse(data)
 
 @csrf_exempt
 def ajax_new_corpus(request):
