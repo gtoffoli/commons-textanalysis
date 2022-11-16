@@ -48,7 +48,7 @@ th, td {
     <div v-if="language"><label>{{ label_language }}</label> {{ language }}</div>
 
     <div style="text-align: center">
-    <h5>{{ label_corpus_contens }}</h5>
+    <h5>{{ label_corpus_contents }}</h5>
     <table class="table table-responsive table-bordered table-striped" style="margin: 0 auto; border-collapse: collapse;">
       <thead><tr>
         <th>#</th><th>id</th><th>label</th><th>type</th><th>n. tokens</th>
@@ -112,7 +112,7 @@ th, td {
           error: null,
           label_corpus_identifier: "{% trans "corpus identifier"|capfirst %}",
           label_language: "{% trans "language"|capfirst %}",
-          label_corpus_contens: "{% trans "corpus contens"|capfirst %}",
+          label_corpus_contents: "{% trans "corpus contents"|capfirst %}",
           label_lexical_comparison: "{% trans "comparison of lexical lemmas among documents"|capfirst %}"
         },
         el: '#app',

@@ -524,7 +524,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
             title, description, text = text_utils.get_obj_text(obj, obj_type=obj_type, obj_id=obj_id,  return_has_text=False)
             body = '{}, {}. {}'.format(title, description, text)
         if contexts:
-            return {'text': body}
+            # return {'text': body}
+            return body
         data = json.dumps({'text': body})
     if text_cohesion:
         endpoint = nlp_url + '/api/text_cohesion'
@@ -540,9 +541,10 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         print('text_dashboard', response.status_code)
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
-
+    """
     if contexts:
         return {'text': analyze_dict['text'], 'language': analyze_dict['language']}
+    """
         
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
@@ -960,7 +962,9 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
     # if request.is_ajax():
     if is_ajax(request):
-        var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
+        # var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
+        if not file_key:
+            var_dict['text'] = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
