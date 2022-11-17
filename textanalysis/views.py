@@ -525,7 +525,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
             body = '{}, {}. {}'.format(title, description, text)
         if contexts:
             # return {'text': body}
-            return body
+            return {'text': body, 'title': title}
         data = json.dumps({'text': body})
     if text_cohesion:
         endpoint = nlp_url + '/api/text_cohesion'
@@ -541,10 +541,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         print('text_dashboard', response.status_code)
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
-    """
-    if contexts:
-        return {'text': analyze_dict['text'], 'language': analyze_dict['language']}
-    """
         
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
@@ -955,7 +951,7 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
 
 """
 called from contents_dashboard or text_analysis template
-to find and sort document or corpus keywords and to list keyword in context
+to find and sort document keywords and to list keyword in context
 """
 @csrf_exempt
 def context_dashboard(request, file_key='', obj_type='', obj_id=''):
@@ -964,7 +960,8 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     if is_ajax(request):
         # var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
         if not file_key:
-            var_dict['text'] = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
+            dashboard_dict = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
+            var_dict['text'] = dashboard_dict['text']
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
@@ -972,9 +969,11 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
         var_dict['language'] = result['language']
         var_dict['keywords'] = result['keywords']
         var_dict['kwics'] = result['kwics']
+        var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
+        if not file_key:
+            var_dict['title'] = dashboard_dict['title']
         return JsonResponse(var_dict)
     else:
-        # return render(request, 'vue/context_dashboard.html', var_dict)
         return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):

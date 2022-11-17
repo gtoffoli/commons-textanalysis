@@ -314,10 +314,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
             </div>
               <ul v-if="corpus.active" style="font-size: 0.8em;">
                 <li><a v-bind:href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
-                <li><a v-bind:href="'/textanalysis/context/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
                 <li><a v-bind:href="'/textanalysis/wordlists/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
-                <li><a v-bind:href="'/textanalysis/readability/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
-                <li><a v-bind:href="'/textanalysis/dashboard/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_dashboard }}</a></li>
               </ul>
             <div class="test" style="display: none;">
               <div class="subheading-corpus">
