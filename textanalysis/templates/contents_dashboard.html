@@ -280,12 +280,16 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                   <div><a :href=r_item.url target="_text">{{ r_item.obj_id }}</a></div>
                   <a v-on:click.stop="toggle_menu(r_item);"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
                   <ul v-if="r_item.active">
+
+                    <li><a v-bind:href="'/textanalysis/dependency/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
                     <li><a v-bind:href="'/textanalysis/context/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
                     <li><a v-bind:href="'/textanalysis/wordlists/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/annotations/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
                     <li><a v-bind:href="'/textanalysis/nounchunks/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
                     <li><a v-bind:href="'/textanalysis/readability/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/cohesion/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
                     <li><a v-bind:href="'/textanalysis/summarization/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/dashboard/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dashboard }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/dashboard/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
                   </ul>
                 </vddl-draggable>
             </vddl-list>
@@ -360,12 +364,15 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                   <div class="text-center"><a href="#" v-on:click="removeItem(corpus.file_key, c_item.obj_type, c_item.obj_id);" :title="label_remove_item"><i class="fa fa-trash demibold"></i></a></div>
                   <br v-if="c_item.active">
                   <ul v-if="c_item.active" style="font-size: 0.8em;">
+                    <li><a v-bind:href="'/textanalysis/dependency/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
                     <li><a v-bind:href="'/textanalysis/context/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
                     <li><a v-bind:href="'/textanalysis/wordlists/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/annotations/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
                     <li><a v-bind:href="'/textanalysis/nounchunks/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
                     <li><a v-bind:href="'/textanalysis/readability/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/cohesion/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
                     <li><a v-bind:href="'/textanalysis/summarization/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/dashboard/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dashboard }}</a></li>
+                    <li><a v-bind:href="'/textanalysis/dashboard/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
                   </ul>
                </vddl-draggable>
               </vddl-list>
@@ -442,15 +449,17 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
           label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
           label_remove_item: '{% trans "remove item"|capfirst %}',
           label_similarity: '{% trans "similarity"|capfirst %}',
-          label_analysis: '{% trans "Text Analysis Dashboard" %}',
           label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
-          label_dashboard: '{% trans "Text Analysis Dashboard" %}',
+          label_dependency: '{% trans "Dependency parse" %}',
           label_context: '{% trans "Keywords In Context" %}',
           label_wordlists: '{% trans "Word Lists by POS" %}',
+          label_annotation: '{% trans "Annotated text" %}',
           label_nounchunks: '{% trans "Noun Chunks" %}',
-          label_summarization: '{% trans "Text Summarization" %}',
           label_readability: '{% trans "Text Readability" %}',
-		},
+          label_cohesion: '{% trans "Text Cohesion" %}',
+          label_summarization: '{% trans "Text Summarization" %}',
+          label_analysis: '{% trans "Text Analysis Dashboard" %}',
+        },
         el: '#app',
         components: {
           // Vue.component('vue-simple-context-menu', VueSimpleContextMenu)
