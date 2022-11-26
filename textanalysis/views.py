@@ -657,8 +657,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         sconj_frequencies = sorted_frequencies(sconj_frequencies)
         var_dict.update({'propn_frequencies': propn_frequencies,
             'cconj_frequencies': cconj_frequencies, 'sconj_frequencies': sconj_frequencies,})
+    levels_counts = defaultdict(int)
     if token_level_dict:
-        levels_counts = defaultdict(int)
         lc_dict = add_level_to_frequencies(verb_frequencies, 'verb')
         for item in lc_dict.items():
             levels_counts[item[0]] += item[1]
