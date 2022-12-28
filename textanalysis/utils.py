@@ -2,8 +2,69 @@ import re
 import pyphen
 import string
 from collections import defaultdict
-from textract import process
+import requests
+import tempfile
+import readability
+import textract
 from bs4 import BeautifulSoup
+
+mimetype_extension_list = (
+    ('text/plain', 'txt'),
+    ('pdf', 'pdf'),
+    ('rtf', 'rtf'),
+    ('msword', 'doc'),
+    ('officedocument.wordprocessingml', 'docx'),
+    ('officedocument.presentationml', 'pptx'),
+    ('officedocument.spreadsheetml', 'xlsx'),
+)
+
+def get_web_resource_text(url):
+    err = None
+    try:
+        response = requests.get(url)
+    except ConnectionError as err:
+        return '', response, err
+    except requests.exceptions.RequestException as err:
+        return '', response, err
+    if not (response.status_code == 200):
+        return '', response, err
+    text = ''
+    title = ''
+    encoding = 'utf8'
+    content_type = response.headers['content-type']
+    print('---------------- get_web_resource_text', response.status_code, content_type, len(response.text))
+    if content_type.count('text/plain'):
+        text = response.text
+    elif content_type.count('text/html') or url.endswith('.htm'):
+        text = response.text
+        doc = readability.Document(text)
+        print('---------------- get_web_resource_text', doc, doc.title())
+        text = doc.summary()
+        title = doc.title()
+        text = extract_annotate_with_bs4(text)
+    else:
+        with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b') as f:
+            for chunk in response.iter_content(1024):
+                f.write(chunk)   
+        if content_type.count('pdf'):
+            text = textract.process(f.name, encoding=encoding, extension='pdf')
+        elif content_type.count('rtf'):
+            text = textract.process(f.name, encoding=encoding, extension='rtf')
+        elif content_type.count('msword'):
+            text = textract.process(f.name, encoding=encoding, extension='doc')
+        elif content_type.count('officedocument.wordprocessingml') and content_type.count('document'):
+            text = textract.process(f.name, encoding=encoding, extension='docx')
+        elif content_type.count('officedocument.presentationml'):
+            text = textract.process(f.name, encoding=encoding, extension='pptx')
+        elif content_type.count('officedocument.spreadsheetml'):
+            text = textract.process(f.name, encoding=encoding, extension='xlsx')
+        f.close()
+        try:
+            text = text.decode()
+        except (UnicodeDecodeError, AttributeError) as err:
+            return '', response, err
+    # return text, response, err
+    return title, text, response, err
 
 def get_document_text(document, return_has_text=False):
     has_text = False
@@ -16,31 +77,31 @@ def get_document_text(document, return_has_text=False):
     if mimetype.count('text/plain'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='txt')
+            text = textract.process(version.file.path, encoding=encoding, extension='txt')
     elif mimetype.count('pdf'): # elif mimetype.endswith('pdf'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='pdf')
+            text = textract.process(version.file.path, encoding=encoding, extension='pdf')
     elif mimetype.count('rtf'): # elif mimetype.endswith('rtf'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='rtf')
+            text = textract.process(version.file.path, encoding=encoding, extension='rtf')
     elif mimetype.count('msword'): # elif mimetype.endswith('msword'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='doc')
+            text = textract.process(version.file.path, encoding=encoding, extension='doc')
     elif mimetype.count('officedocument.wordprocessingml') and mimetype.count('document'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='docx')
+            text = textract.process(version.file.path, encoding=encoding, extension='docx')
     elif mimetype.count('officedocument.presentationml'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='pptx')
+            text = textract.process(version.file.path, encoding=encoding, extension='pptx')
     elif mimetype.count('officedocument.spreadsheetml'):
         has_text = True
         if not return_has_text:
-            text = process(version.file.path, encoding=encoding, extension='xlsx')
+            text = textract.process(version.file.path, encoding=encoding, extension='xlsx')
     else:
         split_label = document.label.split('.')
         if len(split_label) > 1:
@@ -48,7 +109,7 @@ def get_document_text(document, return_has_text=False):
             if extension in ['csv', 'doc', 'docx', 'eml', 'epub', 'htm', 'html', 'json', 'msg', 'odt', 'pdf', 'pptx', 'ps', 'rtf', 'txt', 'xslx', 'xss',]:
                 has_text = True
                 if not return_has_text:
-                    text = process(version.file.path, encoding=encoding, extension=extension)
+                    text = textract.process(version.file.path, encoding=encoding, extension=extension)
     if return_has_text:
         return has_text
     else:

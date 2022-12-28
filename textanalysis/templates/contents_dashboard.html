@@ -7,7 +7,9 @@
 <link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
 <link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
 <link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
-    <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
+<link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
+<link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
+<link rel="stylesheet" href="{% static "vue_apps/dialog/vuejs-dialog.min.css" %}">
 <style>
 hr {
   margin:0;
@@ -223,11 +225,14 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
     <script type="module" src="https://cdn.jsdelivr.net/npm/sortablejs@1.13.0/Sortable.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/vuedraggable@2.24.3/src/vuedraggable.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/vddl@0.7.1/dist/vddl.js"></script>
+    <script src="https://unpkg.com/http-vue-loader"></script>
 {% endcomment %}
     <script src="{% static "vue/vue.js" %}"></script>
     <script type="module" src="{% static "vue_apps/sortable/Sortable.js" %}"></script>
     <script type="module" src="{% static "vue_apps/vuedraggable/vuedraggable.js" %}"></script>
     <script src="{% static "vue_apps/vddl/vddl.js" %}"></script>
+    <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog-mixin.min.js" %}"></script> 
 {% endblock extra_head %}
 
 {% block body_class %}contents_dashboard{% endblock %}
@@ -310,10 +315,10 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
               <div><a href="javascript:void(0)" onclick="toggle_icon($(this));"><i class="fa fa-plus-square"></i></a> &nbsp;<span class="demiBold" v-if="corpus.items.length==0">{{ label_empty_corpus }}</span><span class="demiBold" v-else>{{ label_corpus }}</span> <span class="demiBold">{{ corpus.file_key }}</span></div>
               <div></div>
               <div></div>
+              <div><a v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
+              <div><a v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
               <div></div>
               <div></div>
-              <div></div>
-              <a v-on:click.stop="toggle_menu(corpus);"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
               <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
               <ul v-if="corpus.active" style="font-size: 0.8em;">
@@ -322,7 +327,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
               </ul>
             <div class="test" style="display: none;">
               <div class="subheading-corpus">
-                <div>title</div>
+                <div>title of corpus item</div>
                 <div>type</div>
                 <div>id</div>
                 <div>lang</div>
@@ -356,11 +361,12 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                 >
                   <div><span style="cursor:default">{{ c_item.label }}</span></div>
                   <div class="upperCase">{{ c_item.obj_type }}</div>
-                  <div>{{ c_item.obj_id }}</div>
+                  <div><template v-if="c_item.obj_type=='web'"><a v-bind:href="c_item.url" v-bind:title="c_item.url" target="_blank"><i class="fa fa-external-link font07em" aria-hidden="true"></i></a></template>
+                       <template v-else=>{{ c_item.obj_id }}</template></div>
                   <div class="upperCase">{{ c_item.language }}</div>
                   <div>{{ c_item.n_tokens }}</div>
                   <div>{{ c_item.n_words }}</div>
-                  <a v-on:click.stop="toggle_menu(c_item);"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
+                  <a v-on:click.stop="toggle_menu(c_item);" :title="label_show_hide_item_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
                   <div class="text-center"><a href="#" v-on:click="removeItem(corpus.file_key, c_item.obj_type, c_item.obj_id);" :title="label_remove_item"><i class="fa fa-trash demibold"></i></a></div>
                   <br v-if="c_item.active">
                   <ul v-if="c_item.active" style="font-size: 0.8em;">
@@ -416,9 +422,18 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 	  };
 	  return null;
 	}
-    
+
+	// see: https://github.com/Godofbrowser/vuejs-dialog
+	// Tell Vue to install the VuejsDialog plugin.
+	window.Vue.use(VuejsDialog.main.default)
+
     var app = new Vue({
         name: 'contents_dashboard',
+        components: {
+          // see https://danielkelly.io/blog/renderless-vue-dialog/
+          // see https://medium.com/@jamesweee/using-vue-js-single-file-component-without-module-bundlers-aea58d892ad9
+          // 'dialog': window.httpVueLoader('/static/vue_apps/renderless-dialog/components/Dialogue.vue')
+        },
         data: {
           project_id: {{project_id}},
           is_authenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
@@ -442,12 +457,17 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
           label_user: '{{user.get_display_name}}',
           // label_corpora: '{% trans "corpora of user"|capfirst %}',
           label_corpora: '{% trans "corpora"|capfirst %}',
+          label_expand_collapse: '{% trans "expand / collapse" %}',
           label_selected: '{% trans "selected resources"|capfirst %}',
           label_corpus: '{% trans "corpus"|capfirst %}',
           label_empty_corpus: '{% trans "empty corpus"|capfirst %}',
           label_new_corpus: '{% trans "new corpus"|capfirst %}',
           label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
+          label_add_item_from_web: '{% trans "add item to corpus from web resource"|capfirst %}',
+          label_add_item_from_web_prompt: '{% trans "insert the URL of a web resource, then click on"|capfirst %}',
           label_remove_item: '{% trans "remove item"|capfirst %}',
+          label_show_hide_corpus_menu: '{% trans "show / hide corpus menu"|capfirst %}',
+          label_show_hide_item_menu: '{% trans "show / hide item menu"|capfirst %}',
           label_similarity: '{% trans "similarity"|capfirst %}',
           label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
           label_dependency: '{% trans "Dependency parse" %}',
@@ -486,7 +506,41 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                 return corpus;
             return null;
           },
-          selectedEvent: function(item) {
+          corpusAddResourceItem: function(file_key, url) {
+            data = {file_key: file_key, url: url};
+            fetch('/ajax_resource_to_item/', {
+              method: 'POST',
+              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+              body: JSON.stringify(data)
+           	})
+            .then(response => response.json())
+            .then(data => {
+           	// add a few attributes to the item and possibly update the file_key with real language code
+              for (var i=0; i<this.corpora.length; i++) {
+                var corpus = this.corpora[i];
+                if (corpus.file_key == file_key) {
+                  if (data['error']) {
+                    this['result'] = data['error'];
+                    this.corpora[i].items.pop();
+                    this.$forceUpdate();
+                    return;
+                  }
+                  this.corpora[i].file_key = data['file_key'];
+                  for (var j=0; j<corpus.items.length; j++) {
+                    var item = corpus.items[j];
+                    if (item.obj_type==obj_type && item.obj_id==obj_id) {
+                      this.corpora[i].items[j].language = data['language'];
+                      this.corpora[i].items[j].n_tokens = data['n_tokens'];
+                      this.corpora[i].items[j].n_words = data['n_words'];
+                      this.$forceUpdate();
+                    }
+                  }
+                }
+              }
+            })
+            .catch(err => (this['result'] = err))
+           },
+           selectedEvent: function(item) {
             console.log(':v-draggable: selected');
             this.selected = item;
             // var key = item.list_id;
@@ -661,8 +715,28 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
             .then(response => response.json())
             .then(data => (this['result'] = data['result']))
             .catch(err => (this['result'] = err))
+          },
+          promptWebResourceUrl(corpus) {
+            this.$dialog
+            .prompt({
+              title: this.label_add_item_from_web,
+              body: "",
+            }, {
+              promptHelp: this.label_add_item_from_web_prompt + ' "[+:okText]"'
+            })
+            .then(dialog => {
+              // Triggered when proceed button is clicked: process the user response
+              url = dialog.data;
+              console.log(url);
+              this.corpusAddResourceItem(corpus.file_key, url);
+            })
+            .catch(() => {
+              // Triggered when dialog is dismissed by user
+              console.log('Prompt dismissed');
+            });
           }
         },
+
         mounted: function () {
           this['corpus']['items'] = [];
           data = {project_id: this.project_id};

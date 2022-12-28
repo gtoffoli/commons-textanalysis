@@ -6,12 +6,10 @@ from django.shortcuts import render
 from importlib import import_module
 import json
 import requests
-import tempfile
+import hashlib
 from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
-import textract
-import readability
 from django.http import HttpResponseForbidden, JsonResponse
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -20,9 +18,10 @@ from django.views.decorators.csrf import csrf_exempt
 from commons.user_spaces import project_contents, user_contents
 
 from textanalysis.forms import TextAnalysisInputForm
-from textanalysis.utils import GenericSyllabizer, extract_annotate_with_bs4, is_ajax
+from textanalysis.utils import get_web_resource_text, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
+from textanalysis.utils import GenericSyllabizer
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -35,7 +34,8 @@ obj_type_label_dict = {
     'oer': _('open educational resource'),
     'pathnode': _('node of learning path'),
     'lp': _('learning path'),
-    'resource': _('remote web resource'),
+    # 'resource': _('remote web resource'),
+    'web': _('remote web resource'),
     'text': _('manually input text'),
     'corpus': _('text corpus'),
     '': '?',
@@ -317,48 +317,6 @@ def count_word_syllables(word, language_code):
             n_syllables = n_chars/2
     return max(1, int(n_syllables))
 
-def get_web_resource_text(url):
-    err = None
-    try:
-        response = requests.get(url)
-    except ConnectionError as err:
-        return '', response, err
-    except requests.exceptions.RequestException as err:
-        return '', response, err
-    if not (response.status_code == 200):
-        return '', response, err
-    text = ''
-    encoding = 'utf8'
-    content_type = response.headers['content-type']
-    if content_type.count('text/plain'):
-        text = response.text
-    elif content_type.count('text/html') or url.endswith('.htm'):
-        text = response.text
-        text = readability.Document(text).summary()
-        text = extract_annotate_with_bs4(text)
-    else:
-        with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b') as f:
-            for chunk in response.iter_content(1024):
-                f.write(chunk)   
-        if content_type.count('pdf'):
-            text = textract.process(f.name, encoding=encoding, extension='pdf')
-        elif content_type.count('rtf'):
-            text = textract.process(f.name, encoding=encoding, extension='rtf')
-        elif content_type.count('msword'):
-            text = textract.process(f.name, encoding=encoding, extension='doc')
-        elif content_type.count('officedocument.wordprocessingml') and content_type.count('document'):
-            text = textract.process(f.name, encoding=encoding, extension='docx')
-        elif content_type.count('officedocument.presentationml'):
-            text = textract.process(f.name, encoding=encoding, extension='pptx')
-        elif content_type.count('officedocument.spreadsheetml'):
-            text = textract.process(f.name, encoding=encoding, extension='xlsx')
-        f.close()
-        try:
-            text = text.decode()
-        except (UnicodeDecodeError, AttributeError) as err:
-            return '', response, err
-    return text, response, err
-
 def index_sentences(sentences, tokens):
     i = 0
     for sentence in sentences:
@@ -498,12 +456,13 @@ def text_dashboard_return(request, var_dict):
     else:
         return var_dict # only for manual test
 
-def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='',
+# def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='',
+def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False, dependency=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
-    if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'flatpage', 'resource', 'text',]:
+    if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'flatpage', 'web', 'text',]:
         return HttpResponseForbidden()
     description = ''
     if file_key:
@@ -511,9 +470,9 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
     else:
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
-        elif obj_type == 'resource':
-            title = ''
-            body, response, err = get_web_resource_text(obj_id)
+        elif obj_type == 'web':
+            # title, body, response, err = get_web_resource_text(obj_id)
+            title, body, response, err = get_web_resource_text(url)
             if not body:
                 if err:
                     return text_dashboard_return(request, { 'error': err.value })
@@ -524,7 +483,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
             title, description, text = text_utils.get_obj_text(obj, obj_type=obj_type, obj_id=obj_id,  return_has_text=False)
             body = '{}, {}. {}'.format(title, description, text)
         if contexts:
-            # return {'text': body}
             return {'text': body, 'title': title}
         data = json.dumps({'text': body})
     if text_cohesion:
@@ -600,7 +558,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title
         n_hard_words = 0
         n_word_characters = 0
         n_word_syllables = 0
-    for i_token, token in enumerate(tokens):
+    for token in tokens:
         token_text = text[token['start']:token['end']]
         token['text'] = token_text 
         pos = token['pos']
@@ -797,6 +755,31 @@ def ajax_insert_item(request):
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
 
+@csrf_exempt
+def ajax_resource_to_item(request):
+    data = json.loads(request.body.decode('utf-8'))
+    file_key = data['file_key']
+    # obj_type = 'resource'
+    obj_type = 'web'
+    url = data['url']
+    title, text, response, err = get_web_resource_text(url)
+    print('------------------- ajax_resource_to_item', title, response, err)
+    if err or not text:
+        return propagate_remote_server_error(response)
+    obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
+    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
+    endpoint = nlp_url + '/api/add_doc/'
+    response = requests.post(endpoint, data=data)
+    if not response.status_code==200:
+        return propagate_remote_server_error(response)
+    data = response.json()
+    file_key = data['file_key']
+    if file_key:
+        result = {'file_key': file_key, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
+    else:
+        result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
+    return JsonResponse(result)
+
 """
 called from contents_dashboard template to remove an item (doc) from a corpus (docbin)
 """
@@ -933,11 +916,14 @@ def corpus_dashboard(request, file_key=''):
     var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
     return corpus_dashboard_return(request, var_dict)
 
-@csrf_exempt
+"""
 def text_wordlists(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+"""
+@csrf_exempt
+def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
-    # if request.is_ajax():
     if is_ajax(request):
         keys = ['verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
                 'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',
@@ -952,11 +938,12 @@ def text_wordlists(request, file_key='', obj_type='', obj_id=''):
 """
 called from contents_dashboard or text_analysis template
 to find and sort document keywords and to list keyword in context
-"""
-@csrf_exempt
 def context_dashboard(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-    # if request.is_ajax():
+"""
+@csrf_exempt
+def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     if is_ajax(request):
         # var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
         if not file_key:
@@ -977,7 +964,8 @@ def context_dashboard(request, file_key='', obj_type='', obj_id=''):
         return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], summarization=True)
+    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], summarization=True)
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], summarization=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
@@ -985,9 +973,13 @@ def text_summarization(request, params):
         var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
 
-@csrf_exempt
+"""
 def text_dependency(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+"""
+@csrf_exempt
+def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['text', 'sentences', 'tokens', 'entities', 'entity_lists',
@@ -1001,7 +993,8 @@ def text_dependency(request, file_key='', obj_type='', obj_id=''):
         return render(request, 'text_dependency.html', var_dict)
 
 def text_annotations(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], analyzed_text=True)
+    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], analyzed_text=True)
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], analyzed_text=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
@@ -1009,9 +1002,13 @@ def text_annotations(request, params):
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
 
-@csrf_exempt
+"""
 def text_nounchunks(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+"""
+@csrf_exempt
+def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['paragraphs', 'tokens', 'chunks_index',
@@ -1023,9 +1020,13 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id=''):
     else:
         return render(request, 'text_nounchunks.html', var_dict)
 
-@csrf_exempt
+"""
 def text_cohesion(request, file_key='', obj_type='', obj_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+"""
+@csrf_exempt
+def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['paragraphs', 'repeated_lemmas',
@@ -1087,7 +1088,8 @@ def compute_lexical_rarity(levels_counts):
     return total_count and absolute_rarity/total_count or 0
 
 def text_readability(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], readability=True)
+    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], readability=True)
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], readability=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
@@ -1143,7 +1145,7 @@ def ta_input(request):
                 var_dict = {'obj_type': 'text', 'obj_id': 0}
                 return render(request, 'text_dashboard.html', var_dict)
             else:
-                 return ta(request, function, obj_type='text', obj_id=0)
+                return ta(request, function, obj_type='text', obj_id=0)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
@@ -1160,8 +1162,12 @@ def ta_input(request):
             var_dict['error'] = off_error
     return render(request, 'ta_input.html', var_dict)
 
+"""
 def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'title': '' }
+"""
+def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', title=''):
+    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'url': url, 'text': text, 'title': '' }
     if file_key:
         if obj_type == 'corpus':
             var_dict['obj_type'] = ''
