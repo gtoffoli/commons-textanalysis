@@ -18,6 +18,8 @@ from django.views.decorators.csrf import csrf_exempt
 from commons.user_spaces import project_contents, user_contents
 
 from textanalysis.forms import TextAnalysisInputForm
+from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
+from textanalysis.readability import compute_lexical_rarity, cs_readability_01
 from textanalysis.utils import get_web_resource_text, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
@@ -257,45 +259,11 @@ def count_word_syllables(word, language_code):
     word = word + '  '
     n_syllables = 0
     if language_code == 'en': # see: https://medium.com/@mholtzscher/programmatically-counting-syllables-ca760435fab4
-        vowels = 'aeiouy'
-        if word[0] in vowels:
-            n_syllables += 1
-        for index in range(1, n_chars):
-            if word[index] in vowels and word[index - 1] not in vowels:
-                n_syllables += 1
-        if word.endswith('e'):
-            n_syllables -= 1
-        if word.endswith('le') and n_chars > 2 and word[-3] not in vowels:
-            n_syllables += 1
-        if n_syllables == 0:
-            n_syllables = 1
+        from textanalysis.lang.en.utils import count_word_syllables as count_word_syllables_en
+        n_syllables = count_word_syllables_en(word)
     elif language_code == 'it': # see: https://it.comp.programmare.narkive.com/TExPlcuC/programma-di-sillabazione
-        vowels = 'aeiouy'
-        hard_cons = 'bcdfgjpqstvwxz'
-        liquid_cons = 'hlmnr'
-        cons = hard_cons + liquid_cons
-        if word[0] in vowels:
-            n_syllables += 1
-        for index in range(1, n_chars):
-            c = word[index] 
-            if c in cons:
-                if word[index - 1] == c:
-                    n_syllables += 1
-                elif c == 's':
-                    pass
-                elif c in liquid_cons and word[index + 1] in cons and word[index + 2] in vowels:
-                    n_syllables += 1
-                elif c in liquid_cons and word[index + 1] in liquid_cons and word[index + 2] in vowels:
-                    n_syllables += 1
-            else:
-                if c == 's':
-                    n_syllables += 1
-                elif word[index + 1] in hard_cons and (word[index + 2] in vowels or word[index + 2] in liquid_cons):
-                    n_syllables += 1
-                elif word[index + 1] in liquid_cons and word[index + 2] in vowels:
-                    n_syllables += 1
-                elif index == n_chars-1:
-                    n_syllables += 1
+        from textanalysis.lang.it.utils import count_word_syllables as count_word_syllables_it
+        n_syllables = count_word_syllables_it(word)
     elif language_code == 'es':
         from textanalysis.lang.es.utils import silabizer as es_syllabizer
         syllabizer = es_syllabizer()
@@ -457,7 +425,7 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 # def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='',
-def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=None, title='', body='',
+def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False, dependency=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
@@ -499,15 +467,18 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=Non
         print('text_dashboard', response.status_code)
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
+    doc = analyze_dict['doc']
         
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
     if file_key:
-        text = analyze_dict.get('text', '')
+        text = doc.get('text', '')
+        label = doc['_'].get('label', '')
+        url = doc['_'].get('url', '')
     analyzed_text = analyze_dict.get('analyzed_text', '')
     obj_type_label = obj_type_label_dict.get(obj_type, _('text corpus'))
-    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
+    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'label': label, 'url': url, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
     var_dict['summary'] = analyze_dict.get('summary', '')
 
     if summarization:
@@ -552,6 +523,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=Non
     cconj_frequencies = defaultdict(int)
     sconj_frequencies = defaultdict(int)
     n_lexical = 0
+    n_long_tokens = 0
     if readability:
         mattr = MATTR(text, tokens)
         n_words = 0
@@ -561,6 +533,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=Non
     for token in tokens:
         token_text = text[token['start']:token['end']]
         token['text'] = token_text 
+        if len(token_text) > 6:
+            n_long_tokens += 1
         pos = token['pos']
         add_to_default_dict(kw_frequencies, token_text)
         if readability: # and not pos in ['SPACE', 'PUNCT',]:
@@ -632,7 +606,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', url='', obj=Non
 
     var_dict.update({'verb_frequencies': verb_frequencies, 'noun_frequencies': noun_frequencies,
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
-        'levels_counts': levels_counts,})
+        'levels_counts': levels_counts, 'n_long_tokens': n_long_tokens,})
     if wordlists and not readability:
         return var_dict
 
@@ -763,7 +737,6 @@ def ajax_resource_to_item(request):
     obj_type = 'web'
     url = data['url']
     title, text, response, err = get_web_resource_text(url)
-    print('------------------- ajax_resource_to_item', title, response, err)
     if err or not text:
         return propagate_remote_server_error(response)
     obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
@@ -912,14 +885,10 @@ def corpus_dashboard(request, file_key=''):
                 col.append(int((diff_i_j * 100)/count_self))
             row.append(col)
         cross_table.append(row)
-    print('corpus_dashboard', cross_table)
+    # print('corpus_dashboard', cross_table)
     var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
     return corpus_dashboard_return(request, var_dict)
 
-"""
-def text_wordlists(request, file_key='', obj_type='', obj_id=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-"""
 @csrf_exempt
 def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
@@ -973,10 +942,6 @@ def text_summarization(request, params):
         var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
 
-"""
-def text_dependency(request, file_key='', obj_type='', obj_id=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-"""
 @csrf_exempt
 def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
@@ -1002,10 +967,6 @@ def text_annotations(request, params):
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
 
-"""
-def text_nounchunks(request, file_key='', obj_type='', obj_id=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-"""
 @csrf_exempt
 def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
@@ -1020,10 +981,6 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     else:
         return render(request, 'text_nounchunks.html', var_dict)
 
-"""
-def text_cohesion(request, file_key='', obj_type='', obj_id=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-"""
 @csrf_exempt
 def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
@@ -1044,93 +1001,77 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
     else:
         return render(request, 'text_cohesion.html', var_dict)
 
-readability_indexes = {
-  'flesch_easy': { 'languages': ['en'], 'title': "Flesch Reading Ease score for English (0-100)", 'ref': 'https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests' },
-  'franchina_vacca_1972': { 'languages': ['it'], 'title': "Franchina-Vacca readability index for Italian (0-100)", 'ref': 'https://it.wikipedia.org/wiki/Formula_di_Flesch' },
-  'gulp_ease': { 'languages': ['it'], 'title': "GULP readability index for Italian (0-100)", 'ref': 'https://it.wikipedia.org/wiki/Indice_Gulpease' },
-  'kincaid_flesh': { 'languages': ['en'], 'title': "Flesch–Kincaid grade level for English (Very easy-Extra difficult)", 'ref': 'https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests' },
-  'fernandez_huerta': { 'languages': ['es'], 'title': "Fernandez Huerta readability index for Spanish (0-100)", 'ref': 'https://legible.es/blog/lecturabilidad-fernandez-huerta/' },
-  'gagatsis_1985': { 'languages': ['el'], 'title': "Gagatsis readability index for Greek (0-100)", 'ref': 'http://www.sfs.uni-tuebingen.de/~dm/papers/Georgatou-16.pdf' },
-}
-# gagatsis_1985. see: http://www.sfs.uni-tuebingen.de/~dm/papers/Georgatou-16.pdf
-
-readability_scales = {
-    'flesch_easy': [[90, 100, 'very easy'], [80, 90, 'easy'], [70, 80, 'fairly easy'], [60, 70, 'intermediate'], [50, 60, 'fairly difficult'], [30, 50, 'difficult'], [0, 30, 'very difficult'],],
-    'kincaid_flesh': [[90, 100, '5th grade'], [80, 90, '6th grade'], [70, 80, '7th grade'], [60, 70, '8-9th grade'], [50, 60, '10-12 grade'], [30, 50, 'college'], [10, 30, 'college graduate'], [0, 10, 'professional'],]
-}
-
-def readability_level(scale, score):
-    score = int(score)
-    scale = readability_scales[scale]
-    for interval in scale:
-        if score >= interval[0] and score <= interval[1]:
-            return interval[2]
-    return 'out of scale'
-
-level_rarity_factors = {
-  'a': 0.1,
-  'a1': 0.0,
-  'a2': 0.2,
-  'b': 0.4,
-  'b1': 0.3,
-  'b2': 0.5,
-  'c': 0.7,
-  'c1': 0.6,
-  'c2': 1.0,
-}
-
-def compute_lexical_rarity(levels_counts):
-    total_count = 0
-    absolute_rarity = 0
-    for level, count in levels_counts.items():
-        total_count += count
-        absolute_rarity += count*level_rarity_factors[level]
-    return total_count and absolute_rarity/total_count or 0
-
 def text_readability(request, params):
-    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], readability=True)
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], readability=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
     else:
+        del params['url']
         var_dict.update(params)
     language_code = var_dict['language_code']
+    n_sentences = var_dict['n_sentences']
+    n_tokens = var_dict['n_tokens']
+    mean_sentence_length = var_dict['mean_sentence_length']
     n_words = var_dict['n_words'] or 1
-    var_dict['mean_chars_per_word'] = var_dict['n_word_characters'] / n_words
-    var_dict['mean_syllables_per_word'] = var_dict['n_word_syllables'] / n_words
-    var_dict['lexical_rarity'] = compute_lexical_rarity(var_dict['levels_counts']) 
+    n_word_characters = var_dict['n_word_characters']
+    mean_chars_per_word = n_word_characters / n_words
+    var_dict['mean_chars_per_word'] = mean_chars_per_word
+    n_word_syllables = var_dict['n_word_syllables']
+    mean_syllables_per_word = n_word_syllables / n_words
+    var_dict['mean_syllables_per_word'] = mean_syllables_per_word
+    voc_density = var_dict['voc_density']
+    lexical_rarity = compute_lexical_rarity(var_dict['levels_counts'])
+    var_dict['lexical_rarity'] = lexical_rarity
+    mean_dependency_depth = var_dict['mean_dependency_depth']
+    mean_dependency_distance = var_dict['mean_dependency_distance']
+    var_dict['readability_indexes_keys'] = readability_indexes_keys
     var_dict['readability_indexes'] = {}
     index = readability_indexes['flesch_easy']
     if language_code in index['languages']:
-        index['value'] = 206.835 - 1.015 * var_dict['mean_sentence_length'] - 84.6 * var_dict['mean_syllables_per_word']
+        index['value'] = 206.835 - 1.015 * mean_sentence_length - 84.6 * mean_syllables_per_word
         index['range'] = readability_level('flesch_easy', index['value'])
         var_dict['readability_indexes']['flesch_easy'] = index
     index = readability_indexes['kincaid_flesh']
     if language_code in index['languages']:
-        index['value'] = 0.39 * var_dict['mean_sentence_length'] + 11.8 * var_dict['mean_syllables_per_word'] - 15.59
+        index['value'] = 0.39 * mean_sentence_length + 11.8 * mean_syllables_per_word - 15.59
         index['range'] = readability_level('kincaid_flesh', index['value'])
         var_dict['readability_indexes']['kincaid_flesh'] = index
+    index = readability_indexes['brangan_rasprave']
+    if language_code in index['languages']:
+        index['value'] = 206.835 - 1.015 * mean_sentence_length - 84.6 * mean_syllables_per_word + 50
+        index['range'] = readability_level('flesch_easy', index['value'])
+        var_dict['readability_indexes']['flesch_easy'] = index
     index = readability_indexes['franchina_vacca_1972']
     if language_code in index['languages']:
-        index['value'] = 206 - var_dict['mean_sentence_length'] - 65 * var_dict['mean_syllables_per_word']
+        index['value'] = 206 - mean_sentence_length - 65 * mean_syllables_per_word
         index['range'] = readability_level('flesch_easy', index['value'])
         var_dict['readability_indexes']['franchina_vacca_1972'] = index
     index = readability_indexes['gulp_ease']
     if language_code in index['languages']:
-        index['value'] = 89 - 10 * var_dict['mean_chars_per_word'] + 100 * var_dict['n_sentences'] / n_words
+        index['value'] = 89 - 10 * mean_chars_per_word + 100 * n_sentences / n_words
         index['range'] = readability_level('flesch_easy', index['value'])
         var_dict['readability_indexes']['gulp_ease'] = index
     index = readability_indexes['fernandez_huerta']
     if language_code in index['languages']:
-        index['value'] = 206.84 - 1.02 * var_dict['mean_sentence_length'] - 60 * var_dict['mean_syllables_per_word']
+        index['value'] = 206.84 - 1.02 * mean_sentence_length - 60 * mean_syllables_per_word
         index['range'] = readability_level('flesch_easy', index['value'])
-        var_dict['readability_indexes']['gulp_ease'] = index
+        var_dict['readability_indexes']['fernandez_huerta'] = index
     index = readability_indexes['gagatsis_1985']
     if language_code in index['languages']:
-        index['value'] = 206.835 - 1.015 * var_dict['mean_sentence_length'] - 59 * var_dict['mean_syllables_per_word']
+        index['value'] = 206.835 - 1.015 * mean_sentence_length - 59 * mean_syllables_per_word
         index['range'] = readability_level('flesch_easy', index['value'])
         var_dict['readability_indexes']['gagatsis_1985'] = index
+    index = readability_indexes['björnsson_1968']
+    if language_code in index['languages']:
+        lix = mean_sentence_length + var_dict['n_long_tokens'] * 100 / n_tokens # mean_sentence_length = n_tokens/n_sentences
+        index['value'] = (100 - lix) * 100 / 75
+        index['range'] = readability_level('björnsson_1968', index['value'])
+        var_dict['readability_indexes']['björnsson_1968'] = index
+    index = readability_indexes['cs_readability_01']
+    index['value'] = cs_readability_01(language_code, mean_sentence_length, mean_syllables_per_word, mean_dependency_depth, mean_dependency_distance, voc_density, lexical_rarity)
+    index['range'] = readability_level('flesch_easy', index['value'])
+    var_dict['readability_indexes']['cs_readability_01'] = index
     return render(request, 'text_readability.html', var_dict)
 
 def ta_input(request):

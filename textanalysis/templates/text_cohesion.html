@@ -45,7 +45,8 @@ th, td {
     <div class="marginB10">
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
       <span v-if="title">: <i>{{ title }}</i></span>
-      <span v-if="id">(id = {{ obj_id }})</span>
+      <span v-if="obj_id">(id = {{ obj_id }})</span>
+      <span v-if="url"><label>Url</label> {{ url }}</span>
     </div>
     <div v-if="language"><label>language</label> {{ language }}</div>
 
@@ -133,6 +134,7 @@ th, td {
           obj_id: '{{ obj_id }}',
           obj_type_label: '{{ obj_type_label }}',
           title: '{{ title }}',
+          url: '{{ url }}',
           language: '{{ language }}',
           tokens: null, paragraphs: null,
           cohesion_by_entity_graph: null,
