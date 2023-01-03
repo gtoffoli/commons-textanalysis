@@ -42,13 +42,13 @@ th, td {
   <div id="app" class='components-container'>
   {% verbatim %}
     <template v-if="error===null">
-    <div class="marginB10">
+    <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
-      <span v-if="title">: <i>{{ title }}</i></span>
-      <span v-if="obj_id">(id = {{ obj_id }})</span>
-      <span v-if="url"><label>Url</label> {{ url }}</span>
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
     </div>
-    <div v-if="language"><label>language</label> {{ language }}</div>
+    <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
+    <div v-else="obj_id"><label>{{ label_id }}</label>: {{ obj_id }}</div>
+    <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
     <div style="text-align: center">
     <label>{{ label_entity_graph }} (1)</label>
@@ -141,6 +141,10 @@ th, td {
           repeated_lemmas: null, colors: null, lemma_color_map: null,
           cohesion_by_repetitions: null, cohesion_by_similarity: null,
           error: null,
+          label_id: '{% trans "id"|capfirst %}',
+          label_title: '{% trans "title"|capfirst %}',
+          label_url: '{% trans "url"|capfirst %}',
+          label_language: '{% trans "language"|capfirst %}',
           label_local_cohesion: "{% trans "local cohesion"|capfirst %}",
           label_cohesive_nouns: "{% trans "most cohesive nominal lemmas"|capfirst %}",
           label_paragraph: "{% trans "paragraph"|capfirst %}",

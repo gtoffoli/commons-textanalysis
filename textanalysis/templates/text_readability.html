@@ -33,12 +33,12 @@
 <div class="panel panel-c4 text-left marginTB30">
   <div  class="padding510">
     <div>
-      {% if obj_type_label %}<label>{{ obj_type_label|capfirst }}</label>{% endif %}
-      {% if title or label %}<i>{{ title }}{{ label }}</i></span>{% endif %}
-      {% if obj_id %}(id = {{ obj_id }})</span>{% endif %}
+      {% if obj_type_label %}<label>{{ obj_type_label|capfirst }}</label>:{% endif %}
+      {% if title or label %}<span><i>{{ title }}{{ label }}</i></span>{% endif %}
     </div>
-    {% if url %}<div><label>{% trans "url"|capfirst %}</label> <a href="{{ url }}" target="_blank">{{ url }}</a></div>{% endif %}
-    <div><label>{% trans "language"|capfirst %}</label> {{ language }}</div>
+    {% if url %}<div><label>{% trans "url"|capfirst %}</label>: <a href="{{ url }}" target="_blank">{{ url }}</a></div>
+    {% else %}<div><label>{% trans "id"|capfirst %}</label>: {{ obj_id }}{% endif %}
+    <div><label>{% trans "language"|capfirst %}</label>: {{ language }}</div>
 
     <h4 class="marginTB5 padding0">{% trans "text features"|capfirst %}</h4>
     <table class="table table-responsive table-bordered table-striped">
@@ -66,7 +66,7 @@
       <tbody>
       {% for key in readability_indexes_keys %}{% with index=readability_indexes|lookup:key %}
       {% if index %}
-      <tr><td>{{ index.title }}</td> <td>{{ index.value|floatformat:2 }}</td><td>{{ index.range }}</td><td><a href="{{ index.ref }}" target="doc">{% trans "see documentation" %}</a></td></tr>
+      <tr><td>{{ index.title }}</td> <td>{{ index.value|floatformat:2 }}</td><td>{{ index.range }}</td><td><a href="{{ index.ref }}" target="doc">{% trans "see" %}</a></td></tr>
       {% endif %}
       {% endwith %}{% endfor %}
       </tbody>

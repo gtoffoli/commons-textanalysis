@@ -63,12 +63,13 @@ var webFontURLs = [
 
   {% verbatim %}
   <div id="app" class='components-container'>
-    <div class="marginB10">
+    <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
-      <span v-if="title">: <i>{{ title }}</i></span>
-      <span v-if="id">(id = {{ obj_id }})</span>
-      <span v-if="language"><br><label>language</label> {{ language }}</span>
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
     </div>
+    <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
+    <div v-else="obj_id"><label>{{ label_id }}</label>: {{ obj_id }}</div>
+    <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
     <div style="text-align:center; font-weight:bold;"><span style="color:cornflowerBlue;">Part-Of-Speech (POS) Tags</span>,
     <span style="color:purple;">Syntactic Dependencies</span> and <span style="color:tomato;">Named Entities</span></div>
@@ -81,6 +82,7 @@ var webFontURLs = [
     </template>
   </div>
   {% endverbatim %}
+
 {% endblock %}
 
 {% block footer_base %}{% endblock footer_base %}
@@ -218,8 +220,10 @@ var webFontURLs = [
         obj_type: '{{ obj_type }}',
         obj_id: '{{ obj_id }}',
         obj_type_label: '{{ obj_type_label }}',
-        title: '{{ title }}',
         language: '{{ language }}',
+        title: '{{ title }}',
+        label: '{{ label }}',
+        url: '{{ url }}',
         sentences: null,
         tokens: null,
         text: null,
@@ -228,6 +232,10 @@ var webFontURLs = [
         entities: null,
         analyzed_text: null,
         error: null,
+        label_id: '{% trans "id"|capfirst %}',
+        label_title: '{% trans "title"|capfirst %}',
+        label_url: '{% trans "url"|capfirst %}',
+        label_language: '{% trans "language"|capfirst %}',
 	},
     el: '#app',
     methods: {

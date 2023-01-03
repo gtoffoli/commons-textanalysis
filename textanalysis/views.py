@@ -425,6 +425,7 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 # def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='',
+@csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False, dependency=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
@@ -652,6 +653,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     if dependency:
         return var_dict
 
+    var_dict['VUE'] = True
     return text_dashboard_return(request, var_dict)
 
 def brat(request):
@@ -896,7 +898,7 @@ def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
     if is_ajax(request):
         keys = ['verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
                 'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',
-                'obj_type_label', 'title', 'language']
+                'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -922,23 +924,25 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
         result = response.json()
-        var_dict['language'] = result['language']
+        extended_attrs = result['extended_attrs']
+        var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
+        var_dict['label'] = extended_attrs['label']
+        var_dict['url'] = extended_attrs['url']
+        var_dict['language'] = settings.LANGUAGE_MAPPING[result['language']]
         var_dict['keywords'] = result['keywords']
         var_dict['kwics'] = result['kwics']
-        var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
-        if not file_key:
-            var_dict['title'] = dashboard_dict['title']
         return JsonResponse(var_dict)
     else:
         return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):
-    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], summarization=True)
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], summarization=True)
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
     else:
+        del params['url']
+        del params['text']
         var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
 
@@ -949,7 +953,7 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
     if is_ajax(request):
         keys = ['text', 'sentences', 'tokens', 'entities', 'entity_lists',
                 'collData', 'docData',
-                'obj_type_label', 'title', 'language']
+                'obj_type_label', 'language', 'title', 'label', 'url']
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, dependency=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -964,6 +968,7 @@ def text_annotations(request, params):
     if error:
         print('error:', error)
     else:
+        del params['url']
         var_dict.update(params)
     return render(request, 'text_annotations.html', var_dict)
 
@@ -973,7 +978,7 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['paragraphs', 'tokens', 'chunks_index',
-                'obj_type_label', 'title', 'language']
+                'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -988,7 +993,7 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
     if is_ajax(request):
         keys = ['paragraphs', 'repeated_lemmas',
                 'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'cohesion_by_similarity', 
-                'obj_type_label', 'title', 'language']
+                'obj_type_label', 'language', 'title', 'label', 'url']
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -1083,7 +1088,8 @@ def ta_input(request):
             function = data['function']
             request.session['text'] = data['text']
             if function == 'dashboard': # Text Analysis Dashboard
-                var_dict = {'obj_type': 'text', 'obj_id': 0}
+                # var_dict = {'obj_type': 'text', 'obj_id': 0}
+                var_dict = {'obj_type': 'text', 'obj_id': 0, 'VUE': True}
                 return render(request, 'text_dashboard.html', var_dict)
             else:
                 return ta(request, function, obj_type='text', obj_id=0)
@@ -1109,6 +1115,7 @@ def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
 """
 def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', title=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'url': url, 'text': text, 'title': '' }
+    var_dict['VUE'] = True
     if file_key:
         if obj_type == 'corpus':
             var_dict['obj_type'] = ''
@@ -1117,31 +1124,23 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
     if function == 'corpus':
-        var_dict['VUE'] = True
         return render(request, 'corpus_dashboard.html', var_dict)
     elif function == 'dashboard':
         return render(request, 'text_dashboard.html', var_dict)
     elif function == 'dependency':
-        var_dict['VUE'] = True
         return render(request, 'text_dependency.html', var_dict)
     elif function == 'context':
-        var_dict['VUE'] = True
         return render(request, 'context_dashboard.html', var_dict)
     elif function == 'annotations':
-        var_dict['VUE'] = True
         return text_annotations(request, params=var_dict)
     elif function == 'summarization':
-        var_dict['VUE'] = True
         return text_summarization(request, params=var_dict)
     elif function == 'readability':
-        var_dict['VUE'] = True
         return text_readability(request, params=var_dict)
     elif function == 'cohesion':
         var_dict['VUE'] = True
         return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
-        var_dict['VUE'] = True
         return render(request, 'text_nounchunks.html', var_dict)
     elif function == 'wordlists':
-        var_dict['VUE'] = True
         return render(request, 'text_wordlists.html', var_dict)

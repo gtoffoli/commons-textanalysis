@@ -1,109 +1,80 @@
+{% extends "base.html" %}
 {% load staticfiles %}
-<!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta content="text/html; charset=utf-8">
-	<meta name="robots" content="noindex">
-    <title>Text Analysis Dashoard</title>
-    <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
-    <link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
-    <link rel="stylesheet" href="{% static "nlp/css/style.css" %}">
-    <link rel="stylesheet" href="{% static "nlp/css/animate.css" %}">
-<!--
-    <link rel="stylesheet" href="{% static "bootstrap/css/bootstrap.css" %}">
- -->
-    <link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
-    <script src="{% static "nlp/js/wow.min.js" %}"></script>
-    <script>
-      new WOW().init();
-    </script>
-    <script src="{% static "nlp/js/displacy.js" %}"></script>
-    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
-    <script src="{% static "nlp/js/scripts.js" %}"></script>
+{% load i18n %}
 
-    <link rel="stylesheet" type="text/css" href="/static/brat_client/style-vis.css">
+{% block head_title %}{% trans "Text Analysis Dashboard" %}{% endblock %}
+
+{% block extra_style %}
+<link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+<link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
+<link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+
+<link rel="stylesheet" type="text/css" href="/static/brat_client/style-vis.css">
 <!-- <link rel="shortcut icon" href="favicon.png"> -->
 <!-- override a few style-vis.css settings for the embedded version to make things larger -->
 <style type="text/css">
-	text { font-size: 10px; }
-	.span text { font-size: 9px; }
-	.arcs text { font-size: 9px; }
+  text { font-size: 12px; }
+  .span text { font-size: 11px; }
+  .arcs text { font-size: 9px; }
 </style>
-<script type="text/javascript" src="/static/brat_client/client/lib/head.load.min.js"></script>
-<script type="text/javascript">
-<!-- 
-var bratLocation = '/static/brat_client';
-head.js(
-    // External libraries
-    bratLocation + '/client/lib/jquery.min.js',
-    bratLocation + '/client/lib/jquery.svg.min.js',
-    bratLocation + '/client/lib/jquery.svgdom.min.js',
+{% endblock extra_style %}
 
-    // brat helper modules
-    bratLocation + '/client/src/configuration.js',
-    bratLocation + '/client/src/util.js',
-    bratLocation + '/client/src/annotation_log.js',
-    bratLocation + '/client/lib/webfont.js',
+{% block extra_head %}
+    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
+    <script src="{% static "nlp/js/scripts.js" %}"></script>
+    <script src='https://unpkg.com/vue@2.2.6'></script>
+    <!-- <script src="../dist/vue-split-pane.min.js"></script> -->
+    <script src="{% static "vue_apps/src/assets/vue-split-pane.min.js" %}"></script>
 
-    // brat modules
-    bratLocation + '/client/src/dispatcher.js',
-    bratLocation + '/client/src/url_monitor.js',
-    bratLocation + '/client/src/visualizer.js'
-);
--->
-var bratLocation = '{% static "brat_client" %}';
-var webFontURLs = [
-               	bratLocation + '/fonts/Astloch-Bold.ttf',
-                   bratLocation + '/fonts/PT_Sans-Caption-Web-Regular.ttf',
-                   bratLocation + '/fonts/Liberation_Sans-Regular.ttf'
-               ];
-</script>
-<script type="text/javascript" src="/static/brat_client/client/lib/jquery.min.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/lib/jquery.svg.min.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/lib/jquery.svgdom.min.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/configuration.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/util.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/annotation_log.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/lib/webfont.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/dispatcher.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/url_monitor.js"></script>
-<script type="text/javascript" src="/static/brat_client/client/src/visualizer.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/lib/head.load.min.js"></script>
+    <script type="text/javascript">
+    var bratLocation = '{% static "brat_client" %}';
+    var webFontURLs = [
+                    bratLocation + '/fonts/Astloch-Bold.ttf',
+                       bratLocation + '/fonts/PT_Sans-Caption-Web-Regular.ttf',
+                       bratLocation + '/fonts/Liberation_Sans-Regular.ttf'
+                   ];
+    </script>
+    <script type="text/javascript" src="/static/brat_client/client/lib/jquery.min.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/lib/jquery.svg.min.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/lib/jquery.svgdom.min.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/configuration.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/util.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/annotation_log.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/lib/webfont.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/dispatcher.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/url_monitor.js"></script>
+    <script type="text/javascript" src="/static/brat_client/client/src/visualizer.js"></script>
 
-<script src="https://use.fontawesome.com/d391635073.js"></script>
-<style>
-    body { margin: 0; }
-    h1, h2, h3, h4, h5 { margin: 0; padding-block-start: 5px; padding-block-end: 5px; }
-	::-webkit-scrollbar { width: 10px; height: 10px; }
-	div span .ta-dialog-title {
-		font-size: 12px !important;
-		margin:0 !important;
-		padding:0 !important;
-	}
-	.a, .a1, .a2 { color: green; }
-	.b, .b1, .b2 { color: orange; }
-	.c, .c1, .c2 { color: red; }
-	h3.small, h4.small, h4.small span {
-	  font-variant: small-caps;
-	}
-</style>
-</head>
+    <script src="https://use.fontawesome.com/d391635073.js"></script>
+{% endblock extra_head %}
 
-<body style="font-size: 11px;">
-  <script src='https://unpkg.com/vue@2.2.6'></script>
-  <!-- <script src="../dist/vue-split-pane.min.js"></script> -->
-  <script src="{% static "vue_apps/src/assets/vue-split-pane.min.js" %}"></script>
+{% block user %}{% endblock user %}
+
+{% block nav_vue %}
+  {% include "_header_bar.html" %}
+{% endblock nav_vue %}
+
+{% block body_class %}nlp-vue-body{% endblock %}
+
+{% block body_base %}
+
   {% verbatim %}
   <div id="app" class='components-container'>
+    <h3 class="small" style="text-align:center;  font-variant:small-caps; padding:0;">
+      Text-analysis dashboard for {{ obj_type_label }}
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span></h3>
+      <div style="text-align: center;">
+        <span v-if="url" ><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></span>
+        <span v-else="obj_id"><label>{{ label_id }}</label>: {{ obj_id }}</span>
+      </div>
+  
     <template v-if="error===null">
       <template>
-        <split-pane v-on:resize="resize" split="horizontal" :default-percent='20'>
+        <split-pane v-on:resize="resize" split="horizontal" :default-percent='8'>
           <template slot="paneL">
-		    <h3 class="small" style="text-align:center;  font-variant:small-caps; padding:0;">Text-analysis dashboard for {{ obj_type }}
-		      <span v-if="obj_type == 'pathnode'">{{ obj_id }} ({{ title }})/span>
-		      <span v-if="obj_type == 'flatpage'">{{ obj_id }} ({{ title }})</span>
-		    </h3>
             <div>
-              <h4 class="small" style="text-align: center;">Basic text properties and indicators</h4>
               <label>Language</label>: {{ language }},
               <label>Sentences:</label> {{ n_sentences }},
               <label>Tokens:</label> {{ n_tokens }},
@@ -116,21 +87,18 @@ var webFontURLs = [
               <label>Mean / Max. largest weighted dependency distance:</label>
               {{ mean_weighted_distance.toFixed(3) }} / {{ max_weighted_distance.toFixed(3) }},
               <label>Mean / Max. largest dependency depth:</label>
-              {{ mean_dependency_depth.toFixed(3) }} / {{ max_dependency_depth }}<br/>
-              <h4 class="small" style="text-align: center;">Most frequent word forms</h4>
-              <span v-for="(item, index) in kw_frequencies">
-                <span v-if="index !== 0">,</span> {{ item.key }} ({{ item.freq }})</span>
-            </div>
+              {{ mean_dependency_depth.toFixed(3) }} / {{ max_dependency_depth }}
+             </div>
           </template>
           <template slot="paneR">
-            <split-pane v-on:resize="resize" :min-percent='20' :max-percent='75' split="horizontal" :default-percent='60'>
+            <split-pane v-on:resize="resize" :min-percent='20' :max-percent='90' split="horizontal" :default-percent='45'>
 		      <template slot="paneL">
                 <h4 class="small" style="text-align: center;"><span style="color:cornflowerBlue;">Part-Of-Speech (POS) Tags</span>,
                 <span style="color:purple;">Syntactic Dependencies</span> and <span style="color:tomato;">Named Entities</span></h4>
 		        <div id="embedding-live-example"></div>
 		      </template>
 		      <template slot="paneR">
-		        <split-pane v-on:resize="resize" split="vertical" :default-percent='50'>
+		        <split-pane v-on:resize="resize" split="vertical" :default-percent='33'>
 		          <template slot="paneL">
                     <h4 class="small" style="text-align: center;">Text Summary</h4>
                     <div v-text="summary" style="margin: 5px;"></div>
@@ -176,6 +144,11 @@ var webFontURLs = [
     </template>
   </div>
   {% endverbatim %}
+{% endblock %}
+
+{% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
   <script>
     // from BRAT; see http://brat.nlplab.org/configuration.html and https://brat.nlplab.org/embed.html
     var collData = {
@@ -304,9 +277,14 @@ var webFontURLs = [
       var app = new Vue({
         name: 'test',
         data: {
-		  file_key: null,
-          obj_type: null, obj_id: null,
-          language: null,title: null,
+          file_key: '{{ file_key }}',
+          obj_type: '{{ obj_type }}',
+          obj_id: '{{ obj_id }}',
+          obj_type_label: '{{ obj_type_label }}',
+          title: '{{ title }}',
+          language: '{{ language }}',
+          title: null, label: null,
+          url: null,
           n_tokens: null, n_unique: null, voc_density: null, lex_density: null,
           n_sentences: null, mean_sentence_length: null, max_sentence_length: null,
           mean_dependency_depth: null, max_dependency_depth: null,
@@ -322,6 +300,10 @@ var webFontURLs = [
           entities: null,
           analyzed_text: null,
           error: null,
+          label_id: '{% trans "id"|capfirst %}',
+          label_title: '{% trans "title"|capfirst %}',
+          label_url: '{% trans "url"|capfirst %}',
+          label_language: '{% trans "language"|capfirst %}',
 		},
         el: '#app',
         methods: {
@@ -331,28 +313,23 @@ var webFontURLs = [
         },
         mounted: function () {
           $this = this;
-          if (`{{ file_key }}`)
-            url = `/textanalysis/text_dashboard/{{ file_key }}/`;
-          else
-            url = `/textanalysis/text_dashboard/{{ obj_type }}/`+encodeURIComponent(`{{ obj_id }}`);
-		  $.ajax({
-	        type:'GET',
-	        url: url,
-	        success: function(json_data){
-	        	console.log(Object.entries(json_data).length);
-	            // set all properties from json_data into data
-	            for (var key in json_data) {
-	            	if (key == 'collData')
-	            		collData = json_data[key];
-	            	else
-	            		$this[key] = json_data[key];
-            	};
-	        },
-	        error: function(){
-	            console.log("Hello");
-	        }
-		  });
-
+          if (! this['obj_id'])
+            this['obj_id'] = 0;
+          fetch('/textanalysis/text_dashboard/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+            method: 'GET',
+            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+          })
+          .then(response => response.json())
+          .then(data => {
+             for (var key in data) {
+             	if (key == 'collData')
+            		collData = data[key];
+             	else
+          			this[key] = data[key];
+          	 };
+           	 // do_brat();
+           })
+          .catch(err => (this['error'] = err))
         },
         updated: function () {
             this.$nextTick(initTooltips(document.querySelectorAll('.tooltip')));
@@ -361,5 +338,4 @@ var webFontURLs = [
         }
       });
   </script>
-</body>
-</html>
+{% endblock script_base %}
