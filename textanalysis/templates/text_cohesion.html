@@ -91,9 +91,9 @@ th, td {
       </thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
-          <td style="vertical-align:top; text-align:center;">{{ p[0] }}</td>
+          <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
           <td>
-              <span v-for="token in tokens.slice(p[2], p[3])">
+              <span v-for="token in tokens.slice(p['start'], p['end'])">
                 <template v-if="token['lemma'] in lemma_color_map">
                   <span :style="'background-color:'+lemma_color_map[token['lemma']]">{{ token['text'] }}</span>
                 </template>
