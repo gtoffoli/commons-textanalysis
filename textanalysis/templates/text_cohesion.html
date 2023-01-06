@@ -51,32 +51,26 @@ th, td {
     <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
     <div style="text-align: center">
-    <label>{{ label_entity_graph }} (1)</label>
+    <div><label>{{ label_global_cohesion }}</label> (*)</div>
     <table style="margin: 0 auto; border-collapse: collapse;">
-      <thead><tr>
-          <td><div style="text-align: right"><i>{{ label_weighted }}</i></div>
-              <div style="text-align: left"><i>{{ label_distance }}</i></div></td>
-          <th style="vertical-align: top; width: 10%;">No</th><th style="vertical-align: top; width: 10%;">Yes</th><th style="vertical-align: top; width:10%;">Acc. (2)</th>
-      </tr></thead>
+      <thead><tr><th>{{ label_method }}</th><th>{{ label_score }} (0-1)</th></tr></thead>
       <tbody>
-          <tr><th style="text-align: center">No</th>
-          <td v-for="(item, index) in cohesion_by_entity_graph.slice(0, 3)">
-              <span>{{ parseFloat(item[1]).toFixed(2) }}</span>
-          </td></tr>
-          <tr><th style="text-align: center">Yes</th>
-          <td v-for="(item, index) in cohesion_by_entity_graph.slice(3, 6)">
-              <span>{{ parseFloat(item[1]).toFixed(2) }}</span>
-          </td></tr>
+        <tr><td style="text-align:left;">{{ label_method_1 }}</td>
+            <td style="text-align:center;">{{ parseFloat(cohesion_by_repetitions[0]).toFixed(2) }}</td></tr>
+        <tr><td style="text-align:left;">{{ label_method_2 }} (**)</td>
+            <td style="text-align:center;">{{ cohesion_by_entity_graph[5][1].toFixed(2) }}</td></tr>
+        <tr><td style="text-align:left;">{{ label_method_3 }}</td>
+            <td style="text-align:center;">{{ parseFloat(cohesion_by_similarity[0]).toFixed(2) }}</td></tr>
       </tbody>
     </table>
-    <div><i><span style="font-size: smaller;">(1) {{ label_see }}:
+    <div><i><span style="font-size: smaller">(*) {{ label_disclaimer }}</span></i></div>
+    <div><i><span style="font-size: smaller;">(**) {{ label_see }}:
          <a target="_blank" href="https://aclanthology.org/P13-1010/">Graph-based Local Coherence Modeling</a>,<br>
          <a target="_blank" href="https://trunajod20.readthedocs.io/en/latest/index.html">TRUNAJOD: A text complexity library for text analysis built on spaCy</a>
     </i></span></div>
-    <div><i><span style="font-size: smaller">(2) {{ label_syntax }}</span></i></div>
     </div>
 
-    <div class="marginT5 text-center"><label>{{ label_local_cohesion }}</label></div>
+    <div class="marginT10 text-center"><label>{{ label_local_cohesion }}</label></div>
     <div class="marginT5"><label>{{ label_cohesive_nouns }}</label>:
       <template v-for="(item, index) in repeated_lemmas">
           <span v-if="index != 0">, </span>
@@ -145,16 +139,20 @@ th, td {
           label_title: '{% trans "title"|capfirst %}',
           label_url: '{% trans "url"|capfirst %}',
           label_language: '{% trans "language"|capfirst %}',
-          label_local_cohesion: "{% trans "local cohesion"|capfirst %}",
+          label_global_cohesion: "{% trans "text cohesion computed with different methods"|capfirst %}",
+          label_method: "{% trans "method" %}",
+          label_score: "{% trans "normalized score" %}",
+          label_method_1: "{% trans "lexicon shared by contiguous paragraphs (see detail below)" %}",
+          label_method_2: "{% trans "weighted entity graph at sentence level (from TRUNAJOD)" %}",
+          label_method_3: "{% trans "similarity of contiguous paragraphs (from spaCy models)" %}",
+          label_disclaimer: "{% trans "values are indicative and useful only for comparison" %}",
+          label_local_cohesion: "{% trans "local lexical cohesion"|capfirst %}",
           label_cohesive_nouns: "{% trans "most cohesive nominal lemmas"|capfirst %}",
           label_paragraph: "{% trans "paragraph"|capfirst %}",
           label_entity_graph: "{% trans "text coherence computed with entity graph"|capfirst %}",
           label_see: "{% trans "see"|capfirst %}",
           label_repetitions: "{% trans "text cohesion based on shared lexicon"|capfirst %}",
           label_similarity: "{% trans "text cohesion based on paragraphs similarity"|capfirst %}",
-          label_weighted: "{% trans "weight on number of entities shared" %}",
-          label_syntax: "{% trans "in weighting, take into account also syntax" %}",
-          label_distance: "{% trans "take into account distance between sentences" %}",
         },
         el: '#app',
         methods: {

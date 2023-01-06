@@ -1,9 +1,5 @@
-from django.shortcuts import render
-# Create your views here.
-
-# -*- coding: utf-8 -*-"""
-
 from importlib import import_module
+import math
 import json
 import requests
 import hashlib
@@ -11,6 +7,7 @@ from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
 from django.http import HttpResponseForbidden, JsonResponse
+from django.shortcuts import render
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.views.decorators.csrf import csrf_exempt
@@ -482,6 +479,16 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'description': description, 'title': title, 'label': label, 'url': url, 'obj_type_label': obj_type_label, 'language_code': language_code, 'language': language, 'text': body or text, 'analyzed_text': analyzed_text }
     var_dict['summary'] = analyze_dict.get('summary', '')
 
+    text = analyze_dict['doc']['text']
+    sentences = analyze_dict['doc']['sents']
+    var_dict['n_sentences'] = n_sentences = len(sentences)
+    tokens = analyze_dict['doc']['tokens']
+    var_dict['tokens'] = tokens
+    var_dict['n_tokens'] = n_tokens = len(tokens)
+    var_dict['mean_sentence_length'] = mean_sentence_length = n_tokens/n_sentences
+    entities = analyze_dict['doc']['ents']
+    var_dict['entities'] = entities
+
     if summarization:
         return var_dict
 
@@ -489,15 +496,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         for k in ['doc', 'paragraphs', 'repeated_lemmas', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
         return var_dict
-
-    text = analyze_dict['doc']['text']
-    sentences = analyze_dict['doc']['sents']
-    var_dict['n_sentences'] = n_sentences = len(sentences)
-    tokens = analyze_dict['doc']['tokens']
-    var_dict['tokens'] = tokens
-    var_dict['n_tokens'] = n_tokens = len(tokens)
-    entities = analyze_dict['doc']['ents']
-    var_dict['entities'] = entities
 
     if nounchunks:
         noun_chunks = analyze_dict['noun_chunks']
@@ -611,7 +609,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     if wordlists and not readability:
         return var_dict
 
-    mean_sentence_length = n_tokens/n_sentences
     index_sentences(sentences, tokens)
     max_sentence_length = 0
     max_dependency_depth = 0
@@ -986,16 +983,30 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     else:
         return render(request, 'text_nounchunks.html', var_dict)
 
+def normalize_entity_graph_score(key_score, mean_sentence_length):
+    key, score = key_score
+    normalized_score = score / mean_sentence_length
+    normalized_score = math.pow(normalized_score, 1/3)
+    return key, normalized_score 
+
 @csrf_exempt
 def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
         keys = ['paragraphs', 'repeated_lemmas',
-                'cohesion_by_entity_graph', 'cohesion_by_repetitions', 'cohesion_by_similarity', 
+                'cohesion_by_repetitions', 'cohesion_by_similarity', 
                 'obj_type_label', 'language', 'title', 'label', 'url']
-        data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
+
+        # normalize cohesion_by_entity_graph scores between 0 and 1
+        mean_sentence_length = dashboard_dict['mean_sentence_length']     
+        cohesion_by_entity_graph = []
+        for key_score in dashboard_dict['cohesion_by_entity_graph']:
+            cohesion_by_entity_graph.append(normalize_entity_graph_score(key_score, mean_sentence_length ))
+
+        data = var_dict
+        data['cohesion_by_entity_graph'] = cohesion_by_entity_graph
         data.update([[key, dashboard_dict[key]] for key in keys])
         data['tokens'] = dashboard_dict['doc']['tokens']
         data['colors'] = distinct_colors
