@@ -54,6 +54,8 @@
     <tr><th colspan="4" style="text-align: left;">{% trans "syntactic features"|capfirst %}</th></tr>
     <tr><td>{% trans "mean / max. largest dependency depth"|capfirst %}</td><td>{{ mean_dependency_depth|floatformat:2 }} / {{ max_dependency_depth }}</td><td></td></tr>
     <tr><td>{% trans "mean / max. largest dependency distance"|capfirst %}</td><td>{{ mean_dependency_distance|floatformat:2 }} / {{ max_dependency_distance }}</td><td>{% trans "mean / max. largest weighted dependency distance"|capfirst %}</td><td>{{ mean_weighted_distance|floatformat:2 }} / {{ max_weighted_distance|floatformat:2 }}</td></tr>
+    <tr><th colspan="4" style="text-align: left;">{% trans "stylistic features"|capfirst %}</th></tr>
+    <tr><td>{% trans "adverbs-adjectives ratio"|capfirst %}</td><td>{{ adverbs_adjectives_ratio|floatformat:2 }}</td><td>{% trans "adjectives-pronouns ratio"|capfirst %}</td><td>{{ adjectives_pronouns_ratio|floatformat:2 }}</td></tr>
     </tbody>
     </table>
 

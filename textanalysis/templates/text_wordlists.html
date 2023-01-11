@@ -47,7 +47,7 @@
               <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
             </div>
             <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
-            <div v-else="obj_id"><label>{{ label_id }}</label>: {{ obj_id }}</div>
+            <div v-else><span v-if="obj_id != '0'"><label>{{ label_id }}</label>: {{ obj_id }}</span></div>
             <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
             <split-pane v-on:resize="resize" split="vertical" :default-percent='14'>

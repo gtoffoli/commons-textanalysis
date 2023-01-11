@@ -67,7 +67,7 @@
       <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span></h3>
       <div style="text-align: center;">
         <span v-if="url" ><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></span>
-        <span v-else="obj_id"><label>{{ label_id }}</label>: {{ obj_id }}</span>
+        <span v-else><span v-if="obj_id != '0'"><label>{{ label_id }}</label>: {{ obj_id }}</span></span>
       </div>
   
     <template v-if="error===null">

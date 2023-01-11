@@ -40,7 +40,7 @@
       {% if title or label %}<i>{{ title }}{{ label }}</i></span>{% endif %}
     </div>
     {% if url %}<div><label>{% trans "url"|capfirst %}</label>: <a href="{{ url }}" target="_blank">{{ url }}</a></div>
-    {% else %}<div><label>{% trans "id"|capfirst %}</label>: {{ obj_id }}</span>{% endif %}
+    {% elif obj_id != 0 %}<div><label>{% trans "id"|capfirst %}</label>: {{ obj_id }}</span>{% endif %}
     <div><label>{% trans "language"|capfirst %}</label>: {{ language }}</div>
 
     <h4 class="marginTB5 padding0">{% trans "annotated words and coloured entities"|capfirst %}</h4>

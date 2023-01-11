@@ -513,6 +513,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         var_dict['paragraphs'] = analyze_dict['paragraphs']
         return var_dict
 
+    pos_frequencies = defaultdict(int)
     kw_frequencies = defaultdict(int)
     adjective_frequencies = defaultdict(int)
     noun_frequencies = defaultdict(int)
@@ -535,6 +536,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         if len(token_text) > 6:
             n_long_tokens += 1
         pos = token['pos']
+        pos_frequencies[pos] += 1
         add_to_default_dict(kw_frequencies, token_text)
         if readability: # and not pos in ['SPACE', 'PUNCT',]:
             mattr.add_token()
@@ -568,6 +570,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             elif pos == 'ADV':
                 add_to_default_dict(adverb_frequencies, lemma)
     n_unique = len(kw_frequencies)
+    var_dict['pos_frequencies'] = pos_frequencies
     if readability:
         var_dict['n_words'] = n_words
         var_dict['n_hard_words'] = n_hard_words
@@ -906,8 +909,6 @@ def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
 """
 called from contents_dashboard or text_analysis template
 to find and sort document keywords and to list keyword in context
-def context_dashboard(request, file_key='', obj_type='', obj_id=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
 """
 @csrf_exempt
 def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
@@ -1041,6 +1042,14 @@ def text_readability(request, params):
     var_dict['lexical_rarity'] = lexical_rarity
     mean_dependency_depth = var_dict['mean_dependency_depth']
     mean_dependency_distance = var_dict['mean_dependency_distance']
+
+    pos_frequencies = var_dict['pos_frequencies']
+    n_adjectives = pos_frequencies.get('ADJ', 0)
+    n_adverbs = pos_frequencies.get('ADV', 0)
+    n_pronouns = pos_frequencies.get('PRON', 0)
+    var_dict['adverbs_adjectives_ratio'] = n_adjectives and n_adverbs / n_adjectives or 0
+    var_dict['adjectives_pronouns_ratio'] = n_pronouns and n_adjectives / n_pronouns or 0
+
     var_dict['readability_indexes_keys'] = readability_indexes_keys
     var_dict['readability_indexes'] = {}
     index = readability_indexes['flesch_easy']
@@ -1099,7 +1108,6 @@ def ta_input(request):
             function = data['function']
             request.session['text'] = data['text']
             if function == 'dashboard': # Text Analysis Dashboard
-                # var_dict = {'obj_type': 'text', 'obj_id': 0}
                 var_dict = {'obj_type': 'text', 'obj_id': 0, 'VUE': True}
                 return render(request, 'text_dashboard.html', var_dict)
             else:
@@ -1120,10 +1128,6 @@ def ta_input(request):
             var_dict['error'] = off_error
     return render(request, 'ta_input.html', var_dict)
 
-"""
-def ta(request, function, obj_type='', obj_id='', file_key='', text=''):
-    var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'title': '' }
-"""
 def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', title=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'url': url, 'text': text, 'title': '' }
     var_dict['VUE'] = True
