@@ -1,0 +1,178 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+{% load commons_tags %}
+
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Text annotations" %}{% endblock %}
+
+{% block extra_style %}
+<link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+<link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
+<link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+<style>
+table, th, td {
+  border: 1px solid #ccc;
+}
+th, td {
+  padding: 4px;
+}
+
+li.pos {
+  display: inline-block;
+}
+button.pos {
+  display: inline-block;
+  background-color: white;
+  border: 4px solid black;
+  border-radius: 5px;
+  margin: 0 4px 0 0;
+  cursor: pointer;
+}
+button.word {
+  display: inline-block;
+  font-size: small;
+  color: white;
+  border: 1px solid black;
+  border-radius: 2px;
+  margin: 2px;
+  cursor: help;
+}
+</style>
+{% endblock extra_style %}
+
+{% block extra_head %}
+    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
+    <script src="{% static "nlp/js/scripts.js" %}"></script>
+    <script src='https://unpkg.com/vue@2.2.6'></script>
+{% endblock extra_head %}
+
+{% block user %}{% endblock user %}
+
+{% block nav_vue %}
+  {% include "_header_bar.html" %}
+  <div class="navbar">
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Text annotations" %}</h3>
+  </div>
+{% endblock nav_vue %}
+
+{% block body_class %}nlp-vue-body{% endblock %}
+
+{% block body_base %}
+<div class="container-fluid">
+  <div id="app" class='components-container'>
+  {% verbatim %}
+    <template v-if="error===null">
+    <div>
+      <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
+    </div>
+    <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
+    <div v-else><span v-if="obj_id != '0'"><label>{{ label_id }}</label>: {{ obj_id }}</span></div>
+    <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
+
+    <div style="text-align: center;">
+    <label>{{ label_annotated }}</label>
+    <ul>
+      <li class="pos" v-for="pos in pos_list">
+        <button class="pos" :title="pos_map[pos]['label']"
+          v-on:click.stop="toggle_pos(pos);"
+          :style="'border-color:'+color_dict[pos_map[pos]['color']]+'; background-color:'+(pos_map[pos]['selected']==1?'White;':'LightGray;')">
+          {{ pos }}</button>
+      </li>
+    </ul>
+    <div style="font-size: x-small; font-style: italic; margin-bottom: 5px;">{{ label_select }}</div>
+    <table style="margin: 0 auto; border-collapse: collapse;">
+      <thead>
+         <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
+      </thead>
+      <tbody>
+        <tr v-for="(p, index) in paragraphs">
+          <td style="vertical-align: top; text-align: center;">{{ p['i'] }}</td>
+          <td style="text-align: left;">
+              <span v-for="token in tokens.slice(p['start'], p['end'])">
+                <template v-if="(token['pos'] in pos_map) && (pos_map[token['pos']]['selected'])">
+                  <button class="word"
+                    :style="'background-color:' + color_dict[pos_map[token['pos']]['color']]"
+                    :title="token.title">
+                    {{ token['text'] }}</button>
+                </template>
+                <span v-else :title="token.title">
+                  {{ token['text'] }}
+                </span>
+              </span>
+          </td>
+          </tr>
+        </tr>
+      {% endverbatim %}
+      </tbody>
+    </table>
+    </div>
+
+    </template>
+  </div>
+</div>
+{% endblock %}
+
+{% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
+  <script>
+      var app = new Vue({
+        name: 'test',
+        data: {
+          file_key: '{{ file_key }}',
+          obj_type: '{{ obj_type }}',
+          obj_id: '{{ obj_id }}',
+          obj_type_label: '{{ obj_type_label }}',
+          title: '{{ title }}',
+          url: '{{ url }}',
+          language: '{{ language }}',
+          color_dict: null,
+		  pos_list: null, pos_map: null,
+          tokens: null, paragraphs: null,
+          color: null,
+          error: null,
+          label_id: '{% trans "id"|capfirst %}',
+          label_title: '{% trans "title"|capfirst %}',
+          label_url: '{% trans "url"|capfirst %}',
+          label_language: '{% trans "language"|capfirst %}',
+          label_annotated_text: "{% trans "text annotated and colored by POS"|capfirst %}",
+          label_select: "{% trans "select parts of speech (POS) to highlight by toggling the buttons above; grey background means 'non-selected'"|capfirst %}",
+          label_annotated: "{% trans "tokens colored by POS"|capfirst %}",
+          label_paragraph: "{% trans "paragraph"|capfirst %}",
+          label_see: "{% trans "see"|capfirst %}",
+        },
+        el: '#app',
+        methods: {
+          resize() {
+            console.log('resize')
+          },
+          toggle_pos: function(pos) {
+            Vue.set(this.pos_map[pos], 'selected', !this.pos_map[pos].selected);
+            this.$forceUpdate();
+          },
+        },
+        mounted: function () {
+          $this = this;
+          if (! this['obj_id'])
+            this['obj_id'] = 0;
+            fetch('/textanalysis/annotations/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+            method: 'GET',
+            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+          })
+          .then(response => response.json())
+          .then(data => {
+             for (var key in data) {
+              this[key] = data[key];
+             };
+             app.tokens.forEach(function (token) {
+               title = '# '+token['id'] + '\nPOS: '+token['pos'] + '\nLEMMA: '+token['lemma'] + '\nDEP: '+token['dep'];
+               token['title'] = title;
+             })
+           })
+          .catch(err => (this['error'] = err))
+        },
+      });
+ </script>
+{% endblock script_base %}

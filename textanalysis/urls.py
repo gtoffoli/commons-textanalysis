@@ -21,6 +21,10 @@ urlpatterns = [
     url(r"^dependency/(?P<file_key>[\w\d-]+)/$", views.text_dependency, name="text_dependency_1"),
     url(r"^dependency/(?P<file_key>[\w\d-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_dependency, name="text_dependency_3"),
     url(r"^dependency/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_dependency, name="text_dependency_2"),
+
+    url(r"^annotations/(?P<file_key>[\w\d-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_annotation, name="text_annotation_3"),
+    url(r"^annotations/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_annotation, name="text_annotation_2"),
+
     # url(r"^text_dashboard/(?P<file_key>[\w\.-]+)/$", views.text_dashboard, name="text_dashboard_1"),
     url(r"^text_dashboard/$", views.text_dashboard, name="text_dashboard_0"),
     url(r"^text_dashboard/(?P<file_key>[\w\d-]+)/$", views.text_dashboard, name="text_dashboard_1"),

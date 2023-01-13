@@ -17,6 +17,26 @@ table, th, td {
 th, td {
   padding: 4px;
 }
+li.lemma {
+  display: inline-block;
+  margin: 2px;
+}
+button.lemma {
+  display: inline-block;
+  font-size: small;
+  color: white;
+  border: 1px solid black;
+  border-radius: 2px;
+}
+button.word {
+  display: inline-block;
+  font-size: small;
+  color: white;
+  border: 1px solid black;
+  border-radius: 2px;
+  padding: 1px;
+  margin: 1px;
+}
 </style>
 {% endblock extra_style %}
 
@@ -72,10 +92,11 @@ th, td {
 
     <div class="marginT10 text-center"><label>{{ label_local_cohesion }}</label></div>
     <div class="marginT5"><label>{{ label_cohesive_nouns }}</label>:
-      <template v-for="(item, index) in repeated_lemmas">
-          <span v-if="index != 0">, </span>
-          <span :style="'background-color:'+colors[index][1]">{{ item[0] }}</span> ({{ item[1] }})
-      </template>
+      <ul>
+      <li class="lemma" v-for="(item, index) in repeated_lemmas">
+          <button class="lemma" :style="'background-color:'+lemma_color_map[item[0]]">{{ item[0] }}</button>({{ item[1] }})
+      </li>
+      </ul>
     </div>
     <table style="margin: 0 auto; border-collapse: collapse;">
       <thead>
@@ -89,7 +110,7 @@ th, td {
           <td>
               <span v-for="token in tokens.slice(p['start'], p['end'])">
                 <template v-if="token['lemma'] in lemma_color_map">
-                  <span :style="'background-color:'+lemma_color_map[token['lemma']]">{{ token['text'] }}</span>
+                  <button class="word" :style="'background-color:'+lemma_color_map[token['lemma']]">{{ token['text'] }}</button>
                 </template>
                 <template v-else>
                   {{ token['text'] }}

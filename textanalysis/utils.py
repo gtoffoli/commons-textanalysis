@@ -211,12 +211,12 @@ class MATTR():
         else:
             return self.n_words / n_tokens
 
-def lemmas_to_colors(lemmas, colors):
+def lemmas_to_colors(lemmas, color_list, color_dict):
     """ create a dict which maps from lemmas defined by an ordered list of the format [text, count]
         to colors defined by an ordered list of the form [colorname, colorcode] """
     lemmas_colors = {}
     for i, lemma in enumerate(lemmas):
-        lemmas_colors[lemma[0]] = colors[i][1]
+        lemmas_colors[lemma[0]] = color_dict[color_list[i]]
     print(lemmas_colors)
     return lemmas_colors
 

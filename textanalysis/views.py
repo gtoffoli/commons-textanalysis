@@ -48,6 +48,25 @@ distinct_colors = [
   ['Mint', '#aaffc3'], ['Olive', '#808000'], ['Apricot', '#ffd8b1'], ['Navy', '#000075'], ['Grey', '#808080'],
   ['White', '#ffffff'], ['Black', '#000000'],
 ]
+color_dict = dict(distinct_colors)
+color_list = [color_name for color_name, color_code in distinct_colors]
+
+pos_table = (
+    ('PROPN', {'label': 'proper noun', 'color': 'Magenta', 'selected': 1,},),
+    ('DET', {'label': 'determiner', 'color': 'Lime', 'selected': 0,},),
+    ('NOUN', {'label': 'noun', 'color': 'Red', 'selected': 1,},),
+    ('PRON', {'label': 'pronoun', 'color': 'Orange', 'selected': 0,},),
+    ('ADJ', {'label': 'adjective', 'color': 'Green', 'selected': 1,},),
+    ('NUM', {'label': 'numeral', 'color': 'Mint', 'selected': 0,},),
+    ('AUX', {'label': 'auxiliary verb', 'color': 'Blue', 'selected': 0,},),
+    ('VERB', {'label': 'verb', 'color': 'Navy', 'selected': 1,},),
+    ('ADV', {'label': 'adverb', 'color': 'Teal', 'selected': 1,},),
+    ('ADP', {'label': 'adposition', 'color': 'Grey', 'selected': 0,},),
+    ('CCONJ', {'label': 'coordinating conjunction', 'color': 'Brown', 'selected': 0,},),
+    ('SCONJ', {'label': 'subordinating conjunction', 'color': 'Maroon', 'selected': 0,},),
+)
+pos_map = dict(pos_table)
+pos_list = [pos[0] for pos in pos_table]
 
 # from NLPBuddy
 ENTITIES_MAPPING = {
@@ -421,10 +440,9 @@ def text_dashboard_return(request, var_dict):
     else:
         return var_dict # only for manual test
 
-# def text_dashboard(request, obj_type='', obj_id='', file_key='', obj=None, title='', body='',
 @csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', obj=None, title='', body='',
-       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_cohesion=False, dependency=False):
+       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -491,6 +509,11 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
 
     if summarization:
         return var_dict
+
+    if text_annotation:
+        for k in ['doc', 'paragraphs',]:
+            var_dict[k] = analyze_dict[k]
+        return var_dict       
 
     if text_cohesion:
         for k in ['doc', 'paragraphs', 'repeated_lemmas', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
@@ -925,7 +948,9 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         extended_attrs = result['extended_attrs']
         var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
         var_dict['label'] = extended_attrs['label']
-        var_dict['url'] = extended_attrs['url']
+        url = extended_attrs['url']
+        if url and len(url)> 2:
+            var_dict['url'] = url
         var_dict['language'] = settings.LANGUAGE_MAPPING[result['language']]
         var_dict['keywords'] = result['keywords']
         var_dict['kwics'] = result['kwics']
@@ -960,7 +985,6 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
         return render(request, 'text_dependency.html', var_dict)
 
 def text_annotations(request, params):
-    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], analyzed_text=True)
     var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], analyzed_text=True)
     error = var_dict.get('error', None)
     if error:
@@ -991,6 +1015,23 @@ def normalize_entity_graph_score(key_score, mean_sentence_length):
     return key, normalized_score 
 
 @csrf_exempt
+def text_annotation(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
+    var_dict['VUE'] = True
+    if is_ajax(request):
+        keys = ['paragraphs',]
+        data = var_dict
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_annotation=True)
+        data.update([[key, dashboard_dict[key]] for key in keys])
+        data['tokens'] = dashboard_dict['doc']['tokens']
+        data['color_dict'] = color_dict
+        data['pos_list'] = pos_list
+        data['pos_map'] = pos_map
+        return JsonResponse(data)
+    else:
+        return render(request, 'text_annotation.html', var_dict)
+
+@csrf_exempt
 def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
@@ -1010,10 +1051,11 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
         data['cohesion_by_entity_graph'] = cohesion_by_entity_graph
         data.update([[key, dashboard_dict[key]] for key in keys])
         data['tokens'] = dashboard_dict['doc']['tokens']
-        data['colors'] = distinct_colors
+        data['color_list'] = color_list
+        data['color_dict'] = color_dict
         repeated_lemmas = dashboard_dict['repeated_lemmas'][:20]
         data['repeated_lemmas'] = repeated_lemmas
-        data['lemma_color_map'] = lemmas_to_colors(repeated_lemmas, distinct_colors)
+        data['lemma_color_map'] = lemmas_to_colors(repeated_lemmas, color_list, color_dict)
         return JsonResponse(data)
     else:
         return render(request, 'text_cohesion.html', var_dict)
@@ -1147,7 +1189,9 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
     elif function == 'context':
         return render(request, 'context_dashboard.html', var_dict)
     elif function == 'annotations':
-        return text_annotations(request, params=var_dict)
+        return render(request, 'text_annotation.html', var_dict)
+    # elif function == 'annotations':
+    #     return text_annotations(request, params=var_dict)
     elif function == 'summarization':
         return text_summarization(request, params=var_dict)
     elif function == 'readability':
