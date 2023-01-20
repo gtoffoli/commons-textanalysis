@@ -2,13 +2,73 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "Noun chunks" %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Noun chunks and Named entities" %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
 <link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
 <link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
 <link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+<style>
+table, th, td {
+  border: 1px solid #ccc;
+}
+th, td {
+  padding: 4px;
+}
+li.span_type {
+  display: inline-block;
+}
+
+button.span_type {
+  display: inline-block;
+  /* background-color: white; */
+  border: 1px solid black;
+  border-radius: 5px;
+  margin: 0 4px 0 0;
+  cursor: pointer;
+}
+button.span_type.active {
+  border-width: 4px;
+}
+
+.ent {
+  display: inline-block;
+  border-top: solid black 2px;
+  border-bottom: solid black 2px;
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding-inline-start: 2px;
+  padding-inline-end: 2px;
+}
+.chunk {
+  display: inline-block;
+  background-color: tomato; /* coral #FF7F50, #FFBF00; amber */
+  margin-top: 2px;
+  margin-bottom: 2px;
+  padding-inline-start: 2px;
+  padding-inline-end: 2px;
+}
+.chunk_start {
+  margin-inline-start: 2px;
+  border-radius: 3px;
+}
+.chunk_end {
+  margin-inline-end: 2px;
+  border-radius: 3px;
+}
+.ent_start {
+  border-inline-start: solid black 2px;
+  border-radius: 3px;
+}
+.ent_end {
+  border-inline-end: solid black 2px;
+  border-radius: 3px;
+}
+.outside {
+  margin-right: 3px;
+}
+</style>
 {% endblock extra_style %}
 
 {% block extra_head %}
@@ -22,7 +82,7 @@
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Noun chunks" %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Noun chunks and Named entities" %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -41,22 +101,31 @@
     <div v-else><span v-if="obj_id != '0'"><label>{{ label_id }}</label>: {{ obj_id }}</span></div>
     <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
+    <div style="text-align: center;">
+    <label>{{ label_span_selection }}</label>
+    <ul>
+      <li class="span_type" v-for="type in span_types">
+        <button :class="'span_type' + (type_buttons[type]['selected']?' active':'')"
+          :style="'background-color:' + type_buttons[type]['background'] + ';'"
+          v-on:click.stop="toggle_span_type(type);">
+          {{ type_buttons[type]['label'] }}</button>
+      </li>
+    </ul>
+    <div style="font-size: x-small; font-style: italic; margin-bottom: 10px;">{{ label_select }}</div>
+
     <table style="margin: 0 auto; border-collapse: collapse;">
       <thead>
          <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
       </thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
-          <td style="vertical-align:top; text-align:center;">{{ p[0] }}</td>
-          <td>
+          <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
+          <td style="text-align: left;">
               <span v-for="token in tokens.slice(p['start'], p['end'])">
-                <template v-if="token['chunk']==null">
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk']['selected']) && (token['iob_ent']=='o' || !type_buttons['entity']['selected'])" class="outside">{{ token['text'] }}</span>
+                <span v-else :class="'' + (type_buttons['nounchunk']['selected']? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons['entity']['selected']? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])">
                   {{ token['text'] }}
-                </template>
-                <template v-else>
-                  <span style="background-color:#ffb347">
-                    {{ token['text'] }}</span>
-                </template>
+                </span>
               </span>
           </td>
           </tr>
@@ -64,8 +133,9 @@
       {% endverbatim %}
       </tbody>
     </table>
+    </div>
     </template>
-    <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "noun chunks are noun phrases without subordinates"|capfirst %}</span></div>
+    <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "noun chunks are noun phrases without subordinates"|capfirst %}.</span></div>
   </div>
 </div>
 {% endblock %}
@@ -82,21 +152,31 @@
           obj_id: '{{ obj_id }}',
           obj_type_label: '{{ obj_type_label }}',
           title: '{{ title }}',
+          url: '{{ url }}',
           language: '{{ language }}',
-          tokens: null, paragraphs: null, chunks_index: null,
+          tokens: null, paragraphs: null,
           error: null,
+          // span_types: ['entity', 'nounchunk'],
+          // type_buttons: {'entity': {'selected': true, 'label': '{% trans "named entities"|capfirst %}'}, 'nounchunk': {'selected': false, 'label': '{% trans "noun chunks"|capfirst %}'}},
+          span_types: null, type_buttons: null,
           label_paragraph: "{% trans "paragraph"|capfirst %}",
           label_see: "{% trans "see"|capfirst %}",
           label_id: '{% trans "id"|capfirst %}',
           label_title: '{% trans "title"|capfirst %}',
           label_url: '{% trans "url"|capfirst %}',
           label_language: '{% trans "language"|capfirst %}',
+          label_span_selection: "{% trans "span types to highlight"|capfirst %}",
+          label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
         },
         el: '#app',
         methods: {
           resize() {
             console.log('resize')
-          }
+          },
+          toggle_span_type: function(span_type) {
+            Vue.set(this.type_buttons[span_type], 'selected', !this.type_buttons[span_type].selected);
+            this.$forceUpdate();
+          },
         },
         mounted: function () {
           $this = this;

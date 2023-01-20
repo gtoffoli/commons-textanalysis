@@ -10,6 +10,7 @@ from django.http import HttpResponseForbidden, JsonResponse
 from django.shortcuts import render
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
+from django.utils.text import capfirst
 from django.views.decorators.csrf import csrf_exempt
 
 from commons.user_spaces import project_contents, user_contents
@@ -70,11 +71,13 @@ pos_list = [pos[0] for pos in pos_table]
 
 # from NLPBuddy
 ENTITIES_MAPPING = {
-    'PERSON': 'person',
-    'LOC': 'location',
-    'GPE': 'location',
-    'ORG': 'organization',
+    'PERSON': _('person'),
+    'LOC': _('location'),
+    'GPE': _('GPE location'),
+    'ORG': _('organization'),
 }
+
+ENTITY_TYPES = ['PER', 'LOC', 'GPE', 'ORG',]
 
 # =====from NLPBuddy
 POS_MAPPING = {
@@ -89,12 +92,21 @@ EMPTY_POS = [
 ]
 
 postag_color = 'cornflowerBlue'
-entity_color = 'tomato'
+entity_color = 'white'
 dependency_color = 'purple'
+nounchunk_color = 'tomato' # 'coral'
+
+span_types = ['nounchunk', 'entity',]
+span_type_buttons = {
+    'nounchunk': {'selected': False, 'label': capfirst(_("noun chunks")), 'background': nounchunk_color,},
+    'entity': {'selected': True, 'label': capfirst(_("named entities")), 'background': entity_color,},
+}
 
 # ===== froom BRAT; see http://brat.nlplab.org/configuration.html and https://brat.nlplab.org/embed.html
 collData = {
     'entity_types': [
+        { 'type': 'ADJ', 'labels': ['noun chunk', 'nchunk'], 'bgColor': nounchunk_color, 'borderColor': 'darken' },
+
         { 'type': 'ADJ', 'labels': ['adjective', 'adj'], 'bgColor': postag_color, 'borderColor': 'darken' }, # big, old, green, incomprehensible, first
         { 'type': 'ADP', 'labels': ['adposition', 'adp'], 'bgColor': postag_color, 'borderColor': 'darken' }, # in, to, during
         { 'type': 'ADV', 'labels': ['adverb', 'adv'], 'bgColor': postag_color, 'borderColor': 'darken' }, # very, tomorrow, down, where, there
@@ -115,6 +127,7 @@ collData = {
         { 'type': 'X', 'labels': ['other', 'x'], 'bgColor': postag_color, 'borderColor': 'darken' }, # sfpksdpsxmsa
         { 'type': 'SPACE', 'labels': ['space', 'sp'], 'bgColor': postag_color, 'borderColor': 'darken' }, #
 
+        { 'type': 'PER', 'labels': ['Person', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
         { 'type': 'PERSON', 'labels': ['Person', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
         { 'type': 'NORP', 'labels': ['NORP', 'NORP'], 'bgColor': entity_color, 'borderColor': 'darken' },  # Nationalities or religious or political groups.
         { 'type': 'FAC', 'labels': ['Facility', 'Fac'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Buildings, airports, highways, bridges, etc.
@@ -369,16 +382,18 @@ def index_entities(ents, tokens, entity_dict):
         while tokens[i]['start'] < start:
             i += 1
         assert start==tokens[i]['start']
-        text = ''
+        ent['start_token'] = i
         try: # don't know why in one case the condition below raised exception
+            text = ''
             while tokens[i]['end'] <= end:
                 text += tokens[i]['text']
                 i += 1
+            ent['end_token'] = i
+            ent['text'] = text
+            if not '_' in text and not text in entity_dict[label]:
+                entity_dict[label].append(text)
         except:
-            pass   
-        ent['text'] = text
-        if not '_' in text and not text in entity_dict[label]:
-            entity_dict[label].append(text)
+            pass
 
 def sorted_frequencies(d):
     sd =  OrderedDict(sorted(d.items(), key = itemgetter(1), reverse = True))
@@ -506,6 +521,11 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     var_dict['mean_sentence_length'] = mean_sentence_length = n_tokens/n_sentences
     entities = analyze_dict['doc']['ents']
     var_dict['entities'] = entities
+    entitiy_dict = defaultdict(list)
+    index_entities(entities, tokens, entitiy_dict)
+    entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
+    var_dict['entity_lists'] = entity_lists,
+    noun_chunks = analyze_dict['noun_chunks']
 
     if summarization:
         return var_dict
@@ -521,17 +541,40 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return var_dict
 
     if nounchunks:
-        noun_chunks = analyze_dict['noun_chunks']
-        chunks_index = []
+        # by default all tokens are outside entity spams and noun_chunk spans
+        for token in tokens:
+            token['iob_ent'] = 'o'
+            token['iob_chunk'] = 'o'
+        # annotate tokens with iob info on position in containing entitied
+        for i, ent in enumerate(entities):
+            if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
+                ent['end_token'] -= 1
+            for k in range(ent['start_token'], ent['end_token']):
+                token = tokens[k]
+                token['ent'] = ent['label']
+                iob_ent = ''
+                if k == ent['start_token']:
+                    iob_ent += 'b'
+                if k == ent['end_token']-1:
+                    iob_ent += 'e'
+                if not iob_ent:
+                    iob_ent = 'i'
+                token['iob_ent'] = iob_ent           
+                tokens[k] = token
+        # annotate tokens with info on position in containing noun chunks
         for i, chunk in enumerate(noun_chunks):
-            chunk_range = []
             for k in range(chunk[0], chunk[1]):
-                chunk_range.append(k)
                 token = tokens[k]
                 token['chunk'] = i
+                iob_chunk = ''
+                if k == chunk[0]:
+                    iob_chunk += 'b'
+                if k == chunk[1]-1:
+                    iob_chunk += 'e'
+                if not iob_chunk:
+                    iob_chunk = 'i'
+                token['iob_chunk'] = iob_chunk           
                 tokens[k] = token
-            chunks_index.append(chunk_range)
-        var_dict['chunks_index'] = chunks_index
         var_dict['tokens'] = tokens
         var_dict['paragraphs'] = analyze_dict['paragraphs']
         return var_dict
@@ -659,10 +702,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     mean_dependency_distance = n_sentences and (tot_dependency_distance / n_sentences) or 0
     mean_weighted_distance = n_sentences and (tot_weighted_distance / n_sentences) or 0
 
-    entitiy_dict = defaultdict(list)
-    index_entities(entities, tokens, entitiy_dict)
-    entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
-
     var_dict.update({'n_unique': n_unique, 'voc_density': voc_density, 'lex_density': lex_density,
                      'mean_sentence_length': mean_sentence_length, 'max_sentence_length': max_sentence_length,
                      'max_dependency_depth': max_dependency_depth, 'mean_dependency_depth': mean_dependency_depth,
@@ -670,7 +709,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                      'max_weighted_distance': max_weighted_distance, 'mean_weighted_distance': mean_weighted_distance,
                      'sentences': sentences, 'tokens': tokens,
                      'kw_frequencies': kw_frequencies[:16],
-                     'entity_lists': entity_lists,
                      'collData': collData, 'docData': docData,
                      })
     if dependency:
@@ -984,26 +1022,19 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
     else:
         return render(request, 'text_dependency.html', var_dict)
 
-def text_annotations(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], analyzed_text=True)
-    error = var_dict.get('error', None)
-    if error:
-        print('error:', error)
-    else:
-        del params['url']
-        var_dict.update(params)
-    return render(request, 'text_annotations.html', var_dict)
-
 @csrf_exempt
 def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs', 'tokens', 'chunks_index',
+        keys = ['paragraphs', 'tokens', # 'chunks_index',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
+        data['span_types'] = span_types
+        data['type_buttons'] = span_type_buttons
+        # data['collData'] = collData
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)
@@ -1019,7 +1050,7 @@ def text_annotation(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs',]
+        keys = ['language', 'paragraphs',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_annotation=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
