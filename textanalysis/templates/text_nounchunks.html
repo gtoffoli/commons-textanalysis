@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "Noun chunks and Named entities" %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Named entities and Noun chunks" %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
@@ -22,8 +22,7 @@ li.span_type {
 
 button.span_type {
   display: inline-block;
-  /* background-color: white; */
-  border: 1px solid black;
+  border: 2px solid black;
   border-radius: 5px;
   margin: 0 4px 0 0;
   cursor: pointer;
@@ -43,7 +42,7 @@ button.span_type.active {
 }
 .chunk {
   display: inline-block;
-  background-color: tomato; /* coral #FF7F50, #FFBF00; amber */
+  background-color: Khaki;
   margin-top: 2px;
   margin-bottom: 2px;
   padding-inline-start: 2px;
@@ -82,7 +81,7 @@ button.span_type.active {
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Noun chunks and Named entities" %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Named entities and Noun chunks" %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -92,7 +91,7 @@ button.span_type.active {
 <div class="container-fluid">
   <div id="app" class='components-container'>
   {% verbatim %}
-    <template v-if="error===null">
+    <template>
     <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
       <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
@@ -102,17 +101,22 @@ button.span_type.active {
     <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
     <div style="text-align: center;">
+<!-- 
+    <div>
+        <div v-for="(token, index) in tokens">{{ index }} {{ token['ent'] }}</div>
+    </div>
+ -->
+
     <label>{{ label_span_selection }}</label>
     <ul>
       <li class="span_type" v-for="type in span_types">
-        <button :class="'span_type' + (type_buttons[type]['selected']?' active':'')"
-          :style="'background-color:' + type_buttons[type]['background'] + ';'"
+        <button :class="'span_type' + (type_buttons[type].selected?' active':'')"
+          :style="'background-color:' + type_buttons[type]['background'] + ';' + 'border-color:' + type_buttons[type]['border'] + ';'"
           v-on:click.stop="toggle_span_type(type);">
           {{ type_buttons[type]['label'] }}</button>
       </li>
     </ul>
     <div style="font-size: x-small; font-style: italic; margin-bottom: 10px;">{{ label_select }}</div>
-
     <table style="margin: 0 auto; border-collapse: collapse;">
       <thead>
          <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
@@ -122,8 +126,9 @@ button.span_type.active {
           <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
           <td style="text-align: left;">
               <span v-for="token in tokens.slice(p['start'], p['end'])">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk']['selected']) && (token['iob_ent']=='o' || !type_buttons['entity']['selected'])" class="outside">{{ token['text'] }}</span>
-                <span v-else :class="'' + (type_buttons['nounchunk']['selected']? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons['entity']['selected']? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])">
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside">{{ token['text'] }}</span>
+                <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
+                             :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')">
                   {{ token['text'] }}
                 </span>
               </span>
@@ -133,7 +138,7 @@ button.span_type.active {
       {% endverbatim %}
       </tbody>
     </table>
-    </div>
+     </div>
     </template>
     <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "noun chunks are noun phrases without subordinates"|capfirst %}.</span></div>
   </div>
@@ -154,10 +159,9 @@ button.span_type.active {
           title: '{{ title }}',
           url: '{{ url }}',
           language: '{{ language }}',
+          label: null,
           tokens: null, paragraphs: null,
           error: null,
-          // span_types: ['entity', 'nounchunk'],
-          // type_buttons: {'entity': {'selected': true, 'label': '{% trans "named entities"|capfirst %}'}, 'nounchunk': {'selected': false, 'label': '{% trans "noun chunks"|capfirst %}'}},
           span_types: null, type_buttons: null,
           label_paragraph: "{% trans "paragraph"|capfirst %}",
           label_see: "{% trans "see"|capfirst %}",

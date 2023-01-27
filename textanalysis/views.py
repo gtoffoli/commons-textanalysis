@@ -34,7 +34,6 @@ obj_type_label_dict = {
     'oer': _('open educational resource'),
     'pathnode': _('node of learning path'),
     'lp': _('learning path'),
-    # 'resource': _('remote web resource'),
     'web': _('remote web resource'),
     'text': _('manually input text'),
     'corpus': _('text corpus'),
@@ -69,14 +68,6 @@ pos_table = (
 pos_map = dict(pos_table)
 pos_list = [pos[0] for pos in pos_table]
 
-# from NLPBuddy
-ENTITIES_MAPPING = {
-    'PERSON': _('person'),
-    'LOC': _('location'),
-    'GPE': _('GPE location'),
-    'ORG': _('organization'),
-}
-
 ENTITY_TYPES = ['PER', 'LOC', 'GPE', 'ORG',]
 
 # =====from NLPBuddy
@@ -91,16 +82,32 @@ EMPTY_POS = [
     'SPACE', 'PUNCT', 'CCONJ', 'SCONJ', 'DET', 'PRON', 'ADP', 'AUX', 'PART', 'SYM',
 ]
 
-postag_color = 'cornflowerBlue'
-entity_color = 'white'
-dependency_color = 'purple'
-nounchunk_color = 'tomato' # 'coral'
-
-span_types = ['nounchunk', 'entity',]
-span_type_buttons = {
-    'nounchunk': {'selected': False, 'label': capfirst(_("noun chunks")), 'background': nounchunk_color,},
-    'entity': {'selected': True, 'label': capfirst(_("named entities")), 'background': entity_color,},
+postag_color = 'CornflowerBlue'
+entity_color = 'White'
+dependency_color = 'Purple'
+nounchunk_color = 'Khaki' # 'LightSalmon' # 'Tomato' # 'Coral' 
+# from NLPBuddy
+ENTITIES_MAPPING = {
+    'PER': _('person'),
+    'LOC': _('other location'),
+    'GPE': _('GPE location'),
+    'ORG': _('organization'),
+    'MISC': _('miscellaneous'),
 }
+entity_types = ['PER','ORG','GPE', 'LOC', 'MISC',]
+entity_colors = ['Red', 'DarkOrange', 'Green', 'LimeGreen', 'Grey',]
+span_types = ['nounchunk'] + entity_types
+span_type_buttons = {
+    'nounchunk': {'selected': False, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
+    # 'entity': {'selected': True, 'label': capfirst(_("Named entity")), 'border': 'black', 'background': entity_color,},
+}
+for i, span_type in enumerate(entity_types):
+    span_type_buttons[span_type] = {}
+    span_type_buttons[span_type]['label'] = ENTITIES_MAPPING[span_type]
+    span_type_buttons[span_type]['background'] = entity_color
+    span_type_buttons[span_type]['border'] = entity_colors[i]
+    span_type_buttons[span_type]['selected'] = True
+span_type_buttons['n'] = {'selected': False} # null entity
 
 # ===== froom BRAT; see http://brat.nlplab.org/configuration.html and https://brat.nlplab.org/embed.html
 collData = {
@@ -238,32 +245,6 @@ collData = {
         # xcomp    open clausal complement
     ],
 }
-
-"""
-collData = {
-    'entity_types': [
-        #   The labels are used when displaying the annotation, in this case
-        #   for "Person" we also provide a short-hand "Per" for cases where
-        #   abbreviations are preferable
-        {
-            'type'   : 'Person',
-            'labels' : ['Person', 'Per'],
-            'bgColor': 'royalblue',
-            'borderColor': 'darken'
-        }
-    ],
-    'relation_types': [
-        #   A relation takes two arguments, both are named and can be constrained
-        #   as to which types they may apply to
-        # dashArray allows you to adjust the style of the relation arc
-        { 'type': 'Anaphora', 'labels': ['Anaphora', 'Ana'], 'dashArray': '3,3', 'color': 'purple',
-          'args': [
-                {'role': 'Anaphor', 'targets': ['Person'] },
-                {'role': 'Entity',  'targets': ['Person'] },]
-        } 
-    ],
-}
-"""
 
 docData = {
     # This example (from https://brat.nlplab.org/embed.html) was kept here just for reference
@@ -525,7 +506,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     index_entities(entities, tokens, entitiy_dict)
     entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
     var_dict['entity_lists'] = entity_lists,
-    noun_chunks = analyze_dict['noun_chunks']
 
     if summarization:
         return var_dict
@@ -541,10 +521,14 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return var_dict
 
     if nounchunks:
-        # by default all tokens are outside entity spams and noun_chunk spans
-        for token in tokens:
+        noun_chunks = analyze_dict['noun_chunks']
+        # by default all tokens are outside entity spans and noun_chunk spans
+        # for token in tokens:
+        for i, token in enumerate(tokens):
             token['iob_ent'] = 'o'
             token['iob_chunk'] = 'o'
+            token['ent'] = 'n'
+            tokens[i] = token
         # annotate tokens with iob info on position in containing entitied
         for i, ent in enumerate(entities):
             if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
@@ -1221,8 +1205,6 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         return render(request, 'context_dashboard.html', var_dict)
     elif function == 'annotations':
         return render(request, 'text_annotation.html', var_dict)
-    # elif function == 'annotations':
-    #     return text_annotations(request, params=var_dict)
     elif function == 'summarization':
         return text_summarization(request, params=var_dict)
     elif function == 'readability':

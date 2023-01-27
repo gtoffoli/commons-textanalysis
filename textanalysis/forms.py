@@ -7,7 +7,7 @@ TA_FUNCTION_CHOICES = (
     ('context', _('Keywords In Context')),
     ('wordlists', _('Word Lists by POS')),
     ('annotations', _('Annotated text')),
-    ('nounchunks', _('Noun chunks')),
+    ('nounchunks', _('Named entities')),
     ('readability', _('Text Readability')),
     ('cohesion', _('Text Cohesion')),
     ('summarization', _('Text Summarization')),
