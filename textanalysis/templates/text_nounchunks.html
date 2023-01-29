@@ -33,8 +33,8 @@ button.span_type.active {
 
 .ent {
   display: inline-block;
-  border-top: solid black 2px;
-  border-bottom: solid black 2px;
+  border-top: solid black 3px;
+  border-bottom: solid black 3px;
   margin-top: 2px;
   margin-bottom: 2px;
   padding-inline-start: 2px;
@@ -57,11 +57,11 @@ button.span_type.active {
   border-radius: 3px;
 }
 .ent_start {
-  border-inline-start: solid black 2px;
+  border-inline-start: solid black 3px;
   border-radius: 3px;
 }
 .ent_end {
-  border-inline-end: solid black 2px;
+  border-inline-end: solid black 3px;
   border-radius: 3px;
 }
 .outside {
@@ -101,39 +101,31 @@ button.span_type.active {
     <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
     <div style="text-align: center;">
-<!-- 
-    <div>
-        <div v-for="(token, index) in tokens">{{ index }} {{ token['ent'] }}</div>
-    </div>
- -->
-
     <label>{{ label_span_selection }}</label>
     <ul>
       <li class="span_type" v-for="type in span_types">
         <button :class="'span_type' + (type_buttons[type].selected?' active':'')"
           :style="'background-color:' + type_buttons[type]['background'] + ';' + 'border-color:' + type_buttons[type]['border'] + ';'"
+          :title="type_buttons[type]['label']"
           v-on:click.stop="toggle_span_type(type);">
-          {{ type_buttons[type]['label'] }}</button>
+          {{ type }}</button>
       </li>
     </ul>
     <div style="font-size: x-small; font-style: italic; margin-bottom: 10px;">{{ label_select }}</div>
-    <table style="margin: 0 auto; border-collapse: collapse;">
-      <thead>
-         <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
-      </thead>
+    <table style="margin: 0 auto; border-collapse: collapse; width: 100%; table-layout: fixed;">
+      <thead><th style="width:5%">#</th><th style="width:95%">{{ label_paragraph }}</th></thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
           <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
           <td style="text-align: left;">
-              <span v-for="token in tokens.slice(p['start'], p['end'])">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside">{{ token['text'] }}</span>
+              <template v-for="token in tokens.slice(p['start'], p['end'])">
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside">{{ token['text'] }} </span>
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
                              :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')">
                   {{ token['text'] }}
                 </span>
-              </span>
+              </template>
           </td>
-          </tr>
         </tr>
       {% endverbatim %}
       </tbody>

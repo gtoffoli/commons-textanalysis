@@ -84,9 +84,7 @@ button.word {
     <div style="font-size: x-small; font-style: italic; margin-bottom: 5px;">{{ label_select }}</div>
 
     <table style="margin: 0 auto; border-collapse: collapse;">
-      <thead>
-         <th style="width:5%">#</th><th style="width:55%">{{ label_paragraph }}</th>
-      </thead>
+      <thead><th>#</th><th>{{ label_paragraph }}</th></thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
           <td style="vertical-align: top; text-align: center;">{{ p['i'] }}</td>
@@ -129,6 +127,7 @@ button.word {
           title: '{{ title }}',
           url: '{{ url }}',
           language: '{{ language }}',
+          label: null,
           color_dict: null,
 		  pos_list: null, pos_map: null,
           tokens: null, paragraphs: null,

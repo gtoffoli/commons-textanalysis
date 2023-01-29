@@ -1,12 +1,41 @@
+from six import BytesIO
 import re
 import pyphen
 import string
 from collections import defaultdict
+import urllib.parse
 import requests
 import tempfile
 import readability
 import textract
 from bs4 import BeautifulSoup
+from django.conf import settings
+from django.utils.translation import gettext_lazy as _
+
+# some default values from https://github.com/explosion/spaCy/blob/master/spacy/displacy/render.py
+DEFAULT_LANG = "en"
+DEFAULT_DIR = "ltr"
+DEFAULT_ENTITY_COLOR = "#ddd"
+DEFAULT_LABEL_COLORS = {
+    "ORG": "#7aecec",
+    "PRODUCT": "#bfeeb7",
+    "GPE": "#feca74",
+    "LOC": "#ff9561",
+    "PERSON": "#aa9cfc",
+    "NORP": "#c887fb",
+    "FAC": "#9cc9cc",
+    "EVENT": "#ffeb80",
+    "LAW": "#ff8197",
+    "LANGUAGE": "#ff8197",
+    "WORK_OF_ART": "#f0d0ff",
+    "DATE": "#bfe1d9",
+    "TIME": "#bfe1d9",
+    "MONEY": "#e4e7d2",
+    "QUANTITY": "#e4e7d2",
+    "ORDINAL": "#e4e7d2",
+    "CARDINAL": "#e4e7d2",
+    "PERCENT": "#e4e7d2",
+}
 
 mimetype_extension_list = (
     ('text/plain', 'txt'),
@@ -19,6 +48,9 @@ mimetype_extension_list = (
 )
 
 def get_web_resource_text(url):
+    fileid = get_googledoc_fileid(url)
+    if fileid:
+        return get_google_doc_text(None, fileid=fileid)
     err = None
     try:
         response = requests.get(url)
@@ -118,6 +150,67 @@ def get_document_text(document, return_has_text=False):
         except (UnicodeDecodeError, AttributeError):
             pass
         return text
+
+def get_googledoc_fileid(document_url):
+    """
+    if document_url is a valid url of a Google Document or a Google Presentation,
+    return the fileid to be passed to googleapis; else return None
+    """
+    if not document_url.startswith('https://docs.google.com'):
+        return None
+    if not (document_url.count('/document/d/') or document_url.count('/presentation/d/')):
+        return None
+    matches = re.findall("/d/([a-zA-Z0-9-_]+)", document_url)
+    if len(matches)==1:
+        return matches[0]
+    else:
+        return None   
+
+def get_googledoc_name_type(document_url, fileid=None):
+    """
+    get name and type of a Google Document or a Google Presentation
+    """
+    if not fileid:
+        fileid = get_googledoc_fileid(document_url)
+    endpoint = settings.GOOGLE_DRIVE_URL
+    url = '{}/{}'.format(endpoint, fileid)
+    params = {'key': settings.GOOGLE_KEY, }
+    params['fields'] = 'name,mimeType'
+    querystring = urllib.parse.urlencode(params)
+    response = requests.get('{}?{}'.format(url, querystring))
+    if response.status_code != requests.codes.ok:
+        return response.status_code, _('bad response status'), ''
+    data = response.json()
+    return response.status_code, data['name'], data['mimeType']
+
+def get_googledoc_text(document_url, fileid=None):
+    """
+    extract the text from a Google Document or a Google Presentation
+    """
+    if not fileid:
+        fileid = get_googledoc_fileid(document_url)
+    if not fileid:
+        return _('invalid document url')
+    endpoint = settings.GOOGLE_DRIVE_URL
+    url = '{}/{}/export'.format(endpoint, fileid)
+    params = {'key': settings.GOOGLE_KEY, }
+    params['mimeType'] = 'application/pdf'
+    querystring = urllib.parse.urlencode(params)
+    response = requests.get('{}?{}'.format(url, querystring))
+    if response.status_code != requests.codes.ok:
+        return _('bad response status')
+    content_type = response.headers['content-type']
+    if not content_type.lower().count('pdf'):
+        return _('unexpected content type')
+    with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b', delete=False) as f:
+        f.write(response.content)
+        text = textract.process(f.name, encoding='utf8', extension='pdf')
+        f.close()
+    try:
+        text = text.decode()
+    except (UnicodeDecodeError, AttributeError):
+        return _('unicode decode error')
+    return text
 
 def extract_annotate_with_bs4(html):
     soup = BeautifulSoup(html, 'lxml')

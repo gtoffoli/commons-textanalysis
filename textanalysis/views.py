@@ -22,6 +22,7 @@ from textanalysis.utils import get_web_resource_text, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
+from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -31,6 +32,7 @@ else:
 obj_type_label_dict = {
     'project': _('commonspaces project'),
     'doc': _('document file'),
+    'drive': _('google document'),
     'oer': _('open educational resource'),
     'pathnode': _('node of learning path'),
     'lp': _('learning path'),
@@ -86,6 +88,7 @@ postag_color = 'CornflowerBlue'
 entity_color = 'White'
 dependency_color = 'Purple'
 nounchunk_color = 'Khaki' # 'LightSalmon' # 'Tomato' # 'Coral' 
+"""
 # from NLPBuddy
 ENTITIES_MAPPING = {
     'PER': _('person'),
@@ -94,21 +97,7 @@ ENTITIES_MAPPING = {
     'ORG': _('organization'),
     'MISC': _('miscellaneous'),
 }
-entity_types = ['PER','ORG','GPE', 'LOC', 'MISC',]
-entity_colors = ['Red', 'DarkOrange', 'Green', 'LimeGreen', 'Grey',]
-span_types = ['nounchunk'] + entity_types
-span_type_buttons = {
-    'nounchunk': {'selected': False, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
-    # 'entity': {'selected': True, 'label': capfirst(_("Named entity")), 'border': 'black', 'background': entity_color,},
-}
-for i, span_type in enumerate(entity_types):
-    span_type_buttons[span_type] = {}
-    span_type_buttons[span_type]['label'] = ENTITIES_MAPPING[span_type]
-    span_type_buttons[span_type]['background'] = entity_color
-    span_type_buttons[span_type]['border'] = entity_colors[i]
-    span_type_buttons[span_type]['selected'] = True
-span_type_buttons['n'] = {'selected': False} # null entity
-
+"""
 # ===== froom BRAT; see http://brat.nlplab.org/configuration.html and https://brat.nlplab.org/embed.html
 collData = {
     'entity_types': [
@@ -263,6 +252,31 @@ docData = {
         ['R1', 'Anaphora', [['Anaphor', 'T2'], ['Entity', 'T1']]]
     ],
 };
+
+entity_dict = {}
+for item in collData['entity_types']:
+    entity_type = item['type'].upper()
+    entity_dict[entity_type] = {'label': item['labels'][0], 'count': 0}
+ 
+default_entity_types = ['PERSON','ORG','GPE', 'LOC',]
+span_type_buttons = {
+    'nounchunk': {'selected': False, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
+}
+
+def define_span_types():
+    entity_types = []
+    for item in collData['entity_types']:
+        entity_type = item['type'].upper()
+        if entity_dict[entity_type]['count']:
+            entity_types.append(entity_type)
+            span_type_buttons[entity_type] = {}
+            span_type_buttons[entity_type]['label'] = entity_dict[entity_type]['label']
+            span_type_buttons[entity_type]['background'] = entity_color
+            span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS[entity_type]
+            if entity_type in default_entity_types:
+                span_type_buttons[entity_type]['selected'] = True
+    span_type_buttons['n'] = {'selected': False} # null entity
+    return ['nounchunk'] + entity_types
 
 def count_word_syllables(word, language_code):
     n_chars = len(word)
@@ -442,7 +456,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
-    if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'flatpage', 'web', 'text',]:
+    if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'drive', 'flatpage', 'web', 'text',]:
         return HttpResponseForbidden()
     description = ''
     if file_key:
@@ -531,11 +545,13 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             tokens[i] = token
         # annotate tokens with iob info on position in containing entitied
         for i, ent in enumerate(entities):
+            entity_type = ent['label']
+            entity_dict[entity_type]['count'] += 1
             if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
                 ent['end_token'] -= 1
             for k in range(ent['start_token'], ent['end_token']):
                 token = tokens[k]
-                token['ent'] = ent['label']
+                token['ent'] = entity_type
                 iob_ent = ''
                 if k == ent['start_token']:
                     iob_ent += 'b'
@@ -1011,14 +1027,14 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs', 'tokens', # 'chunks_index',
+        keys = ['paragraphs', 'tokens',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
+        span_types = define_span_types()
         data['span_types'] = span_types
         data['type_buttons'] = span_type_buttons
-        # data['collData'] = collData
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)
@@ -1210,7 +1226,6 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
     elif function == 'readability':
         return text_readability(request, params=var_dict)
     elif function == 'cohesion':
-        var_dict['VUE'] = True
         return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
         return render(request, 'text_nounchunks.html', var_dict)
