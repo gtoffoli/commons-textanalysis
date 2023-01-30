@@ -33,7 +33,7 @@
   <div  class="padding1020">
     <div>
       {% if obj_type_label %}<label>{{ obj_type_label|capfirst }}</label>:{% endif %}
-      {% if title or label %}<i>{{ title }}{{ label }}</i></span>{% endif %}
+      <i>{% if title %}{{ title }}{% elif label %}{{ label }}{% endif %}</i></span>
     </div>
     {% if url %}<div><label>{% trans "url"|capfirst %}</label>: <a href="{{ url }}" target="_blank">{{ url }}</a></div>
     {% elif obj_id != 0 %}<div><label>{% trans "id"|capfirst %}</label>: {{ obj_id }}</span>{% endif %}

@@ -194,18 +194,12 @@ def get_googledoc_text(document_url, fileid=None):
     endpoint = settings.GOOGLE_DRIVE_URL
     url = '{}/{}/export'.format(endpoint, fileid)
     params = {'key': settings.GOOGLE_KEY, }
-    params['mimeType'] = 'application/pdf'
+    params['mimeType'] = 'text/plain'
     querystring = urllib.parse.urlencode(params)
     response = requests.get('{}?{}'.format(url, querystring))
     if response.status_code != requests.codes.ok:
         return _('bad response status')
-    content_type = response.headers['content-type']
-    if not content_type.lower().count('pdf'):
-        return _('unexpected content type')
-    with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b', delete=False) as f:
-        f.write(response.content)
-        text = textract.process(f.name, encoding='utf8', extension='pdf')
-        f.close()
+    text = response.content
     try:
         text = text.decode()
     except (UnicodeDecodeError, AttributeError):

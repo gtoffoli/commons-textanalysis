@@ -979,6 +979,7 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         if not file_key:
             dashboard_dict = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
             var_dict['text'] = dashboard_dict['text']
+            var_dict['title'] = dashboard_dict['title']
         endpoint = nlp_url + '/api/word_contexts/'
         data = json.dumps(var_dict)
         response = requests.post(endpoint, data=data)
@@ -1003,6 +1004,7 @@ def text_summarization(request, params):
         print('error:', error)
     else:
         del params['url']
+        del params['title']
         del params['text']
         var_dict.update(params)
     return render(request, 'text_summarization.html', var_dict)
@@ -1050,7 +1052,7 @@ def text_annotation(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['language', 'paragraphs',]
+        keys = ['paragraphs', 'language', 'obj_type_label', 'title', 'label',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_annotation=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -1097,6 +1099,7 @@ def text_readability(request, params):
     if error:
         print('error:', error)
     else:
+        del params['title']
         del params['url']
         var_dict.update(params)
     language_code = var_dict['language_code']
