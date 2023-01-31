@@ -61,7 +61,8 @@ button.word {
 <div class="container-fluid">
   <div id="app" class='components-container'>
   {% verbatim %}
-    <template v-if="error===null">
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
     <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
       <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
@@ -157,6 +158,7 @@ button.word {
           repeated_lemmas: null, colors: null, lemma_color_map: null,
           cohesion_by_repetitions: null, cohesion_by_similarity: null,
           error: null,
+          wait: false,
           label_id: '{% trans "id"|capfirst %}',
           label_title: '{% trans "title"|capfirst %}',
           label_url: '{% trans "url"|capfirst %}',
@@ -175,6 +177,7 @@ button.word {
           label_see: "{% trans "see"|capfirst %}",
           label_repetitions: "{% trans "text cohesion based on shared lexicon"|capfirst %}",
           label_similarity: "{% trans "text cohesion based on paragraphs similarity"|capfirst %}",
+          label_wait: "{% trans "please wait"|capfirst %}",
         },
         el: '#app',
         methods: {
@@ -184,6 +187,7 @@ button.word {
         },
         mounted: function () {
           $this = this;
+          this.wait = true;
           if (! this['obj_id'])
             this['obj_id'] = 0;
             fetch('/textanalysis/cohesion/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
@@ -195,6 +199,7 @@ button.word {
              for (var key in data) {
               this[key] = data[key];
              };
+             this.wait = false;
            })
           .catch(err => (this['error'] = err))
         },

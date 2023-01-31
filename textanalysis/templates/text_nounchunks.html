@@ -91,7 +91,8 @@ button.span_type.active {
 <div class="container-fluid">
   <div id="app" class='components-container'>
   {% verbatim %}
-    <template>
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
     <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
       <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
@@ -127,12 +128,12 @@ button.span_type.active {
               </template>
           </td>
         </tr>
-      {% endverbatim %}
       </tbody>
     </table>
-     </div>
+    </div>
+    <div><span style="font-size: smaller; font-style: italic;">(*) {{ label_noun_chunks }}.</span></div>
     </template>
-    <div><span style="font-size: smaller; font-style: italic;">(*) {% trans "noun chunks are noun phrases without subordinates"|capfirst %}.</span></div>
+    {% endverbatim %}
   </div>
 </div>
 {% endblock %}
@@ -154,6 +155,7 @@ button.span_type.active {
           label: null,
           tokens: null, paragraphs: null,
           error: null,
+          wait: null,
           span_types: null, type_buttons: null,
           label_paragraph: "{% trans "paragraph"|capfirst %}",
           label_see: "{% trans "see"|capfirst %}",
@@ -163,6 +165,8 @@ button.span_type.active {
           label_language: '{% trans "language"|capfirst %}',
           label_span_selection: "{% trans "span types to highlight"|capfirst %}",
           label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
+          label_noun_chunks: "{% trans "noun chunks are noun phrases without subordinates"|capfirst %}",
+          label_wait: "{% trans "please wait"|capfirst %}",
         },
         el: '#app',
         methods: {
@@ -176,6 +180,7 @@ button.span_type.active {
         },
         mounted: function () {
           $this = this;
+          this.wait = true;
           if (! this['obj_id'])
             this['obj_id'] = 0;
             fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
@@ -187,6 +192,7 @@ button.span_type.active {
              for (var key in data) {
               this[key] = data[key];
              };
+             this.wait = false;
            })
           .catch(err => (this['error'] = err))
         },

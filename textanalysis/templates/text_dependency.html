@@ -74,7 +74,8 @@ var webFontURLs = [
     <div style="text-align:center; font-weight:bold;"><span style="color:cornflowerBlue;">Part-Of-Speech (POS) Tags</span>,
     <span style="color:purple;">Syntactic Dependencies</span> and <span style="color:tomato;">Named Entities</span></div>
 
-    <template v-if="error===null">
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
       <div id="embedding-live-example"></div>
 	</template>
     <template v-else>
@@ -232,10 +233,12 @@ var webFontURLs = [
         entities: null,
         analyzed_text: null,
         error: null,
+        wait: false,
         label_id: '{% trans "id"|capfirst %}',
         label_title: '{% trans "title"|capfirst %}',
         label_url: '{% trans "url"|capfirst %}',
         label_language: '{% trans "language"|capfirst %}',
+        label_wait: "{% trans "please wait"|capfirst %}",
 	},
     el: '#app',
     methods: {
@@ -246,6 +249,7 @@ var webFontURLs = [
 
     mounted: function () {
       $this = this;
+      // this.wait = true;
       if (! this['obj_id'])
         this['obj_id'] = 0;
       fetch('/textanalysis/dependency/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
@@ -260,6 +264,7 @@ var webFontURLs = [
         	else
         	  this[key] = data[key];
          };
+         this.wait = false;
          do_brat();
        })
       .catch(err => (this['error'] = err))
@@ -267,8 +272,10 @@ var webFontURLs = [
 
     updated: function () {
         this.$nextTick(initTooltips(document.querySelectorAll('.tooltip')));
-        if (this.text)
+        if (this.text) {
+            this.wait = false;
         	do_brat();
+        }
     }
   });
 </script>

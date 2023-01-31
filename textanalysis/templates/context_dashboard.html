@@ -62,6 +62,8 @@
   {% verbatim %}
   <div class="container-fluid">
     <div id="app" class='components-container'>
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
       <div>
         <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
         <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
@@ -78,7 +80,10 @@
           </div>
         </div>
       </div>
-      <div v-if="error">{{ error }}</div>
+    </template>
+    <template v-else>
+      <h4 style="color: red; text-align: center; margin: 10px;">{{ error }}</h4>
+    </template>
     </div>
   </div>
   {% endverbatim %}
@@ -105,17 +110,20 @@
       language: '{{ language }}',
       kwics: [],
       result: [],
-      error: '',
+      error: null,
+      wait: false,
       window: 2,
       label_id: '{% trans "id"|capfirst %}',
       label_title: '{% trans "title"|capfirst %}',
       label_url: '{% trans "url"|capfirst %}',
       label_language: '{% trans "language"|capfirst %}',
+      label_wait: "{% trans "please wait"|capfirst %}",
     },
     el: '#app',
     methods: {
     },
     mounted: function () {
+      this.wait = true;
       fetch('/context_dashboard/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
         method: 'GET',
         headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
@@ -125,6 +133,7 @@
          for (var key in data) {
       		this[key] = data[key];
       	 };
+         this.wait = false;
        })
       .catch(err => (this['error'] = err))
     },

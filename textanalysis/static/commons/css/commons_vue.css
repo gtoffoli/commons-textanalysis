@@ -255,3 +255,14 @@ display: inline;
 .navbar-fixed-top { /* commons */
   border-width: 0;
 }
+
+span.wait {
+  display: inline-block;
+  width: 30%;
+  text-align: center;
+  font-size: x-large;
+  font-weight: bolder;
+  color: red;
+  border: 4px solid grey;
+  border-radius: 5px;
+}
