@@ -45,7 +45,7 @@ th, td {
     <template v-if="error===null && !wait">
     <div>
       <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
-      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i> ({{ obj_id }})</span>
     </div>
     <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
     <div v-if="source"><label>{{ label_source }}</label>: {{ source }}</div>
@@ -64,11 +64,11 @@ th, td {
 		  <th style="width:5%">{{ label_concept }}</th>
 		  <th style="width:20%">{{ label_subject }}</th>
 		  <th style="width:5%">{{ label_language }}</th>
-		  <th style="width:10%">{{ label_type }}</th>
-		  <th style="width:5%">{{ label_reliability }}</th>
-		  <!-- <th style="width:10%">{{ label_priority }}</th> -->
+		  <th style="width:5%">{{ label_type }}</th>
+		  <th style="width:6%">{{ label_priority }}</th>
+		  <th style="width:4%">{{ label_reliability }}</th>
 		  <th style="width:25%">{{ label_term }}</th>
-		  <th style="width:25%">{{ label_description }}</th>
+		  <th style="width:25%">{{ label_definition }}</th>
       </thead>
       <tbody>
         <template v-for="(c, c_index) in concepts">
@@ -82,7 +82,8 @@ th, td {
 			<template v-else> <td></td> <td></td> <td></td> </template>
 		    <template v-if="t_index===0"><td>{{ l['lang'] }}</td></template>
 		    <template v-else> <td></td> </template>
-		    <td>{{ t['termNote']['termType'] }}</td>
+		    <td><template v-if="t['termNote'][0]">{{ t['termNote'][0]['termType'].replace('Form', '').replace('abbreviation', 'abbrev.') }}</template v-if="t['termNote'][0]"></td>
+		    <td><template v-if="t['termNote'][1]">{{ t['termNote'][1]['administrativeStatus'].replace('admittedTerm-admn-sts', 'admitted').replace('preferredTerm-admn-sts', 'preferred') }}</template v-if="t['termNote'][1]"></tdt['termNote'][0]>
 		    <td>{{ t['descrip']['reliabilityCode'] }}</td>
 		    <td>{{ t['term'] }}</td>
 		    <td></td>
@@ -136,7 +137,7 @@ th, td {
           label_reliability: '{% trans "rel." %}',
           label_priority: '{% trans "prior." %}',
           label_term: '{% trans "term" %}',
-          label_description: '{% trans "description" %}',
+          label_definition: '{% trans "definition" %}',
         },
         el: '#app',
         methods: {

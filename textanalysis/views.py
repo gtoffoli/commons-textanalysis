@@ -1261,10 +1261,13 @@ def tbx_subjects(concepts):
 @csrf_exempt
 def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
+    if obj_type:
+        var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
     var_dict['VUE'] = True
     if is_ajax(request):
         data = var_dict
         document = get_object_or_404(Document, id=obj_id)
+        data['title'] = document.label
         f = document.open()
         xml_str = f.read()
         tbx_dict = parse_tbx(xml_str)
