@@ -25,6 +25,9 @@ urlpatterns = [
     url(r"^annotations/(?P<file_key>[\w\d-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_annotation, name="text_annotation_3"),
     url(r"^annotations/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.text_annotation, name="text_annotation_2"),
 
+    url(r"^tbx_view/$", views.tbx_view, name="tbx_view"),
+    url(r"^tbx_view/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.tbx_view, name="tbx_view_2"),
+
     # url(r"^text_dashboard/(?P<file_key>[\w\.-]+)/$", views.text_dashboard, name="text_dashboard_1"),
     url(r"^text_dashboard/$", views.text_dashboard, name="text_dashboard_0"),
     url(r"^text_dashboard/(?P<file_key>[\w\d-]+)/$", views.text_dashboard, name="text_dashboard_1"),

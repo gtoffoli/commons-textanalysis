@@ -7,12 +7,13 @@ from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
 from django.http import HttpResponseForbidden, JsonResponse
-from django.shortcuts import render
+from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import capfirst
 from django.views.decorators.csrf import csrf_exempt
 
+from commons.models import Document
 from commons.user_spaces import project_contents, user_contents
 
 from textanalysis.forms import TextAnalysisInputForm
@@ -23,6 +24,7 @@ from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
+from textanalysis.utils import parse_tbx
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -1234,3 +1236,44 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         return render(request, 'text_nounchunks.html', var_dict)
     elif function == 'wordlists':
         return render(request, 'text_wordlists.html', var_dict)
+
+def tbx_languages(concepts):
+    languages = set()
+    for concept in concepts:
+        langSec = concept['langSec']
+        try:
+            lang = langSec.get('lang', None)
+            languages.add(lang)
+        except:
+            for item in langSec:
+                languages.add(item['lang'])
+    return sorted(list(languages))
+
+def tbx_subjects(concepts):
+    subjects = set()
+    for concept in concepts:
+        subjectField = concept['descrip']['subjectField']
+        items = subjectField.split(';')
+        for item in items:
+            subjects.add(item.strip())
+    return sorted(list(subjects))
+
+@csrf_exempt
+def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
+    var_dict['VUE'] = True
+    if is_ajax(request):
+        data = var_dict
+        document = get_object_or_404(Document, id=obj_id)
+        f = document.open()
+        xml_str = f.read()
+        tbx_dict = parse_tbx(xml_str)
+        tbx = tbx_dict['tbx']
+        concepts = tbx['text']['body']['conceptEntry']
+        data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']
+        data['concepts'] = concepts
+        data['languages'] = tbx_languages(concepts)
+        data['subjects'] = tbx_subjects(concepts)
+        return JsonResponse(data)
+    else:
+        return render(request, 'tbx_view.html', var_dict)

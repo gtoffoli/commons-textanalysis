@@ -1,5 +1,7 @@
 from six import BytesIO
+import os
 import re
+import json
 import pyphen
 import string
 from collections import defaultdict
@@ -8,6 +10,7 @@ import requests
 import tempfile
 import readability
 import textract
+import xmltodict
 from bs4 import BeautifulSoup
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -391,3 +394,69 @@ class LemmaPosDict():
                             n_self += 1
                             n_diff_1 +=1
         return {'n_self': n_self, 'n_union': n_union, 'n_diff_1': n_diff_1, 'n_diff_2': n_diff_2}
+
+
+def read_input_file(filepath: str) -> str:
+    """ read_input_file
+    Just read text from a file.
+    """
+
+    with open(filepath, 'r', encoding="utf8") as f:
+        xml_str = f.read()
+    return xml_str
+
+def parse_xml(xml_str: str) -> str:
+    """ parse_xml
+    Takes an xml string and returns the json equivalent.
+    """
+    return json.dumps(xmltodict.parse(xml_str))
+
+def parse_tbx(tbx_str: str) -> dict:
+    """ parse_xml
+    Takes an xml string and returns the equivalent Python dict slightly simpliflied.
+    """
+    json_str = parse_xml(tbx_str)
+
+    json_str = json_str.replace('@xml:lang', 'lang')
+    json_str = json_str.replace('"@type": "reliabilityCode", "#text":', '"reliabilityCode":')
+    json_str = json_str.replace('"@type": "termType", "#text":', '"termType":')
+    json_str = json_str.replace('"@type": "subjectField", "#text":', '"subjectField":')
+    json_str = json_str.replace('"@type": "administrativeStatus", "#text":', '"administrativeStatus":')
+
+    py_dict = json.loads(json_str)
+
+    concepts = py_dict['tbx']['text']['body']['conceptEntry']
+    for concept in concepts:
+        lang = type(concept['langSec']) is dict and concept['langSec'].get('lang', None) or None
+        if lang:
+            concept['langSec'] = [{'lang': lang, 'termSec': concept['langSec']['termSec']}]
+        for lang_item in concept['langSec']:
+            term = type(lang_item['termSec']) is dict and lang_item['termSec'].get('term', None) or None
+            if term:
+                lang_item['termSec'] = [{'term': term, 'termNote': lang_item['termSec']['termNote'], 'descrip': lang_item['termSec']['descrip']}]
+
+    return py_dict
+
+def write_output_file(json_filename: str, json_contents: str) -> None:
+    """ _write_output_file
+    Just writes text to a file.
+    """
+
+    with open(json_filename, 'w') as file_obj:
+        file_obj.write(json_contents)
+        file_obj.close()
+
+def tbxfile_to_json(path: str, filename: str) -> None:
+    """ tbxfile_to_json
+    Reads from file and parses an xml string in TBX format.
+    Converts to JSON the parsed object.
+    Removes some syntax derived from xml.
+    Writes the result string to a .json file in the same folder.
+    """
+
+    tbx_filename = os.path.join(path, filename+'.tbx')
+    json_filename = os.path.join(path, filename+'.json')
+    tbx_str = read_input_file(tbx_filename)
+    json_str = json.dumps(parse_tbx(tbx_str))
+    write_output_file(json_filename, json_str)
+    

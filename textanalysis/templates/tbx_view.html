@@ -1,0 +1,167 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "TBX Glossary" %}{% endblock %}
+
+{% block extra_style %}
+<link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+<link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
+<link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+<style>
+table, th, td {
+  border: 1px solid #ccc;
+}
+th, td {
+  padding: 4px;
+  text-align: center;
+}
+</style>
+{% endblock extra_style %}
+
+{% block extra_head %}
+    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
+    <script src="{% static "nlp/js/scripts.js" %}"></script>
+    <script src='https://unpkg.com/vue@2.2.6'></script>
+{% endblock extra_head %}
+
+{% block user %}{% endblock user %}
+
+{% block nav_vue %}
+  {% include "_header_bar.html" %}
+  <div class="navbar">
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "TBX Glossary" %}</h3>
+  </div>
+{% endblock nav_vue %}
+
+{% block body_class %}nlp-vue-body{% endblock %}
+
+{% block body_base %}
+<div class="container-fluid">
+  <div id="app" class='components-container'>
+  {% verbatim %}
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
+    <div>
+      <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
+      <span v-if="title || label">: <i>{{ title }}{{ label }}</i></span>
+    </div>
+    <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
+    <div v-if="source"><label>{{ label_source }}</label>: {{ source }}</div>
+    <div v-if="languages"><label>{{ label_languages }}</label>: 
+      <template v-for="(l, l_index) in languages">{{ l }}<template
+                v-if="l_index+1 < languages.length">, </template></template></div>
+    <div v-if="subjects"><label>{{ label_subjects }}</label>:
+      <template v-for="(s, s_index) in subjects">{{ s }}<template
+                v-if="s_index+1 < subjects.length">, </template></template></div>
+
+    <div style="text-align: center;">
+    <label>{{ label_concepts_terms }}</label>
+    <table style="margin: 0 auto; border-collapse: collapse; width: 100%; table-layout: fixed;">
+      <thead>
+		  <th style="width:5%">#</th>
+		  <th style="width:5%">{{ label_concept }}</th>
+		  <th style="width:20%">{{ label_subject }}</th>
+		  <th style="width:5%">{{ label_language }}</th>
+		  <th style="width:10%">{{ label_type }}</th>
+		  <th style="width:5%">{{ label_reliability }}</th>
+		  <!-- <th style="width:10%">{{ label_priority }}</th> -->
+		  <th style="width:25%">{{ label_term }}</th>
+		  <th style="width:25%">{{ label_description }}</th>
+      </thead>
+      <tbody>
+        <template v-for="(c, c_index) in concepts">
+        <template v-for="(l, l_index) in c['langSec']">
+        <tr v-for="(t, t_index) in l['termSec']">
+			<template v-if="l_index===0 && t_index===0">
+	          <td>{{ c_index+1 }}</td>
+	          <td>{{ c['@id'] }}</td>
+	          <td><span v-for="(s, s_index) in c['descrip']['subjectField'].split(';')">{{ s }}<span v-if="s_index+1 < c['descrip']['subjectField'].split(';').length">, </span> </td>
+	        </template>
+			<template v-else> <td></td> <td></td> <td></td> </template>
+		    <template v-if="t_index===0"><td>{{ l['lang'] }}</td></template>
+		    <template v-else> <td></td> </template>
+		    <td>{{ t['termNote']['termType'] }}</td>
+		    <td>{{ t['descrip']['reliabilityCode'] }}</td>
+		    <td>{{ t['term'] }}</td>
+		    <td></td>
+        </tr>
+        </template>
+        </template>
+      </tbody>
+    </table>
+    </div>
+    </template>
+    {% endverbatim %}
+  </div>
+</div>
+{% endblock %}
+
+{% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
+  <script>
+      var app = new Vue({
+        name: 'test',
+        data: {
+          file_key: null,
+          obj_type: '{{ obj_type }}',
+          obj_id: '{{ obj_id }}',
+          obj_type_label: '{{ obj_type_label }}',
+          title: '{{ title }}',
+          url: '{{ url }}',
+          languages: [],
+          label: null,
+          error: null,
+          wait: null,
+          source: '',
+          concepts: [],
+          subjects: [],
+          
+          label_see: '{% trans "see"|capfirst %}',
+          label_id: '{% trans "id" %}',
+          label_title: '{% trans "title"|capfirst %}',
+          label_url: '{% trans "url"|capfirst %}',
+          label_languages: '{% trans "languages"|capfirst %}',
+          label_wait: '{% trans "please wait"|capfirst %}',
+          label_source: '{% trans "terminology source"|capfirst %}',
+          label_source_collections: '{% trans "source collections"|capfirst %}',
+          label_subjects: '{% trans "subjects"|capfirst %}',
+          label_concept: '{% trans "concept" %}',
+          label_concepts_terms: '{% trans "concepts and terms"|capfirst %}',
+          label_language: '{% trans "lang." %}',
+          label_subject: '{% trans "subjects" %}',
+          label_type: '{% trans "type" %}',
+          label_reliability: '{% trans "rel." %}',
+          label_priority: '{% trans "prior." %}',
+          label_term: '{% trans "term" %}',
+          label_description: '{% trans "description" %}',
+        },
+        el: '#app',
+        methods: {
+          resize() {
+            console.log('resize')
+          },
+        },
+        mounted: function () {
+          $this = this;
+          this.wait = true;
+          if (! this['obj_id'])
+            this['obj_id'] = 0;
+            fetch('/textanalysis/tbx_view/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+            method: 'GET',
+            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+          })
+          .then(response => response.json())
+          .then(data => {
+             for (var key in data) {
+              this[key] = data[key];
+             };
+             this.wait = false;
+           })
+          .catch(err => (this['error'] = err))
+        },
+      });
+ </script>
+{% endblock script_base %}

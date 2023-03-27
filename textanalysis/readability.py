@@ -92,7 +92,6 @@ def cs_readability_01(language_code, mean_sentence_length, mean_syllables_per_wo
         lexical_sparseness ,
         lexical_commonness
     )
-    print('cs_readability_01', components)
     index_value = 0
     for i, c in enumerate(components):
         if i == 0:
