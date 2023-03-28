@@ -105,7 +105,8 @@ def get_document_text(document, return_has_text=False):
     has_text = False
     text = ''
     version = document.latest_version
-    mimetype = version.mimetype
+    # mimetype = version.mimetype
+    mimetype = version.mimetype or document.file_mimetype
     encoding = 'utf8'
     if mimetype.count('text'): # if mimetype.endswith('text'):
         has_text = True
