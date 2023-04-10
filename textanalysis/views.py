@@ -6,14 +6,15 @@ import hashlib
 from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
-from django.http import HttpResponseForbidden, JsonResponse
+from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import capfirst
 from django.views.decorators.csrf import csrf_exempt
 
-from commons.models import Document
+from commons.models import Document, OER
+from commons.models import is_site_member, PUBLISHED,RESTRICTED
 from commons.user_spaces import project_contents, user_contents
 
 from textanalysis.forms import TextAnalysisInputForm
@@ -1280,3 +1281,18 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         return JsonResponse(data)
     else:
         return render(request, 'tbx_view.html', var_dict)
+
+def glossary_autocomplete(request):
+    MIN_CHARS = 2
+    q = request.GET.get('q', None)
+    create_option = []
+    results = []
+    if request.user.is_authenticated:
+        if q and len(q) >= MIN_CHARS:
+            view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
+            print('glossary_autocomplete', q, view_states)
+            qs = OER.objects.filter(state__in=view_states, title__icontains=q, documents__label__icontains='.tbx').order_by('title')
+            qs = qs.filter_by_site(OER)
+            results = [{'id': oer.id, 'text': oer.title[:80]} for oer in qs] + create_option
+    body = json.dumps({ 'results': results, 'more': False, })
+    return HttpResponse(body, content_type='application/json')

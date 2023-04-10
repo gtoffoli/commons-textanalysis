@@ -4,6 +4,10 @@
 
 {% block head_title %}{% trans "enter input for text analyzer"|capfirst %}{% endblock %}
 
+{% block extra_style %}
+{% include "_select2_css.html" %}
+{% endblock %}
+
 {% block body_class %}text_analysis_input{% endblock %}
 
 {% block body %}
@@ -17,8 +21,11 @@
 {% else %}
   <div><label>{% trans "language app version" %}</label> {{ app_version }}</div>
   <div><label>{% trans "spaCy version" %}</label> {{ spacy_version }}</div>
-  <div><label>{% trans "spaCy language models"|capfirst %}</label> {{ spacy_models }}</div>
-
+<!--
+  <div><label>{% trans "spaCy language models"|capfirst %}</label>
+  	<i>{% for model in spacy_models %}{{ model }}{% if not forloop.last %}, {% endif %}{% endfor %}</i>
+  </div>
+-->
     <form method="post" action="" target="_blank" id="text_analysis_input_form">{% csrf_token %}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
     <fieldset class="padding1020">
@@ -26,11 +33,12 @@
           <div class="form-group">
             <label for="{{ field.name }}">{{ field.label|capfirst}}</label>
             {{ field }}
+            {% if field.help_text %}<small id="{{ field.name }}helpBlock" class="help-block">{{ field.help_text }}</small>{% endif %}
           </div>
         {% endwith %}{% endfor %}
       </fieldset>
       <div class="panel-footer-c4 padding1020">
-        <button type="submit" name="submit" id="submit" value="submit" class="btn btn-default">{% trans "submit text"|capfirst %}</button>&nbsp;
+        <button type="submit" name="submit" id="submit" value="submit" class="btn btn-default">{% trans "execute"|capfirst %}</button>&nbsp;
       </div>
   </form>
   </div>
@@ -38,3 +46,8 @@
 </div>
 
 {% endblock %}
+<!--
+{% block extra_script %}
+	{% include "_select2_js.html" %}
+{% endblock %}
+-->

@@ -27,6 +27,7 @@ urlpatterns = [
 
     url(r"^tbx_view/$", views.tbx_view, name="tbx_view"),
     url(r"^tbx_view/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.tbx_view, name="tbx_view_2"),
+    url('glossary-autocomplete/$', views.glossary_autocomplete, name='glossary-autocomplete',),
 
     # url(r"^text_dashboard/(?P<file_key>[\w\.-]+)/$", views.text_dashboard, name="text_dashboard_1"),
     url(r"^text_dashboard/$", views.text_dashboard, name="text_dashboard_0"),

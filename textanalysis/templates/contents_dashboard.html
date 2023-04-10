@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/dialog/vuejs-dialog.min.css" %}">
+<link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
 <style>
 hr {
   margin:0;
@@ -233,6 +234,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
     <script src="{% static "vue_apps/vddl/vddl.js" %}"></script>
     <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog.min.js" %}"></script>
     <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog-mixin.min.js" %}"></script> 
+    <script src="https://unpkg.com/vue-multiselect@2.1.6"></script>
 {% endblock extra_head %}
 
 {% block body_class %}contents_dashboard{% endblock %}
@@ -247,10 +249,10 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 <div class="panel-head">
 {% if project_name %}
     <h3 class="pull-left marginT5 marginB5 demiBold">{% trans "contents dashboard"|capfirst %}</h3>
-    <h5 class="pull-right marginT5 marginB0"><span class="demiBold"><a href="/project/{{ project_slug }}/" title="{% trans "show project" %}"><i class="fa fa-group font07em c-{% if proj_type_name in 'roll,ment' %}white{% else %}demiblack{% endif %}" aria-hidden="true"></i></a> {{ project_name }} </span><span style="font-size:90%">{% trans "and its sub-projects" %}</span></h5>
+    <h4 class="pull-right marginT5 marginB0"><span class="demiBold"><a href="/project/{{ project_slug }}/" title="{% trans "show project" %}"><i class="fa fa-group font07em c-{% if proj_type_name in 'roll,ment' %}white{% else %}demiblack{% endif %}" aria-hidden="true"></i></a> {{ project_name }} </span><span style="font-size:90%">{% trans "and its sub-projects" %}</span></h4>
 {% else %}
     <h3 class="pull-left marginT5 marginB5 demiBold">{% trans "contents dashboard"|capfirst %}</h3>
-    <h5 class="pull-right marginT10 marginB0 demiBold">{{ user.get_display_name }}</h5>
+    <h4 class="pull-right marginT10 marginB0 demiBold">{{ user.get_display_name }}</h4>
 {% endif %}
 <div style="clear:both"></div>
 </div>
@@ -259,9 +261,13 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
     <div id="app" class="marginB20">
         <div class="list-e">
           <div v-for="resource_list in resource_lists">
-            <div v-bind:class="resource_list.list_id"><a class="toggleIcon" href="#"><i class="fa fa-plus-square"></i></a> &nbsp;{{ resource_list.label }}</div>
+            <div :class="resource_list.list_id">
+				<a v-on:click.stop="toggle_content(resource_list);" href="#" :title="label_expand_collapse">
+				<i v-if="!resource_list.open" class="fa fa-plus-square"></i><i v-if="resource_list.open" class="fa fa-minus-square"></i></a>
+				{{ resource_list.label }}</div>
+            <template v-if="resource_list.open">
             <vddl-list :list=resource_list.items
-              class="box-scroll box-small" style="display: none;"
+              class="box-scroll box-small"
               :allowed-types=[resource_list.list_id]
               :inserted="handleInserted"
               :dragover="handleDragover"
@@ -278,7 +284,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                 :dragend="handleDragend"
                 :canceled="handleCanceled"
                 :moved="handleMoved"
-                v-bind:class="{'selected': resource_list.selected === r_item}"
+                :class="{'selected': resource_list.selected === r_item}"
                 >
                   <div><span style="cursor:grab">{{ r_item.label }}</span></div>
                   <div class="upperCase c-white">{{ r_item.obj_type }}</div>
@@ -286,46 +292,55 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                   <a v-on:click.stop="toggle_menu(r_item);"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
                   <ul v-if="r_item.active">
 
-                    <li><a v-bind:href="'/textanalysis/dependency/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/context/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/wordlists/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/annotations/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/nounchunks/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/readability/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/cohesion/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/summarization/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/dashboard/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
+                    <li><a :href="'/textanalysis/dependency/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
+                    <li><a :href="'/textanalysis/context/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
+                    <li><a :href="'/textanalysis/wordlists/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+                    <li><a :href="'/textanalysis/annotations/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
+                    <li><a :href="'/textanalysis/nounchunks/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
+                    <li><a :href="'/textanalysis/readability/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
+                    <li><a :href="'/textanalysis/cohesion/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
+                    <li><a :href="'/textanalysis/summarization/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
+                    <li><a :href="'/textanalysis/dashboard/'+r_item.obj_type+'/'+r_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
                   </ul>
                 </vddl-draggable>
             </vddl-list>
+            </template>
           </div>
         </div>
         <hr>
 
         <!--h4 class="text-center"><small>{{ label_corpora }}</small> {{ label_user }}</h4-->
         <div class="panel-head-corpora">
-            <h5 class="pull-left marginT5 marginB5 demiBold">{{ label_corpora }}</h5>
-            <h5 class="pull-right marginT5 marginB5 demiBold">{{ label_user }}</h5>
+            <h3 class="pull-left marginT5 marginB5 demiBold">{{ label_corpora }}</h3>
+            <h4 class="pull-right marginT5 marginB5 demiBold">{{ label_user }}</h4>
             <div style="clear:both"></div>
         </div>
 
         <div class="list-r">
           <div v-for="corpus in corpora" :key="corpus.file_key">
             <div class="panel-heading-corpus padding510">
-              <div><a href="javascript:void(0)" onclick="toggle_icon($(this));"><i class="fa fa-plus-square"></i></a> &nbsp;<span class="demiBold" v-if="corpus.items.length==0">{{ label_empty_corpus }}</span><span class="demiBold" v-else>{{ label_corpus }}</span> <span class="demiBold">{{ corpus.file_key }}</span></div>
+              <div><template v-if="!corpus.active">
+				   <a href="#" v-on:click.stop="toggle_content(corpus);" :title="label_expand_collapse">
+					   <i v-if="!corpus.open" class="fa fa-plus-square"></i><i v-if="corpus.open" class="fa fa-minus-square"></i></a>
+				   </template>
+              	   <span class="demiBold" v-if="corpus.items.length==0">{{ label_empty_corpus }}</span>
+              	   <span class="demiBold" v-else>{{ label_corpus }}</span>
+                   <span class="demiBold">{{ corpus.file_key }}</span>
+              </div>
               <div></div>
               <div></div>
               <div><a v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
-              <div><a v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
-              <div></div>
+              <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div></div>
               <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
               <ul v-if="corpus.active" style="font-size: 0.8em;">
-                <li><a v-bind:href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
-                <li><a v-bind:href="'/textanalysis/wordlists/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+                <li><a :href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
+                <li><a :href="'/textanalysis/wordlists/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
               </ul>
-            <div class="test" style="display: none;">
+            <template v-if="corpus.open">
+            <div class="test">
               <div class="subheading-corpus">
                 <div>title of corpus item</div>
                 <div>type</div>
@@ -357,11 +372,11 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                 :dragend="handleDragend"
                 :canceled="handleCanceled"
                 :moved="handleMoved"
-                v-bind:class="{'selected': corpus.selected === c_item}"
+                :class="{'selected': corpus.selected === c_item}"
                 >
                   <div><span style="cursor:default">{{ c_item.label }}</span></div>
                   <div class="upperCase">{{ c_item.obj_type }}</div>
-                  <div><template v-if="c_item.obj_type=='web'"><a v-bind:href="c_item.url" v-bind:title="c_item.url" target="_blank"><i class="fa fa-external-link font07em" aria-hidden="true"></i></a></template>
+                  <div><template v-if="c_item.obj_type=='web'"><a :href="c_item.url" :title="c_item.url" target="_blank"><i class="fa fa-external-link font07em" aria-hidden="true"></i></a></template>
                        <template v-else=>{{ c_item.obj_id }}</template></div>
                   <div class="upperCase">{{ c_item.language }}</div>
                   <div>{{ c_item.n_tokens }}</div>
@@ -370,19 +385,20 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                   <div class="text-center"><a href="#" v-on:click="removeItem(corpus.file_key, c_item.obj_type, c_item.obj_id);" :title="label_remove_item"><i class="fa fa-trash demibold"></i></a></div>
                   <br v-if="c_item.active">
                   <ul v-if="c_item.active" style="font-size: 0.8em;">
-                    <li><a v-bind:href="'/textanalysis/dependency/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/context/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/wordlists/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/annotations/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/nounchunks/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/readability/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/cohesion/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/summarization/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
-                    <li><a v-bind:href="'/textanalysis/dashboard/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
+                    <li><a :href="'/textanalysis/dependency/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_dependency }}</a></li>
+                    <li><a :href="'/textanalysis/context/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_context }}</a></li>
+                    <li><a :href="'/textanalysis/wordlists/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+                    <li><a :href="'/textanalysis/annotations/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_annotation }}</a></li>
+                    <li><a :href="'/textanalysis/nounchunks/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_nounchunks }}</a></li>
+                    <li><a :href="'/textanalysis/readability/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_readability }}</a></li>
+                    <li><a :href="'/textanalysis/cohesion/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_cohesion }}</a></li>
+                    <li><a :href="'/textanalysis/summarization/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_summarization }}</a></li>
+                    <li><a :href="'/textanalysis/dashboard/'+corpus.file_key+'/'+c_item.obj_type+'/'+c_item.obj_id+'/'" target="_blank" rel="noopener nofollow">{{ label_analysis }}</a></li>
                   </ul>
                </vddl-draggable>
               </vddl-list>
             </div>
+            </template>
           </div>
         </div>
         <hr>
@@ -401,413 +417,376 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 {% endblock footer_base %}
 
 {% block script_base %}
-    <script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
-    <script type="text/javascript">
-  	  function arrayRemove(arr, value) {    
-        return arr.filter(function(ele){ 
-            return ele != value; 
-        });
-  	  }
-  	</script>
-    
-    <script type="text/javascript">
-	function get_file_key(targets) {
-      for (let i = 0; i < targets.length; i++) {
-        target = targets[i];
-	    if (target.hasAttribute('corpus')) {
-	      file_key = target.attributes.corpus.value;
-          console.log('file_key:', file_key);
-	      return file_key;
-	    };
-	  };
-	  return null;
-	}
+<script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
 
-	// see: https://github.com/Godofbrowser/vuejs-dialog
-	// Tell Vue to install the VuejsDialog plugin.
-	window.Vue.use(VuejsDialog.main.default)
+<script type="text/javascript">
+// see: https://github.com/Godofbrowser/vuejs-dialog
+// Tell Vue to install the VuejsDialog plugin.
+window.Vue.use(VuejsDialog.main.default)
 
-    var app = new Vue({
-        name: 'contents_dashboard',
-        components: {
-          // see https://danielkelly.io/blog/renderless-vue-dialog/
-          // see https://medium.com/@jamesweee/using-vue-js-single-file-component-without-module-bundlers-aea58d892ad9
-          // 'dialog': window.httpVueLoader('/static/vue_apps/renderless-dialog/components/Dialogue.vue')
+var app = new Vue({
+    name: 'contents_dashboard',
+    components: {
+      // see https://danielkelly.io/blog/renderless-vue-dialog/
+      // see https://medium.com/@jamesweee/using-vue-js-single-file-component-without-module-bundlers-aea58d892ad9
+      // 'dialog': window.httpVueLoader('/static/vue_apps/renderless-dialog/components/Dialogue.vue')
+      // Vue.component('vue-simple-context-menu', VueSimpleContextMenu)
+    },
+    el: '#app',
+    data: {
+      project_id: {{project_id}},
+      is_authenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
+      resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
+      resource_list: {list_id: 'list', label: 'LIST', items: [], selected: null},
+      corpora: [],
+      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: null},
+      // item: {active: false},
+      // items: [],
+      // selected: null,
+      result: '',
+      compare: false,
+      all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
+      source_id: '',
+      msg_anonymous: '{% trans "it seems that you are not logged in."|capfirst %}',
+      label_user: '{{user.get_display_name}}',
+      label_corpora: '{% trans "corpora"|capfirst %}',
+      label_expand_collapse: '{% trans "expand / collapse" %}',
+      label_selected: '{% trans "selected resources"|capfirst %}',
+      label_corpus: '{% trans "corpus"|capfirst %}',
+      label_empty_corpus: '{% trans "empty corpus"|capfirst %}',
+      label_new_corpus: '{% trans "new corpus"|capfirst %}',
+      label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
+      label_add_item_from_web: '{% trans "add item to corpus from web resource"|capfirst %}',
+      label_add_item_from_web_prompt: '{% trans "insert the URL of a web resource, then click on"|capfirst %}',
+      label_remove_item: '{% trans "remove item"|capfirst %}',
+      label_show_hide_corpus_menu: '{% trans "show / hide corpus menu"|capfirst %}',
+      label_show_hide_item_menu: '{% trans "show / hide item menu"|capfirst %}',
+      label_manage_domains:  '{% trans "manage associated subject domains"|capfirst %}',
+      label_similarity: '{% trans "similarity"|capfirst %}',
+      label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
+      label_dependency: '{% trans "Dependency parse" %}',
+      label_context: '{% trans "Keywords In Context" %}',
+      label_wordlists: '{% trans "Word Lists by POS" %}',
+      label_annotation: '{% trans "Annotated text" %}',
+      label_nounchunks: '{% trans "Named Entities" %}',
+      label_readability: '{% trans "Text Readability" %}',
+      label_cohesion: '{% trans "Text Cohesion" %}',
+      label_summarization: '{% trans "Text Summarization" %}',
+      label_analysis: '{% trans "Text Analysis Dashboard" %}',
+      label_confirm_deletion: '{% trans "confirm deletion" %}',
+    },
+    computed: {
+      empty_corpus: {
+        get() {
+          for (i=0; i<this.corpora.length; i++)
+            if (this.corpora[i].items.length==0) return true;
+          return false;
         },
-        data: {
-          project_id: {{project_id}},
-          is_authenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
-          resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
-          resource_list: {list_id: 'list', label: 'LIST', items: [], selected: null},
-          corpora: [],
-          corpus: {list_id: 'corpus', label: 'Corpus', items: [], selected: null},
-          // file_key: null,
-          item: {active: false},
-          // r_item: {},
-          // c_item: {},
-          items: [],
-          // list: [],
-          selected: null,
-          // index: 0,
-          result: '',
-          compare: false,
-          all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
-          source_id: '',
-          msg_anonymous: '{% trans "it seems that you are not logged in."|capfirst %}',
-          label_user: '{{user.get_display_name}}',
-          // label_corpora: '{% trans "corpora of user"|capfirst %}',
-          label_corpora: '{% trans "corpora"|capfirst %}',
-          label_expand_collapse: '{% trans "expand / collapse" %}',
-          label_selected: '{% trans "selected resources"|capfirst %}',
-          label_corpus: '{% trans "corpus"|capfirst %}',
-          label_empty_corpus: '{% trans "empty corpus"|capfirst %}',
-          label_new_corpus: '{% trans "new corpus"|capfirst %}',
-          label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
-          label_add_item_from_web: '{% trans "add item to corpus from web resource"|capfirst %}',
-          label_add_item_from_web_prompt: '{% trans "insert the URL of a web resource, then click on"|capfirst %}',
-          label_remove_item: '{% trans "remove item"|capfirst %}',
-          label_show_hide_corpus_menu: '{% trans "show / hide corpus menu"|capfirst %}',
-          label_show_hide_item_menu: '{% trans "show / hide item menu"|capfirst %}',
-          label_similarity: '{% trans "similarity"|capfirst %}',
-          label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
-          label_dependency: '{% trans "Dependency parse" %}',
-          label_context: '{% trans "Keywords In Context" %}',
-          label_wordlists: '{% trans "Word Lists by POS" %}',
-          label_annotation: '{% trans "Annotated text" %}',
-          label_nounchunks: '{% trans "Named Entities" %}',
-          label_readability: '{% trans "Text Readability" %}',
-          label_cohesion: '{% trans "Text Cohesion" %}',
-          label_summarization: '{% trans "Text Summarization" %}',
-          label_analysis: '{% trans "Text Analysis Dashboard" %}',
-        },
-        el: '#app',
-        components: {
-          // Vue.component('vue-simple-context-menu', VueSimpleContextMenu)
-        },
-        computed: {
-          empty_corpus: {
-            get() {
-              for (i=0; i<this.corpora.length; i++)
-                if (this.corpora[i].items.length==0) return true;
-              return false;
-            },
-            set(value) {}
-          },
-        },
-        methods: {
-          toggle_menu: function(item) {
-            Vue.set(item, 'active', !item.active);
-            this.$forceUpdate();
-          },
-          findEmptyCorpus: function() {
-            var empty = false;
-            for (corpus in this.corpora)
-              if (!corpus.items)
-                return corpus;
-            return null;
-          },
-          corpusAddResourceItem: function(file_key, url) {
-            data = {file_key: file_key, url: url};
-            fetch('/ajax_resource_to_item/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify(data)
-           	})
-            .then(response => response.json())
-            .then(data => {
-           	// add a few attributes to the item and possibly update the file_key with real language code
-              for (var i=0; i<this.corpora.length; i++) {
-                var corpus = this.corpora[i];
-                if (corpus.file_key == file_key) {
-                  if (data['error']) {
-                    this['result'] = data['error'];
-                    this.corpora[i].items.pop();
-                    this.$forceUpdate();
-                    return;
-                  }
-                  this.corpora[i].file_key = data['file_key'];
-                  for (var j=0; j<corpus.items.length; j++) {
-                    var item = corpus.items[j];
-                    if (item.obj_type==obj_type && item.obj_id==obj_id) {
-                      this.corpora[i].items[j].language = data['language'];
-                      this.corpora[i].items[j].n_tokens = data['n_tokens'];
-                      this.corpora[i].items[j].n_words = data['n_words'];
-                      this.$forceUpdate();
-                    }
-                  }
+        set(value) {}
+      },
+    },
+    methods: {
+		get_file_key: function(targets) {
+	      for (let i = 0; i < targets.length; i++) {
+	        target = targets[i];
+		    if (target.hasAttribute('corpus')) {
+		      file_key = target.attributes.corpus.value;
+	          console.log('file_key:', file_key);
+		      return file_key;
+		    };
+		  };
+		  return null;
+		},
+      toggle_menu: function(item) {
+        Vue.set(item, 'active', !item.active);
+        this.$forceUpdate();
+      },
+      toggle_content: function(item) {
+        Vue.set(item, 'open', !item.open);
+        this.$forceUpdate();
+      },
+      toggle_filter: function(item) {
+        Vue.set(item, 'filter', !item.filter);
+        this.$forceUpdate();
+      },
+      findEmptyCorpus: function() {
+        var empty = false;
+        for (corpus in this.corpora)
+          if (!corpus.items)
+            return corpus;
+        return null;
+      },
+      corpusAddResourceItem: function(file_key, url) {
+        data = {file_key: file_key, url: url};
+        fetch('/ajax_resource_to_item/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(data)
+       	})
+        .then(response => response.json())
+        .then(data => {
+       	// add a few attributes to the item and possibly update the file_key with real language code
+          for (var i=0; i<this.corpora.length; i++) {
+            var corpus = this.corpora[i];
+            if (corpus.file_key == file_key) {
+              if (data['error']) {
+                this['result'] = data['error'];
+                this.corpora[i].items.pop();
+                this.$forceUpdate();
+                return;
+              }
+              this.corpora[i].file_key = data['file_key'];
+              for (var j=0; j<corpus.items.length; j++) {
+                var item = corpus.items[j];
+                if (item.obj_type==obj_type && item.obj_id==obj_id) {
+                  this.corpora[i].items[j].language = data['language'];
+                  this.corpora[i].items[j].n_tokens = data['n_tokens'];
+                  this.corpora[i].items[j].n_words = data['n_words'];
+                  this.$forceUpdate();
                 }
               }
-            })
-            .catch(err => (this['result'] = err))
-           },
-           selectedEvent: function(item) {
-            console.log(':v-draggable: selected');
-            this.selected = item;
-            // var key = item.list_id;
-            // this.lists[key].selected = item;
-          },
-          handleDragstart(target) {
-            console.log(':v-draggable: dragstart');
-            console.log(target);
-          },
-          handleDragend(drop_effect, target) {
-            console.log(':v-draggable: dragend');
-            console.log(drop_effect, target);
-          },
-          handleCanceled() {
-            console.log(':v-draggable: canceled');
-          },
-          handleMoved(item) {
-            console.log(':v-draggable: moved');
-            console.log(item);
-            const { index, list } = item;
-            list.splice(index, 1);
-          },
-          handleDragover() {
-            console.log(':v-list: handleDragover');
-          },
-          // handleInserted() {
-          handleInserted(event, index, transferredObject) {          
-            console.log(':v-list: inserted');
-            console.log(event);
-            console.log(event['list']);
-            // update the index of all items in the target list
-            for (i=0; i<event['list'].length; i++) {
-              console.log(event['list'][i]['index']);
-              event['list'][i]['index'] = i
-              console.log(event['list'][i]['index']);
-            };
-          },
-          handleDrop(data) {
-            console.log('handleDrop');
-            // var target = data.event.path[0];
-            // https://stackoverflow.com/questions/39245488/event-path-is-undefined-running-in-firefox
-      	    // var file_key = target.attributes.corpus.value;
-            var targets = data.event.composedPath();
-            console.log('handleDrop', targets);
-            var file_key = get_file_key(targets);
-            const { index, list, item } = data;
-            console.log('handleDrop', file_key, item, index);
-            var obj_type = item.obj_type;
-            var obj_id = item.obj_id;
-            // change the id
-            item['id'] = new Date().getTime();
-            list.splice(index, 0, item);
-            // if the list is of type corpus, update the corpus in the server and refresh the local view
-            if (file_key !== undefined) {
-              data = {file_key: file_key, item: item, index: index};
-              fetch('/ajax_insert_item/', {
-                method: 'POST',
-                headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-                body: JSON.stringify(data)
-             	})
-              .then(response => response.json())
-              .then(data => {
-             	// add a few attributes to the item and possibly update the file_key with real language code
-                for (var i=0; i<this.corpora.length; i++) {
-                  var corpus = this.corpora[i];
-                  if (corpus.file_key == file_key) {
-                    if (data['error']) {
-                      this['result'] = data['error'];
-                      this.corpora[i].items.pop();
-                      this.$forceUpdate();
-                      return;
-                    }
-                    this.corpora[i].file_key = data['file_key'];
-                    for (var j=0; j<corpus.items.length; j++) {
-                      var item = corpus.items[j];
-                      if (item.obj_type==obj_type && item.obj_id==obj_id) {
-                        this.corpora[i].items[j].language = data['language'];
-                        this.corpora[i].items[j].n_tokens = data['n_tokens'];
-                        this.corpora[i].items[j].n_words = data['n_words'];
-                        this.$forceUpdate();
-                      }
-                    }
-                  }
-             	}
-              })
-              .catch(err => (this['result'] = err))
             }
-          },
-          newSelected() {
-            console.log('newSelected');
-            fetch('/ajax_new_corpus/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify({})
-           	})
-            .then(response => response.json())
-            .then(data => {
-                this['file_key'] = data['file_key'];
-                this['corpora'].push({list_id: 'corpus', file_key: this['file_key'], items: [], selected: true});
-            	}
-             )
-            .catch(err => (this['result'] = err))
-          },
-          preprocessSelected() {
-            console.log('preprocessSelected');
-            fetch('/ajax_make_corpus/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify(app.corpus)
-           	})
-            .then(response => response.json())
-            .then(data => {
-                this['corpus']['items'] = data['result'];
-                this['file_key'] = data['file_key'];
-                this['corpora'].push(this['file_key']);
-            	}
-              )
-            .catch(err => (this['result'] = err))
-          },
-          deleteCorpus(file_key) {
-            console.log('deleteCorpus');
-            data = {file_key: file_key};
-            fetch('/ajax_delete_corpus/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify(data)
-           	})
-            .then(response => response.json())
-            .then(data => {
-           	  // remove from corpora list the corpus with the associated file_key
-              if (data['file_key']==file_key)
-                for (var i=0; i<this.corpora.length; i++)
-                  if (this.corpora[i].file_key==file_key)
-                    this.corpora.splice(i,1);
-            })
-            .catch(err => (this['result'] = err))
-          },
-          removeItem(file_key, obj_type, obj_id) {
-            console.log('removeItem');
-            data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
-            fetch('/ajax_remove_item/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify(data)
-           	})
-            .then(response => response.json())
-            .then(data => {
-              // identify the corpus
-              for (i=0; i<this['corpora'].length; i++)
-                if (this['corpora'][i].file_key == file_key)
-                  break;
-              // update the index of all items in the target corpus
-              for (j=0; j<this['corpora'][i].items.length; j++)
-                if (this['corpora'][i].items[j].obj_type == obj_type && this['corpora'][i].items[j].obj_id == obj_id) {
-                  this['corpora'][i].items.splice(j, 1);
-                  break;
-                }
-            })
-            .catch(err => (this['result'] = err))
-          },
-          contextSelected() {
-            console.log('contextSelected');
-            window.open("/context_dashboard/"+this['file_key']+"/", "_context");
-          },
-          compareSelected() {
-            console.log('compareSelected');
-            fetch('/ajax_compare_resources/', {
-              method: 'POST',
-              headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-              body: JSON.stringify(app.corpus)
-           	})
-            .then(response => response.json())
-            .then(data => (this['result'] = data['result']))
-            .catch(err => (this['result'] = err))
-          },
-          promptWebResourceUrl(corpus) {
-            this.$dialog
-            .prompt({
-              title: this.label_add_item_from_web,
-              body: "",
-            }, {
-              promptHelp: this.label_add_item_from_web_prompt + ' "[+:okText]"'
-            })
-            .then(dialog => {
-              // Triggered when proceed button is clicked: process the user response
-              url = dialog.data;
-              console.log(url);
-              this.corpusAddResourceItem(corpus.file_key, url);
-            })
-            .catch(() => {
-              // Triggered when dialog is dismissed by user
-              console.log('Prompt dismissed');
-            });
           }
-        },
-
-        mounted: function () {
-          this['corpus']['items'] = [];
-          data = {project_id: this.project_id};
-          fetch('/ajax_contents/', {
+        })
+        .catch(err => (this['result'] = err))
+       },
+       selectedEvent: function(item) {
+        console.log(':v-draggable: selected');
+        this.selected = item;
+        // var key = item.list_id;
+        // this.lists[key].selected = item;
+      },
+      handleDragstart(target) {
+        console.log(':v-draggable: dragstart');
+        console.log(target);
+      },
+      handleDragend(drop_effect, target) {
+        console.log(':v-draggable: dragend');
+        console.log(drop_effect, target);
+      },
+      handleCanceled() {
+        console.log(':v-draggable: canceled');
+      },
+      handleMoved(item) {
+        console.log(':v-draggable: moved');
+        console.log(item);
+        const { index, list } = item;
+        list.splice(index, 1);
+      },
+      handleDragover() {
+        console.log(':v-list: handleDragover');
+      },
+      // handleInserted() {
+      handleInserted(event, index, transferredObject) {          
+        console.log(':v-list: inserted');
+        console.log(event);
+        console.log(event['list']);
+        // update the index of all items in the target list
+        for (i=0; i<event['list'].length; i++) {
+          console.log(event['list'][i]['index']);
+          event['list'][i]['index'] = i
+          console.log(event['list'][i]['index']);
+        };
+      },
+      handleDrop(data) {
+        console.log('handleDrop');
+        // var target = data.event.path[0];
+        // https://stackoverflow.com/questions/39245488/event-path-is-undefined-running-in-firefox
+  	    // var file_key = target.attributes.corpus.value;
+        var targets = data.event.composedPath();
+        console.log('handleDrop', targets);
+        var file_key = this.get_file_key(targets);
+        const { index, list, item } = data;
+        console.log('handleDrop', file_key, item, index);
+        var obj_type = item.obj_type;
+        var obj_id = item.obj_id;
+        // change the id
+        item['id'] = new Date().getTime();
+        list.splice(index, 0, item);
+        // if the list is of type corpus, update the corpus in the server and refresh the local view
+        if (file_key !== undefined) {
+          data = {file_key: file_key, item: item, index: index};
+          fetch('/ajax_insert_item/', {
             method: 'POST',
-            // headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(data)
-          })
+         	})
           .then(response => response.json())
           .then(data => {
-            // set all properties from response data into app data
-            for (var key in data) {
-              if (key == 'corpora') {
-                this.corpora = data[key];
-                this.empty_corpus = this.findEmptyCorpus();
-              }
-              else {
-                var resource_list = this.resource_lists[key];
-                var items = data[key];
-                if (items.length == 0)
-                  delete this.resource_lists[key];
-                else {
-                  resource_list.items = items;
-                  for (index = 0; index<resource_list.items.length; index++) {
-                	resource_list.items[index].list_id = key;
-                	resource_list.items[index].selected = false;
-                	resource_list.items[index].index = index;
-                	resource_list.items[index].active = false;
+         	// add a few attributes to the item and possibly update the file_key with real language code
+            for (var i=0; i<this.corpora.length; i++) {
+              var corpus = this.corpora[i];
+              if (corpus.file_key == file_key) {
+                if (data['error']) {
+                  this['result'] = data['error'];
+                  this.corpora[i].items.pop();
+                  this.$forceUpdate();
+                  return;
+                }
+                this.corpora[i].file_key = data['file_key'];
+                for (var j=0; j<corpus.items.length; j++) {
+                  var item = corpus.items[j];
+                  if (item.obj_type==obj_type && item.obj_id==obj_id) {
+                    this.corpora[i].items[j].language = data['language'];
+                    this.corpora[i].items[j].n_tokens = data['n_tokens'];
+                    this.corpora[i].items[j].n_words = data['n_words'];
+                    this.$forceUpdate();
                   }
                 }
               }
-        	}
+         	}
           })
-          .catch(err => (console.log(err)))
-        },
-        updated: function () {
-        },
-      });
-
-      function toggle_icon(element){
-        $("body").css("cursor", "default");
-        var accordion = element.parent().parent();
-        var accordionContent = accordion.next('div');
-        var accordionToggleIcon = element;
-        accordion.toggleClass("open");
-        accordionContent.slideToggle(200);
-        if (accordion.hasClass("open")) {
-            accordionToggleIcon.children('i').attr("class","fa fa-minus-square");
-            accordionContent.attr("style", "display: block;")
-        } else {
-            accordionToggleIcon.children('i').attr("class","fa fa-plus-square");
+          .catch(err => (this['result'] = err))
         }
-        return false;
-      }
-
-      $(document).ready(function (){
-        $('div a.toggleIcon').on('click', function(event){
-          event.preventDefault();
-          $("body").css("cursor", "default");
-          var accordion = $(this).parent();
-          var accordionContent = accordion.next('div');
-          var accordionToggleIcon = $(this);
-          accordion.toggleClass("open");
-          accordionContent.slideToggle(200);
-          if (accordion.hasClass("open")) {
-            accordionToggleIcon.children('i').attr("class","fa fa-minus-square");
-            accordionContent.attr("style", "display: block;")
-          } else {
-            accordionToggleIcon.children('i').attr("class","fa fa-plus-square");
-          }
+      },
+      newSelected() {
+        console.log('newSelected');
+        fetch('/ajax_new_corpus/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify({})
+       	})
+        .then(response => response.json())
+        .then(data => {
+            this['file_key'] = data['file_key'];
+            this['corpora'].push({list_id: 'corpus', file_key: this['file_key'], items: [], selected: true});
+        	}
+         )
+        .catch(err => (this['result'] = err))
+      },
+      preprocessSelected() {
+        console.log('preprocessSelected');
+        fetch('/ajax_make_corpus/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(app.corpus)
+       	})
+        .then(response => response.json())
+        .then(data => {
+            this['corpus']['items'] = data['result'];
+            this['file_key'] = data['file_key'];
+            this['corpora'].push(this['file_key']);
+        	}
+          )
+        .catch(err => (this['result'] = err))
+      },
+      deleteCorpus(file_key) {
+        console.log('deleteCorpus');
+        if(confirm(this.label_confirm_deletion)) {
+          data = {file_key: file_key};
+          fetch('/ajax_delete_corpus/', {
+            method: 'POST',
+            headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+            body: JSON.stringify(data)
+       	  })
+          .then(response => response.json())
+          .then(data => {
+            // remove from corpora list the corpus with the associated file_key
+            if (data['file_key']==file_key)
+              for (var i=0; i<this.corpora.length; i++)
+                if (this.corpora[i].file_key==file_key)
+                  this.corpora.splice(i,1);
+          })
+          .catch(err => (this['result'] = err))
+        }
+      },
+      removeItem(file_key, obj_type, obj_id) {
+        console.log('removeItem');
+        data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
+        fetch('/ajax_remove_item/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(data)
+       	})
+        .then(response => response.json())
+        .then(data => {
+          // identify the corpus
+          for (i=0; i<this['corpora'].length; i++)
+            if (this['corpora'][i].file_key == file_key)
+              break;
+          // update the index of all items in the target corpus
+          for (j=0; j<this['corpora'][i].items.length; j++)
+            if (this['corpora'][i].items[j].obj_type == obj_type && this['corpora'][i].items[j].obj_id == obj_id) {
+              this['corpora'][i].items.splice(j, 1);
+              break;
+            }
+        })
+        .catch(err => (this['result'] = err))
+      },
+      contextSelected() {
+        console.log('contextSelected');
+        window.open("/context_dashboard/"+this['file_key']+"/", "_context");
+      },
+      compareSelected() {
+        console.log('compareSelected');
+        fetch('/ajax_compare_resources/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(app.corpus)
+       	})
+        .then(response => response.json())
+        .then(data => (this['result'] = data['result']))
+        .catch(err => (this['result'] = err))
+      },
+      promptWebResourceUrl(corpus) {
+        this.$dialog
+        .prompt({
+          title: this.label_add_item_from_web,
+          body: "",
+        }, {
+          promptHelp: this.label_add_item_from_web_prompt + ' "[+:okText]"'
+        })
+        .then(dialog => {
+          // Triggered when proceed button is clicked: process the user response
+          url = dialog.data;
+          console.log(url);
+          this.corpusAddResourceItem(corpus.file_key, url);
+        })
+        .catch(() => {
+          // Triggered when dialog is dismissed by user
+          console.log('Prompt dismissed');
         });
-      });
-	</script>
+      }
+    },
+
+    mounted: function () {
+      this['corpus']['items'] = [];
+      data = {project_id: this.project_id};
+      fetch('/ajax_contents/', {
+        method: 'POST',
+        // headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+        body: JSON.stringify(data)
+      })
+      .then(response => response.json())
+      .then(data => {
+        // set all properties from response data into app data
+        for (var key in data) {
+          if (key == 'corpora') {
+            this.corpora = data[key];
+            this.empty_corpus = this.findEmptyCorpus();
+          }
+          else {
+            var resource_list = this.resource_lists[key];
+            var items = data[key];
+            if (items.length == 0)
+              delete this.resource_lists[key];
+            else {
+              resource_list.items = items;
+              for (index = 0; index<resource_list.items.length; index++) {
+            	resource_list.items[index].list_id = key;
+            	resource_list.items[index].selected = false;
+            	resource_list.items[index].index = index;
+            	resource_list.items[index].active = false;
+            	resource_list.items[index].open = false;
+              }
+            }
+          }
+    	}
+      })
+      .catch(err => (console.log(err)))
+    },
+    updated: function () {
+    },
+});
+</script>
 {% endblock script_base %}
