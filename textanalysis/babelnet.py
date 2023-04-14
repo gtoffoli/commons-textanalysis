@@ -44,5 +44,9 @@ bn_domains = [
 ("WARFARE, VIOLENCE AND DEFENSE", _("Wars, battles, warfare, physical violence, personal and country defense, secret agencies")),
 ]
 
-def BN_slugify(label):
-    return label.replace(', ', '_').replace(' ', '_')
+def BN_slugify(name):
+    return name.replace(', ', '_').replace(' ', '_')
+
+def BN_format(domain):
+    # return {'name': BN_slugify(domain[0]), 'label': domain[0]}
+    return BN_slugify(domain[0])

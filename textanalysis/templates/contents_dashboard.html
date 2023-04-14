@@ -215,6 +215,30 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
   font-size:90%;
 }
 
+[class*="multiselect"], [class*="multiselect"]:before, [class*="multiselect"]:after {
+  font-size: x-small !important;
+  min-height: 20px;
+  line-height: 20px;
+  position: relative;
+  width: 30vw;
+  padding: 0 3px 0 3px;
+  vertical-align: middle;
+}
+.multiselect {
+  margin-top: 20px;
+}
+.multiselect__tags, .multiselect__select  {
+ display: none !important;
+}
+.multiselect__content-wrapper {
+ width: 33vw;
+ display: block !important;
+ padding: 3px !important;
+ border-radius: 3px;
+}
+[class*="multiselect"]:after {
+  font-style: italic;
+}
 </style>
 {% endblock extra_style %}
 
@@ -234,7 +258,6 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
     <script src="{% static "vue_apps/vddl/vddl.js" %}"></script>
     <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog.min.js" %}"></script>
     <script type="text/javascript" src="{% static "vue_apps/dialog/vuejs-dialog-mixin.min.js" %}"></script> 
-    <script src="https://unpkg.com/vue-multiselect@2.1.6"></script>
 {% endblock extra_head %}
 
 {% block body_class %}contents_dashboard{% endblock %}
@@ -247,14 +270,14 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 
 {% block body %}
 <div class="panel-head">
-{% if project_name %}
+  {% if project_name %}
     <h3 class="pull-left marginT5 marginB5 demiBold">{% trans "contents dashboard"|capfirst %}</h3>
     <h4 class="pull-right marginT5 marginB0"><span class="demiBold"><a href="/project/{{ project_slug }}/" title="{% trans "show project" %}"><i class="fa fa-group font07em c-{% if proj_type_name in 'roll,ment' %}white{% else %}demiblack{% endif %}" aria-hidden="true"></i></a> {{ project_name }} </span><span style="font-size:90%">{% trans "and its sub-projects" %}</span></h4>
-{% else %}
+  {% else %}
     <h3 class="pull-left marginT5 marginB5 demiBold">{% trans "contents dashboard"|capfirst %}</h3>
     <h4 class="pull-right marginT10 marginB0 demiBold">{{ user.get_display_name }}</h4>
-{% endif %}
-<div style="clear:both"></div>
+  {% endif %}
+  <div style="clear:both"></div>
 </div>
 
 {% verbatim %}
@@ -328,17 +351,24 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
                    <span class="demiBold">{{ corpus.file_key }}</span>
               </div>
               <div></div>
-              <div></div>
+              <div>
+				  <div v-if="corpus.filter">
+					  <vue-multiselect v-model="values" :options="all_domains" :multiple="true" :allowEmpty="true" :close-on-select="false" :clear-on-select="true" :preserve-search="false" placeholder="" :preselect-first="false" :searchable="false" :optionHeight="20">
+					    <template slot="selection" slot-scope="{ values, search, is_open }"><span class="multiselect__single" v-if="values.length" v-show="!isOpen">{{ values.length }} domains selected</span></template>
+					  </vue-multiselect>
+					  <pre v-if="showJson" class="language-json"><code>{{ values }}</code></pre>
+				  </div>
+			  </div>
+              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div><a v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
               <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
-              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div></div>
               <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
-              <ul v-if="corpus.active" style="font-size: 0.8em;">
-                <li><a :href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
-                <li><a :href="'/textanalysis/wordlists/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
-              </ul>
+            <ul v-if="corpus.active" style="font-size: 0.8em;">
+              <li><a :href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
+              <li><a :href="'/textanalysis/wordlists/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_wordlists }}</a></li>
+            </ul>
             <template v-if="corpus.open">
             <div class="test">
               <div class="subheading-corpus">
@@ -410,6 +440,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
         </div>
         <div id="result" class="box-result">{{ result }}</div>
     </div>
+
 {% endverbatim %}
 {% endblock body %}
 
@@ -418,11 +449,14 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 
 {% block script_base %}
 <script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
+<script src="https://unpkg.com/vue-multiselect@2.1.6"></script>
 
-<script type="text/javascript">
+<script type="module">
 // see: https://github.com/Godofbrowser/vuejs-dialog
 // Tell Vue to install the VuejsDialog plugin.
 window.Vue.use(VuejsDialog.main.default)
+// register globally
+Vue.component('vue-multiselect', window.VueMultiselect.default)
 
 var app = new Vue({
     name: 'contents_dashboard',
@@ -439,10 +473,7 @@ var app = new Vue({
       resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
       resource_list: {list_id: 'list', label: 'LIST', items: [], selected: null},
       corpora: [],
-      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: null},
-      // item: {active: false},
-      // items: [],
-      // selected: null,
+      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: false, filter: false, open: false},
       result: '',
       compare: false,
       all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
@@ -474,11 +505,20 @@ var app = new Vue({
       label_summarization: '{% trans "Text Summarization" %}',
       label_analysis: '{% trans "Text Analysis Dashboard" %}',
       label_confirm_deletion: '{% trans "confirm deletion" %}',
+      label_confirm_change:  '{% trans "confirm change" %}',
+      value: [],
+      values: [],
+      all_domains: [],
+      domains: [],
+      isOpen: true,
+      is_open: true,
+      search: false,
+      showJson: false,
     },
     computed: {
       empty_corpus: {
         get() {
-          for (i=0; i<this.corpora.length; i++)
+          for (let i=0; i<this.corpora.length; i++)
             if (this.corpora[i].items.length==0) return true;
           return false;
         },
@@ -506,18 +546,46 @@ var app = new Vue({
         this.$forceUpdate();
       },
       toggle_filter: function(item) {
-        Vue.set(item, 'filter', !item.filter);
+		let filter = !item.filter
+        if (filter) {
+          this.values = item.domains;
+        } else {
+		  if (! (JSON.stringify(item.domains) === JSON.stringify(this.values)))
+		    if (confirm(this.label_confirm_change)) {
+			  this.corpusUpdateDomains(item.file_key, this.values);
+              item.domains = this.values;
+              this.values = [];
+            }
+		}
+        Vue.set(item, 'filter', filter);
         this.$forceUpdate();
       },
       findEmptyCorpus: function() {
         var empty = false;
-        for (corpus in this.corpora)
+        for (let corpus in this.corpora)
           if (!corpus.items)
             return corpus;
         return null;
       },
+      corpusUpdateDomains: function(file_key, domains) {
+        let data = {file_key: file_key, domains: domains};
+        fetch('/ajax_update_domains/', {
+          method: 'POST',
+          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+          body: JSON.stringify(data)
+       	})
+        .then(response => response.json())
+        .then(data => {
+          if (data['error']) {
+            this['result'] = data['error'];
+            return;
+          }
+          return data['file_key'];
+        })
+        .catch(err => (this['result'] = err))
+       },
       corpusAddResourceItem: function(file_key, url) {
-        data = {file_key: file_key, url: url};
+        let data = {file_key: file_key, url: url};
         fetch('/ajax_resource_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -526,7 +594,7 @@ var app = new Vue({
         .then(response => response.json())
         .then(data => {
        	// add a few attributes to the item and possibly update the file_key with real language code
-          for (var i=0; i<this.corpora.length; i++) {
+          for (let i=0; i<this.corpora.length; i++) {
             var corpus = this.corpora[i];
             if (corpus.file_key == file_key) {
               if (data['error']) {
@@ -536,7 +604,7 @@ var app = new Vue({
                 return;
               }
               this.corpora[i].file_key = data['file_key'];
-              for (var j=0; j<corpus.items.length; j++) {
+              for (let j=0; j<corpus.items.length; j++) {
                 var item = corpus.items[j];
                 if (item.obj_type==obj_type && item.obj_id==obj_id) {
                   this.corpora[i].items[j].language = data['language'];
@@ -582,7 +650,7 @@ var app = new Vue({
         console.log(event);
         console.log(event['list']);
         // update the index of all items in the target list
-        for (i=0; i<event['list'].length; i++) {
+        for (let i=0; i<event['list'].length; i++) {
           console.log(event['list'][i]['index']);
           event['list'][i]['index'] = i
           console.log(event['list'][i]['index']);
@@ -605,7 +673,7 @@ var app = new Vue({
         list.splice(index, 0, item);
         // if the list is of type corpus, update the corpus in the server and refresh the local view
         if (file_key !== undefined) {
-          data = {file_key: file_key, item: item, index: index};
+          let data = {file_key: file_key, item: item, index: index};
           fetch('/ajax_insert_item/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -614,7 +682,7 @@ var app = new Vue({
           .then(response => response.json())
           .then(data => {
          	// add a few attributes to the item and possibly update the file_key with real language code
-            for (var i=0; i<this.corpora.length; i++) {
+            for (let i=0; i<this.corpora.length; i++) {
               var corpus = this.corpora[i];
               if (corpus.file_key == file_key) {
                 if (data['error']) {
@@ -624,7 +692,7 @@ var app = new Vue({
                   return;
                 }
                 this.corpora[i].file_key = data['file_key'];
-                for (var j=0; j<corpus.items.length; j++) {
+                for (let j=0; j<corpus.items.length; j++) {
                   var item = corpus.items[j];
                   if (item.obj_type==obj_type && item.obj_id==obj_id) {
                     this.corpora[i].items[j].language = data['language'];
@@ -673,7 +741,7 @@ var app = new Vue({
       deleteCorpus(file_key) {
         console.log('deleteCorpus');
         if(confirm(this.label_confirm_deletion)) {
-          data = {file_key: file_key};
+          let data = {file_key: file_key};
           fetch('/ajax_delete_corpus/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -683,7 +751,7 @@ var app = new Vue({
           .then(data => {
             // remove from corpora list the corpus with the associated file_key
             if (data['file_key']==file_key)
-              for (var i=0; i<this.corpora.length; i++)
+              for (let i=0; i<this.corpora.length; i++)
                 if (this.corpora[i].file_key==file_key)
                   this.corpora.splice(i,1);
           })
@@ -692,7 +760,7 @@ var app = new Vue({
       },
       removeItem(file_key, obj_type, obj_id) {
         console.log('removeItem');
-        data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
+        let data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
         fetch('/ajax_remove_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -701,11 +769,11 @@ var app = new Vue({
         .then(response => response.json())
         .then(data => {
           // identify the corpus
-          for (i=0; i<this['corpora'].length; i++)
+          for (let i=0; i<this['corpora'].length; i++)
             if (this['corpora'][i].file_key == file_key)
               break;
           // update the index of all items in the target corpus
-          for (j=0; j<this['corpora'][i].items.length; j++)
+          for (let j=0; j<this['corpora'][i].items.length; j++)
             if (this['corpora'][i].items[j].obj_type == obj_type && this['corpora'][i].items[j].obj_id == obj_id) {
               this['corpora'][i].items.splice(j, 1);
               break;
@@ -751,7 +819,7 @@ var app = new Vue({
 
     mounted: function () {
       this['corpus']['items'] = [];
-      data = {project_id: this.project_id};
+      let data = {project_id: this.project_id};
       fetch('/ajax_contents/', {
         method: 'POST',
         // headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
@@ -760,19 +828,21 @@ var app = new Vue({
       .then(response => response.json())
       .then(data => {
         // set all properties from response data into app data
-        for (var key in data) {
+        for (let key in data) {
           if (key == 'corpora') {
             this.corpora = data[key];
             this.empty_corpus = this.findEmptyCorpus();
           }
+          else if (key == 'all_domains')
+            this.all_domains = data['all_domains'];
           else {
-            var resource_list = this.resource_lists[key];
-            var items = data[key];
+            let resource_list = this.resource_lists[key];
+            let items = data[key];
             if (items.length == 0)
               delete this.resource_lists[key];
             else {
-              resource_list.items = items;
-              for (index = 0; index<resource_list.items.length; index++) {
+              resource_list['items'] = items;
+              for (let index = 0; index<resource_list.items.length; index++) {
             	resource_list.items[index].list_id = key;
             	resource_list.items[index].selected = false;
             	resource_list.items[index].index = index;

@@ -20,6 +20,7 @@ from commons.user_spaces import project_contents, user_contents
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
 from textanalysis.readability import compute_lexical_rarity, cs_readability_01
+from textanalysis.babelnet import bn_domains, BN_slugify, BN_format
 from textanalysis.utils import get_web_resource_text, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
@@ -750,11 +751,16 @@ def ajax_contents(request):
         return propagate_remote_server_error(response)
     data = response.json()
     corpora = data['corpora']
+    for corpus in corpora:
+        # corpus['domains'] = []
+        corpus['open'] = False
+        corpus['filter'] = False
     if project_id:
         data = project_contents(project_id)
     else: # if user.is_authenticated:
         data = user_contents(user)
     data['corpora'] = corpora
+    data['all_domains'] = [BN_format(domain) for domain in bn_domains]
     return JsonResponse(data)
 
 @csrf_exempt
@@ -871,7 +877,6 @@ def ajax_make_corpus(request):
 """
 called from contents_dashboard template
 to list corpora associated to a user or a project
-"""
 @csrf_exempt
 def ajax_get_corpora(request):
     data = json.loads(request.body.decode('utf-8'))
@@ -884,6 +889,25 @@ def ajax_get_corpora(request):
     if response.status_code==200:
         corpora = response.json()
         return JsonResponse(corpora)
+    else:
+        return propagate_remote_server_error(response)
+"""
+
+"""
+called from contents_dashboard template
+to save the entire set of BN domains associated to a corpus
+"""
+@csrf_exempt
+def ajax_update_domains(request):
+    endpoint = nlp_url + '/api/update_domains/'
+    data = json.loads(request.body.decode('utf-8'))
+    file_key = data['file_key']
+    domains = data['domains']
+    data = json.dumps({'file_key': file_key, 'domains': domains})
+    response = requests.post(endpoint, data=data)
+    if response.status_code==200:
+        result = response.json()
+        return JsonResponse(result)
     else:
         return propagate_remote_server_error(response)
 
