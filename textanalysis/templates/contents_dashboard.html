@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/dialog/vuejs-dialog.min.css" %}">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.css">
 <link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
 <style>
 hr {
@@ -136,7 +137,7 @@ div.panel-head-corpora {
 }
 .list-r > div .panel-heading-corpus {
   display: grid;
-  grid-template-columns: auto 5% 5% 5% 10% 10% 5% 5% 3%;
+  grid-template-columns: auto 10% 10% 5% 5% 5% 5% 5% 5% 3%;
   color: #fff;
   background: #B2B2B2;
 }
@@ -150,14 +151,14 @@ div.panel-head-corpora {
 .list-r > div .subheading-corpus {
   padding:3px 10px; 
   display: grid;
-  grid-template-columns: auto 5% 5% 5% 10% 10% 5% 5% 3%;
+  grid-template-columns: auto 10% 10% 5% 5% 5% 5% 5% 5% 3%;
   background: #f9f9f9;
   font-size: 90%; 
 }
 .list-r > div .vddl-draggable {
   padding:3px 10px;
   display: grid;
-  grid-template-columns: auto 5% 5% 5% 10% 10% 5% 5% 3%;
+  grid-template-columns: auto 10% 10% 5% 5% 5% 5% 5% 5% 3%;
   border-bottom: 1px dotted #B2B2B2;
   font-size:90%;
 }
@@ -350,7 +351,6 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
               	   <span class="demiBold" v-else>{{ label_corpus }}</span>
                    <span class="demiBold">{{ corpus.file_key }}</span>
               </div>
-              <div></div>
               <div>
 				  <div v-if="corpus.filter">
 					  <vue-multiselect v-model="values" :options="all_domains" :multiple="true" :allowEmpty="true" :close-on-select="false" :clear-on-select="true" :preserve-search="false" placeholder="" :preselect-first="false" :searchable="false" :optionHeight="20">
@@ -359,9 +359,12 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 					  <pre v-if="showJson" class="language-json"><code>{{ values }}</code></pre>
 				  </div>
 			  </div>
-              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div><a v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
+              <div></div>
               <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!corpus.active" v-on:click.stop="promptTextInput(corpus);" :title="label_add_item_from_text"><i class="fa fa-copy" style="cursor: pointer;"></i></a></div>
+              <div></div>
               <div></div>
               <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
@@ -433,7 +436,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
         </div>
         <hr>
         <div><template v-if="is_authenticated">
-              <button v-if="!empty_corpus" v-on:click="newSelected();" class="btn btn-outline-dark marginR10">{{ label_new_corpus }}</button>
+              <button v-on:click="newSelected();" class="btn btn-outline-dark marginR10">{{ label_new_corpus }}</button>
         	  <button v-if="compare" v-on:click="compareSelected();" class="btn btn-outline-dark">{{ label_similarity }}</button>
           </template>  
           <template v-else>{{ msg_anonymous }}</template>  
@@ -449,22 +452,20 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 
 {% block script_base %}
 <script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
+<script src="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.js"></script>
 <script src="https://unpkg.com/vue-multiselect@2.1.6"></script>
 
 <script type="module">
+// see: https://stackoverflow.com/questions/71144627/how-robust-is-online-sourcing-of-js-scripts-and-best-practices
 // see: https://github.com/Godofbrowser/vuejs-dialog
 // Tell Vue to install the VuejsDialog plugin.
 window.Vue.use(VuejsDialog.main.default)
-// register globally
+// Register globally
 Vue.component('vue-multiselect', window.VueMultiselect.default)
 
 var app = new Vue({
     name: 'contents_dashboard',
     components: {
-      // see https://danielkelly.io/blog/renderless-vue-dialog/
-      // see https://medium.com/@jamesweee/using-vue-js-single-file-component-without-module-bundlers-aea58d892ad9
-      // 'dialog': window.httpVueLoader('/static/vue_apps/renderless-dialog/components/Dialogue.vue')
-      // Vue.component('vue-simple-context-menu', VueSimpleContextMenu)
     },
     el: '#app',
     data: {
@@ -489,10 +490,12 @@ var app = new Vue({
       label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
       label_add_item_from_web: '{% trans "add item to corpus from web resource"|capfirst %}',
       label_add_item_from_web_prompt: '{% trans "insert the URL of a web resource, then click on"|capfirst %}',
+      label_add_item_from_text: '{% trans "add item to corpus from text box"|capfirst %}',
+      label_add_item_from_text_prompt: '{% trans "insert a text, then click on"|capfirst %}',
       label_remove_item: '{% trans "remove item"|capfirst %}',
       label_show_hide_corpus_menu: '{% trans "show / hide corpus menu"|capfirst %}',
       label_show_hide_item_menu: '{% trans "show / hide item menu"|capfirst %}',
-      label_manage_domains:  '{% trans "manage associated subject domains"|capfirst %}',
+      label_manage_domains:  '{% trans "manage associated BabelNet domains"|capfirst %}',
       label_similarity: '{% trans "similarity"|capfirst %}',
       label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
       label_dependency: '{% trans "Dependency parse" %}',
@@ -528,9 +531,9 @@ var app = new Vue({
     methods: {
 		get_file_key: function(targets) {
 	      for (let i = 0; i < targets.length; i++) {
-	        target = targets[i];
+	        let target = targets[i];
 		    if (target.hasAttribute('corpus')) {
-		      file_key = target.attributes.corpus.value;
+		      let file_key = target.attributes.corpus.value;
 	          console.log('file_key:', file_key);
 		      return file_key;
 		    };
@@ -583,9 +586,9 @@ var app = new Vue({
           return data['file_key'];
         })
         .catch(err => (this['result'] = err))
-       },
-      corpusAddResourceItem: function(file_key, url) {
-        let data = {file_key: file_key, url: url};
+      },
+      corpusAddResourceItem: function(file_key, url, text) {
+        let data = {file_key: file_key, url: url, text: text};
         fetch('/ajax_resource_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -617,7 +620,7 @@ var app = new Vue({
           }
         })
         .catch(err => (this['result'] = err))
-       },
+      },
        selectedEvent: function(item) {
         console.log(':v-draggable: selected');
         this.selected = item;
@@ -740,7 +743,7 @@ var app = new Vue({
       },
       deleteCorpus(file_key) {
         console.log('deleteCorpus');
-        if(confirm(this.label_confirm_deletion)) {
+        if (confirm(this.label_confirm_deletion)) {
           let data = {file_key: file_key};
           fetch('/ajax_delete_corpus/', {
             method: 'POST',
@@ -778,6 +781,7 @@ var app = new Vue({
               this['corpora'][i].items.splice(j, 1);
               break;
             }
+            this.$forceUpdate();
         })
         .catch(err => (this['result'] = err))
       },
@@ -806,15 +810,34 @@ var app = new Vue({
         })
         .then(dialog => {
           // Triggered when proceed button is clicked: process the user response
-          url = dialog.data;
+          let url = dialog.data;
           console.log(url);
-          this.corpusAddResourceItem(corpus.file_key, url);
+          this.corpusAddResourceItem(corpus.file_key, url, null);
         })
         .catch(() => {
           // Triggered when dialog is dismissed by user
           console.log('Prompt dismissed');
         });
-      }
+      },
+      promptTextInput(corpus) {
+        this.$dialog
+        .prompt({
+          title: this.label_add_item_from_text,
+          body: "",
+        }, {
+          promptHelp: this.label_add_item_from_text_prompt + ' "[+:okText]"'
+        })
+        .then(dialog => {
+          // Triggered when proceed button is clicked: process the user response
+          let text = dialog.data;
+          // console.log(text);
+          this.corpusAddResourceItem(corpus.file_key, null, text);
+        })
+        .catch(() => {
+          // Triggered when dialog is dismissed by user
+          console.log('Prompt dismissed');
+        });
+      },
     },
 
     mounted: function () {

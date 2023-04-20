@@ -25,6 +25,7 @@ DEFAULT_LABEL_COLORS = {
     "GPE": "#feca74",
     "LOC": "#ff9561",
     "PERSON": "#aa9cfc",
+    "PER": "#aa9cfc",
     "NORP": "#c887fb",
     "FAC": "#9cc9cc",
     "EVENT": "#ffeb80",
