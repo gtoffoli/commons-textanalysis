@@ -276,7 +276,8 @@ def define_span_types():
             span_type_buttons[entity_type] = {}
             span_type_buttons[entity_type]['label'] = entity_dict[entity_type]['label']
             span_type_buttons[entity_type]['background'] = entity_color
-            span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS[entity_type]
+            # span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS[entity_type]
+            span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS.get(entity_type, DEFAULT_ENTITY_COLOR)
             if entity_type in default_entity_types:
                 span_type_buttons[entity_type]['selected'] = True
     span_type_buttons['n'] = {'selected': False} # null entity
