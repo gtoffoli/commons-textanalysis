@@ -1,4 +1,5 @@
 from django.conf.urls import url
+from django.views.generic import TemplateView
 
 from textanalysis import views
 
@@ -43,4 +44,6 @@ urlpatterns = [
     url(r"^(?P<function>[\w\.-]+)/(?P<file_key>[\w\.-]+)/$", views.ta, name="text_analysis_1"),
     url(r"^(?P<function>[\w\.-]+)/(?P<file_key>[\w\.-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.ta, name="text_analysis_3"),
     url(r"^(?P<function>[\w\.-]+)/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.ta, name="text_analysis_2"),
+
+    url(r"^test_vue$", TemplateView.as_view(template_name="test_vue.html"), name="test_vue"),
 ]

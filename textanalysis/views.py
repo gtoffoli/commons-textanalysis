@@ -262,9 +262,10 @@ for item in collData['entity_types']:
     entity_type = item['type'].upper()
     entity_dict[entity_type] = {'label': item['labels'][0], 'count': 0}
  
-default_entity_types = ['PERSON','ORG','GPE', 'LOC',]
+default_entity_types = [] # ['PERSON','ORG','GPE', 'LOC',]
 span_type_buttons = {
-    'nounchunk': {'selected': False, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
+    'nounchunk': {'selected': True, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
+    'babelnet': {'selected': False, 'label': capfirst(_("BabeNet annotations")), 'border': '', 'background': entity_color,},
 }
 
 def define_span_types():
@@ -281,7 +282,7 @@ def define_span_types():
             if entity_type in default_entity_types:
                 span_type_buttons[entity_type]['selected'] = True
     span_type_buttons['n'] = {'selected': False} # null entity
-    return ['nounchunk'] + entity_types
+    return ['nounchunk'] + entity_types + ['babelnet']
 
 def count_word_syllables(word, language_code):
     n_chars = len(word)
@@ -470,7 +471,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
         elif obj_type == 'web':
-            # title, body, response, err = get_web_resource_text(obj_id)
             title, body, response, err = get_web_resource_text(url)
             if not body:
                 if err:
@@ -499,7 +499,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
     doc = analyze_dict['doc']
-        
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]
     map_token_pos_to_level(language_code)
@@ -541,6 +540,27 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
 
     if nounchunks:
         noun_chunks = analyze_dict['noun_chunks']
+        """
+        # annotate tokens with babelnet synsets filtered by domain ?
+        if file_key:
+            endpoint = nlp_url + '/api/get_domains/'
+            data = json.dumps({'file_key': file_key})
+            response = requests.post(endpoint, data=data)
+            data = response.json()
+            domains = data['domains']
+            if domains:
+                for i, token in enumerate(tokens):
+                    synsets = token['babelnet']
+                    matching_by_domain = []
+                    for synset in synset:
+                        keep_synset = False
+                        for k,v in synset[-1]: # domains in BN synset
+                            if k in domains:
+                                matching_by_domain.append(synset)
+                                break
+                    if len(matching_by_domain) < len(synsets):
+                        token['babelnet'] = matching_by_domain
+        """                   
         # by default all tokens are outside entity spans and noun_chunk spans
         # for token in tokens:
         for i, token in enumerate(tokens):
@@ -806,14 +826,22 @@ def ajax_insert_item(request):
 def ajax_resource_to_item(request):
     data = json.loads(request.body.decode('utf-8'))
     file_key = data['file_key']
-    # obj_type = 'resource'
-    obj_type = 'web'
     url = data['url']
-    title, text, response, err = get_web_resource_text(url)
-    if err or not text:
-        return propagate_remote_server_error(response)
-    obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
-    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
+    text = data['text']
+    assert url or text
+    if url:
+        obj_type = 'web'
+        title, text, response, err = get_web_resource_text(url)
+        if err or not text:
+            return propagate_remote_server_error(response)
+        obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
+        no_domains = False
+    elif text:
+        obj_type = 'text'
+        title = 'untitled'
+        obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
+        no_domains = False
+    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'no_domains': no_domains})
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:

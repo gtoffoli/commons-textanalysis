@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "Named entities and Noun chunks" %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Named entities, Noun chunks and BabelNet synsets" %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
@@ -81,7 +81,7 @@ button.span_type.active {
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Named entities and Noun chunks" %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Named entities, Noun chunks and BabelNet synsets" %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -120,10 +120,9 @@ button.span_type.active {
           <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
           <td style="text-align: left;">
               <template v-for="token in tokens.slice(p['start'], p['end'])">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside">{{ token['text'] }} </span>
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"> }} </span>babelnet
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
-                             :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')">
-                  {{ token['text'] }}
+                             :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
                 </span>
               </template>
           </td>
@@ -131,7 +130,7 @@ button.span_type.active {
       </tbody>
     </table>
     </div>
-    <div><span style="font-size: smaller; font-style: italic;">(*) {{ label_noun_chunks }}.</span></div>
+    <div><span style="font-size: smaller; font-style: italic;">(*) {{ label_noun_chunks }}. {{ label_synsets }}.</span></div>
     </template>
     {% endverbatim %}
   </div>
@@ -166,7 +165,9 @@ button.span_type.active {
           label_span_selection: "{% trans "span types to highlight"|capfirst %}",
           label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
           label_noun_chunks: "{% trans "noun chunks are noun phrases without subordinates"|capfirst %}",
+          label_synsets: "{% trans "synsets are ako concepts with associated multilanguage lexicon"|capfirst %}",
           label_wait: "{% trans "please wait"|capfirst %}",
+          label_work_in_progress: "{% trans "links to BabelNet available soon"|capfirst %}",
         },
         el: '#app',
         methods: {
@@ -177,6 +178,14 @@ button.span_type.active {
             Vue.set(this.type_buttons[span_type], 'selected', !this.type_buttons[span_type].selected);
             this.$forceUpdate();
           },
+          babelnetView: function(token) {
+			let synsets = token['babelnet'];
+			if (synsets.length && this.type_buttons['babelnet'].selected) {
+			  // return "<a href=''>" + token['text'] + "</a>"
+			  return "<a href='javascript:window.alert(\"" + this.label_work_in_progress + "!\")'>" + token['text'] + "</a>"
+			} else
+			  return token['text'];
+		  }
         },
         mounted: function () {
           $this = this;
