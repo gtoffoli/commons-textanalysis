@@ -916,8 +916,10 @@ var app = new Vue({
       closeTextInput(corpus) {
 		corpus.show_modal = false;
 	  },
-	  truncateText(text) {
-		return text.substr(0, 12) + '...'
+	  truncateText(val) {
+		if (typeof val === 'string')
+		  return val.substr(0, 12) + '...';
+		else return val;
 	  },
     },
 
