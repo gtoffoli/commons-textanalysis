@@ -1,0 +1,87 @@
+{% load staticfiles %}
+<!DOCTYPE html>
+<HTML>
+
+<HEAD>
+	{% include "we_collab/_icons.html" %}
+	<link rel="stylesheet" href="{% static "vue-js-modal/components/Dialog.css" %}">
+	<link rel="stylesheet" href="{% static "vue-js-modal/components/Modal.css" %}"></link>
+	<link rel="stylesheet" href="{% static "vue-js-modal/components/Resizer.css" %}"></link>
+    <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
+    <script type="module" src="{% static "vue-js-modal/index.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/Plugin.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/PluginCore.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/components/Modal.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/components/ModalsContainer.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/components/Resizer.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/components/VNode.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/components/Dialog.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/index.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/errors.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/focusTrap.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/numbers.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/parser.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/resizeObserver.js" %}"></script>
+    <script type="module" src="{% static "vue-js-modal/utils/types.js" %}"></script>
+</HEAD>
+
+<BODY>
+
+{% verbatim %}
+
+<div id="app">
+	<modal v-bind="modal_props" ref="corpus_dialog" name="test">
+	    <div slot="top-right">
+	      <button @click="hideModal()" class="vue-dialog-button">
+	        ❌
+	      </button>
+	    </div>
+		{{ label }}
+	</modal>
+</div>
+
+{% endverbatim %}
+
+<script type="module">
+import VueJsModal from '/static/vue-js-modal/components/Modal.js';
+import VueJsDialog from '/static/vue-js-modal/components/Dialog.js';
+Vue.use(VueJsModal, { dialog: true })
+
+var app = new Vue({
+    name: 'contents_dashboard',
+    components: {
+		'modal': VueJsModal,
+		'mdialog': VueJsDialog,
+    },
+    el: '#app',
+    data: {
+		label: 'Buongiorno',
+		modal_props: { 
+			adaptive: true, // ?
+			resizable: true, // ok
+			draggable: true, // ok
+			scrollable: true,
+			clickToClose: false, // ok
+			focusTrap: true, // ?
+			width: 400,
+			height: 400,
+		},
+    },
+    methods: {
+        showModal () {
+            this.$refs['corpus_dialog'].open();
+        },
+        hideModal () {
+            this.$refs['corpus_dialog'].close();
+        },
+    },
+    mounted: function () {
+		this.showModal();
+    },
+    updated: function () {
+    },
+});
+</script>
+
+</BODY>
+</HTML>
