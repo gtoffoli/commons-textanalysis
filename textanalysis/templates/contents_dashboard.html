@@ -474,6 +474,8 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 <script type="module">
 // Tell Vue to install the VuejsDialog plugin.
 Vue.use(VuejsDialog.main.default)
+// Register globally
+Vue.component('vue-multiselect', VueMultiselect.default)
 import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 
 var app = new Vue({
