@@ -180,7 +180,7 @@ button.span_type.active {
           },
           babelnetView: function(token) {
 			let synsets = token['babelnet'];
-			if (synsets.length && this.type_buttons['babelnet'].selected) {
+			if (synsets && synsets.length && this.type_buttons['babelnet'].selected) {
 			  // return "<a href=''>" + token['text'] + "</a>"
 			  return "<a href='javascript:window.alert(\"" + this.label_work_in_progress + "!\")'>" + token['text'] + "</a>"
 			} else
