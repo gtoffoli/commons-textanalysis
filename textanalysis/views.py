@@ -27,6 +27,7 @@ from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
 from textanalysis.utils import parse_tbx
+from textanalysis.utils import load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -458,7 +459,7 @@ def text_dashboard_return(request, var_dict):
 
 @csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', obj=None, title='', body='',
-       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False):
+       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -466,7 +467,11 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return HttpResponseForbidden()
     description = ''
     if file_key:
-        data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
+        # data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
+        data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+        if nounchunks:
+            data['domains'] = domains
+        data = json.dumps(data)
     else:
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
@@ -773,7 +778,9 @@ def ajax_contents(request):
     data = response.json()
     corpora = data['corpora']
     for corpus in corpora:
-        # corpus['domains'] = []
+        file_key = corpus['file_key']
+        metadata = load_corpus_metadata(file_key)
+        corpus.update(metadata)
         corpus['open'] = False
         corpus['filter'] = False
     if project_id:
@@ -794,6 +801,8 @@ def ajax_new_corpus(request):
         return propagate_remote_server_error(response)
     data = response.json()
     file_key = data['file_key']
+    metadata = { 'user': request.user.username, 'state': RESTRICTED, }
+    save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key}
     return JsonResponse(result)
 
@@ -810,13 +819,19 @@ def ajax_insert_item(request):
     title, description, text = text_utils.get_obj_text(None, obj_type=obj_type, obj_id=obj_id, return_has_text=False, with_children=True)
     text = ". ".join([title, description, text])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
+    # metadata = load_corpus_metadata(file_key)
+    domains = load_corpus_metadata(file_key).get('domains', [])
+    data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'domains': domains})
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
         return propagate_remote_server_error(response)
     data = response.json()
-    file_key = data['file_key']
-    if file_key:
+    new_file_key = data['file_key']
+    if new_file_key:
+        if not new_file_key == file_key:
+            rename_corpus_metadata(file_key, new_file_key)
+            file_key = new_file_key
         result = {'file_key': file_key, 'index': index, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
@@ -835,20 +850,23 @@ def ajax_resource_to_item(request):
         if err or not text:
             return propagate_remote_server_error(response)
         obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
-        no_domains = False
     elif text:
         obj_type = 'text'
         title = 'untitled'
         obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
-        no_domains = False
-    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'no_domains': no_domains})
+    # data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'no_domains': no_domains})
+    domains = load_corpus_metadata(file_key).get('domains', [])
+    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'domains': domains})
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
         return propagate_remote_server_error(response)
     data = response.json()
-    file_key = data['file_key']
-    if file_key:
+    new_file_key = data['file_key']
+    if new_file_key:
+        if not new_file_key == file_key:
+            rename_corpus_metadata(file_key, new_file_key)
+            file_key = new_file_key
         result = {'file_key': file_key, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
@@ -928,10 +946,11 @@ to save the entire set of BN domains associated to a corpus
 """
 @csrf_exempt
 def ajax_update_domains(request):
-    endpoint = nlp_url + '/api/update_domains/'
     data = json.loads(request.body.decode('utf-8'))
     file_key = data['file_key']
     domains = data['domains']
+    """
+    endpoint = nlp_url + '/api/update_domains/'
     data = json.dumps({'file_key': file_key, 'domains': domains})
     response = requests.post(endpoint, data=data)
     if response.status_code==200:
@@ -939,6 +958,11 @@ def ajax_update_domains(request):
         return JsonResponse(result)
     else:
         return propagate_remote_server_error(response)
+    """
+    metadata = load_corpus_metadata(file_key)
+    metadata['domains'] = domains
+    save_corpus_metadata(file_key, metadata)
+    return JsonResponse(data)
 
 """
 called from contents_dashboard template
@@ -1093,6 +1117,8 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
         span_types = define_span_types()
         data['span_types'] = span_types
         data['type_buttons'] = span_type_buttons
+        data['user_language_code'] = request.LANGUAGE_CODE
+        data['user_language'] = dict(settings.LANGUAGES).get(request.LANGUAGE_CODE, _('unknown'))
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)

@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "Named entities, Noun chunks and BabelNet synsets" %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "Noun chunks, Named entities and BabelNet synsets" %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
@@ -73,7 +73,8 @@ button.span_type.active {
 {% block extra_head %}
     <script src="{% static "nlp/js/jquery.min.js" %}"></script>
     <script src="{% static "nlp/js/scripts.js" %}"></script>
-    <script src='https://unpkg.com/vue@2.2.6'></script>
+    <script src="{% static "vue/vue.js" %}"></script>
+	{% include "_vue-js-modal.html" %}
 {% endblock extra_head %}
 
 {% block user %}{% endblock user %}
@@ -81,7 +82,7 @@ button.span_type.active {
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Named entities, Noun chunks and BabelNet synsets" %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Noun chunks, Named entities and BabelNet synsets" %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -118,12 +119,25 @@ button.span_type.active {
       <tbody>
         <tr v-for="(p, index) in paragraphs">
           <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
-          <td style="text-align: left;">
+          <td>
               <template v-for="token in tokens.slice(p['start'], p['end'])">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"> }} </span>babelnet
+			  <div style="display: inline-block">
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"> }} </span>
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
                              :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
                 </span>
+				<modal v-if="token['babelnet'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
+					<div style="padding: 3px;">
+						<div><span style="font-size: 1.2em; font-weight: bold;">{{ token.text }}</span> ({{ token.pos }}, {{ token.lemma }}, {{ language }} => {{ user_language }})</div>
+              			<div v-for="synset in token['babelnet']" style="text-align: left;">
+						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
+						    <b>{{ synset[1] }}</b>,
+						    <i>{{ synset[2] }}</i> ,
+						    [<span v-for="(domain, i) in synset[3]">{{ domain[0] }}<span v-if="i<synset[3].length-1">, </span></span>] 
+						</div>
+					</div>
+				</modal>
+			  </div>	
               </template>
           </td>
         </tr>
@@ -140,71 +154,110 @@ button.span_type.active {
 {% block footer_base %}{% endblock footer_base %}
 
 {% block script_base %}
-  <script>
-      var app = new Vue({
-        name: 'test',
-        data: {
-          file_key: '{{ file_key }}',
-          obj_type: '{{ obj_type }}',
-          obj_id: '{{ obj_id }}',
-          obj_type_label: '{{ obj_type_label }}',
-          title: '{{ title }}',
-          url: '{{ url }}',
-          language: '{{ language }}',
-          label: null,
-          tokens: null, paragraphs: null,
-          error: null,
-          wait: null,
-          span_types: null, type_buttons: null,
-          label_paragraph: "{% trans "paragraph"|capfirst %}",
-          label_see: "{% trans "see"|capfirst %}",
-          label_id: '{% trans "id"|capfirst %}',
-          label_title: '{% trans "title"|capfirst %}',
-          label_url: '{% trans "url"|capfirst %}',
-          label_language: '{% trans "language"|capfirst %}',
-          label_span_selection: "{% trans "span types to highlight"|capfirst %}",
-          label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
-          label_noun_chunks: "{% trans "noun chunks are noun phrases without subordinates"|capfirst %}",
-          label_synsets: "{% trans "synsets are ako concepts with associated multilanguage lexicon"|capfirst %}",
-          label_wait: "{% trans "please wait"|capfirst %}",
-          label_work_in_progress: "{% trans "links to BabelNet available soon"|capfirst %}",
-        },
-        el: '#app',
-        methods: {
-          resize() {
-            console.log('resize')
-          },
-          toggle_span_type: function(span_type) {
-            Vue.set(this.type_buttons[span_type], 'selected', !this.type_buttons[span_type].selected);
-            this.$forceUpdate();
-          },
-          babelnetView: function(token) {
-			let synsets = token['babelnet'];
-			if (synsets && synsets.length && this.type_buttons['babelnet'].selected) {
-			  // return "<a href=''>" + token['text'] + "</a>"
-			  return "<a href='javascript:window.alert(\"" + this.label_work_in_progress + "!\")'>" + token['text'] + "</a>"
-			} else
-			  return token['text'];
-		  }
-        },
-        mounted: function () {
-          $this = this;
-          this.wait = true;
-          if (! this['obj_id'])
-            this['obj_id'] = 0;
-            fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
-            method: 'GET',
-            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
-          })
-          .then(response => response.json())
-          .then(data => {
-             for (var key in data) {
-              this[key] = data[key];
-             };
-             this.wait = false;
-           })
-          .catch(err => (this['error'] = err))
-        },
-      });
- </script>
+
+<script type="module">
+import VueJsModal from '/static/vue-js-modal/components/Modal.js';
+ 
+  var app = new Vue({
+    name: 'text_nounchunks',
+    components: {
+	  'modal': VueJsModal,
+    },
+    data: {
+	  user_language: 'Croatian',
+	  user_language_code: 'hr',
+      file_key: '{{ file_key }}',
+      obj_type: '{{ obj_type }}',
+      obj_id: '{{ obj_id }}',
+      obj_type_label: '{{ obj_type_label }}',
+      title: '{{ title }}',
+      url: '{{ url }}',
+      language: '{{ language }}',
+      label: null,
+      tokens: null, paragraphs: null,
+      error: null,
+      wait: null,
+      span_types: null, type_buttons: null,
+      synsets: [],
+	  modal_props: { 
+		adaptive: true, // ?
+		resizable: true,
+		draggable: true,
+		scrollable: true,
+		clickToClose: true,
+		focusTrap: true, // ?
+		width: 800,
+		height: 200,
+	  },
+      label_paragraph: "{% trans "paragraph"|capfirst %}",
+      label_see: "{% trans "see"|capfirst %}",
+      label_id: '{% trans "id"|capfirst %}',
+      label_title: '{% trans "title"|capfirst %}',
+      label_url: '{% trans "url"|capfirst %}',
+      label_language: '{% trans "language"|capfirst %}',
+      label_span_selection: "{% trans "span types to highlight"|capfirst %}",
+      label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
+      label_noun_chunks: "{% trans "noun chunks are noun phrases without subordinates"|capfirst %}",
+      label_synsets: "{% trans "synsets are ako concepts with associated multilanguage lexicon"|capfirst %}",
+      label_wait: "{% trans "please wait"|capfirst %}",
+      label_work_in_progress: "{% trans "links to BabelNet available soon"|capfirst %}",
+    },
+    el: '#app',
+    methods: {
+      resize() {
+        console.log('resize')
+      },
+      toggle_span_type: function(span_type) {
+        Vue.set(this.type_buttons[span_type], 'selected', !this.type_buttons[span_type].selected);
+        this.$forceUpdate();
+      },
+      onModalMounted(token) {
+		console.log('mounted', app.$children);
+	  },
+      babelnetView (token) {
+		if (!this.type_buttons['babelnet'].selected)
+		  return token['text'];
+		let synsets = token['babelnet'];
+		if (synsets && synsets.length) {
+		  console.log('token'+token.id, synsets.length);
+		  return '<a href="javascript: app.__vue__.$options.methods.showSynsets('+token.id+');">' + token['text'] + '</a>';
+		} else
+		  return token['text'];
+	  },
+      modalFromToken (ref, tokenId) {
+		// let refs = this.$refs;
+		let refs = app.$refs;
+        let modals = refs[ref];
+        for (let i=0; i<modals.length; i++)
+          if (modals[i].name == 'token'+tokenId)
+			return modals[i];
+		return null;
+	  },
+	  showSynsets (tokenId) {
+        this.modalFromToken('synsets_panel', tokenId).open();
+	  },
+	  hideSynsets (tokenId) {
+        this.modalFromToken('synsets_panel', tokenId).close();
+	  },
+    },
+    mounted: function () {
+      this.wait = true;
+      if (! this['obj_id'])
+        this['obj_id'] = 0;
+        fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+        method: 'GET',
+        headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+      })
+      .then(response => response.json())
+      .then(data => {
+         for (var key in data) {
+          this[key] = data[key];
+         };
+         this.wait = false;
+       })
+      .catch(err => (this['error'] = err))
+    },
+  });
+
+</script>
 {% endblock script_base %}

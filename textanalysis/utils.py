@@ -461,4 +461,29 @@ def tbxfile_to_json(path: str, filename: str) -> None:
     tbx_str = read_input_file(tbx_filename)
     json_str = json.dumps(parse_tbx(tbx_str))
     write_output_file(json_filename, json_str)
-    
+
+def path_from_file_key(file_key):
+    return os.path.join(settings.CORPORA, file_key)+'.spacy'
+
+def load_corpus_metadata(file_key):
+    """ reads a list of domain strings from a json file associated to a docbin spacy file """
+    metadata = {}
+    path = path_from_file_key(file_key).replace('.spacy', '.json')
+    if os.path.exists(path):
+        f = open(path)
+        metadata = json.load(f)
+        f.close()
+    return metadata
+
+def save_corpus_metadata(file_key, metadata):
+    """ writes a list of domain strings to a json file associated to a docbin spacy file """
+    path = path_from_file_key(file_key).replace('.spacy', '.json')
+    data = json.dumps(metadata)
+    f = open(path, 'w')
+    f.write(data)
+    f.close
+
+def rename_corpus_metadata(file_key, new_file_key):
+    path = path_from_file_key(file_key).replace('.spacy', '.json')
+    new_path = path_from_file_key(new_file_key).replace('.spacy', '.json')
+    os.rename(path, new_path)
