@@ -118,7 +118,7 @@ button.span_type.active {
       <thead><th style="width:5%">#</th><th style="width:95%">{{ label_paragraph }}</th></thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
-          <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
+          <td style="vertical-align:top;">{{ p['i'] }}</td>
           <td>
               <template v-for="token in tokens.slice(p['start'], p['end'])">
 			  <div style="display: inline-block">
@@ -126,10 +126,10 @@ button.span_type.active {
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
                              :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
                 </span>
-				<modal v-if="token['babelnet'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
+				<modal v-if="token['terms'] && token['terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
 						<div><span style="font-size: 1.2em; font-weight: bold;">{{ token.text }}</span> ({{ token.pos }}, {{ token.lemma }}, {{ language }} => {{ user_language }})</div>
-              			<div v-for="synset in token['babelnet']" style="text-align: left;">
+              			<div v-for="synset in terms[token['terms'][0]]['babelnet']" style="text-align: left;">
 						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
 						    <b>{{ synset[1] }}</b>,
 						    <i>{{ synset[2] }}</i> ,
@@ -178,6 +178,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       error: null,
       wait: null,
       span_types: null, type_buttons: null,
+      terms: null,
       synsets: [],
 	  modal_props: { 
 		adaptive: true, // ?
@@ -217,9 +218,9 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       babelnetView (token) {
 		if (!this.type_buttons['babelnet'].selected)
 		  return token['text'];
-		let synsets = token['babelnet'];
-		if (synsets && synsets.length) {
-		  console.log('token'+token.id, synsets.length);
+		let terms = token['terms'];
+		if (terms && terms.length) {
+		  let synsets = terms[0]['babelnet'];
 		  return '<a href="javascript: app.__vue__.$options.methods.showSynsets('+token.id+');">' + token['text'] + '</a>';
 		} else
 		  return token['text'];

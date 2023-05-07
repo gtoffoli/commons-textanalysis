@@ -377,6 +377,7 @@ def sentence_dependency_distance(sentence, tokens):
 
 def index_entities(ents, tokens, entity_dict):
     i = 0
+    n_tokens = len(tokens)
     for ent in ents:
         label = ent['label']
         start = ent['start']
@@ -385,17 +386,14 @@ def index_entities(ents, tokens, entity_dict):
             i += 1
         assert start==tokens[i]['start']
         ent['start_token'] = i
-        try: # don't know why in one case the condition below raised exception
-            text = ''
-            while tokens[i]['end'] <= end:
-                text += tokens[i]['text']
-                i += 1
-            ent['end_token'] = i
-            ent['text'] = text
-            if not '_' in text and not text in entity_dict[label]:
-                entity_dict[label].append(text)
-        except:
-            pass
+        text = ''
+        while i <n_tokens and tokens[i]['end'] <= end:
+            text += tokens[i]['text']
+            i += 1
+        ent['end_token'] = i
+        ent['text'] = text
+        if not '_' in text and not text in entity_dict[label]:
+            entity_dict[label].append(text)
 
 def sorted_frequencies(d):
     sd =  OrderedDict(sorted(d.items(), key = itemgetter(1), reverse = True))
@@ -545,27 +543,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
 
     if nounchunks:
         noun_chunks = analyze_dict['noun_chunks']
-        """
-        # annotate tokens with babelnet synsets filtered by domain ?
-        if file_key:
-            endpoint = nlp_url + '/api/get_domains/'
-            data = json.dumps({'file_key': file_key})
-            response = requests.post(endpoint, data=data)
-            data = response.json()
-            domains = data['domains']
-            if domains:
-                for i, token in enumerate(tokens):
-                    synsets = token['babelnet']
-                    matching_by_domain = []
-                    for synset in synset:
-                        keep_synset = False
-                        for k,v in synset[-1]: # domains in BN synset
-                            if k in domains:
-                                matching_by_domain.append(synset)
-                                break
-                    if len(matching_by_domain) < len(synsets):
-                        token['babelnet'] = matching_by_domain
-        """                   
         # by default all tokens are outside entity spans and noun_chunk spans
         # for token in tokens:
         for i, token in enumerate(tokens):
@@ -605,6 +582,19 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                     iob_chunk = 'i'
                 token['iob_chunk'] = iob_chunk           
                 tokens[k] = token
+        # annotate tokens with babelnet synsets filtered by domain ?
+        terms = []
+        if file_key:
+            terms = analyze_dict.get('terms', [])
+            if terms:
+                for i, term in enumerate(terms):
+                    print(i, term)
+                    for k in range(term['start'], term['end']):
+                        print(k, tokens[k]['text'])
+                        token_terms = tokens[k].get('terms', [])
+                        token_terms.append(i)
+                        tokens[k]['terms'] = token_terms
+        var_dict['terms'] = terms
         var_dict['tokens'] = tokens
         var_dict['paragraphs'] = analyze_dict['paragraphs']
         return var_dict
@@ -1109,7 +1099,7 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs', 'tokens',
+        keys = ['paragraphs', 'tokens', 'terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
