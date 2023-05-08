@@ -128,7 +128,7 @@ button.span_type.active {
                 </span>
 				<modal v-if="token['terms'] && token['terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
-						<div><span style="font-size: 1.2em; font-weight: bold;">{{ token.text }}</span> ({{ token.pos }}, {{ token.lemma }}, {{ language }} => {{ user_language }})</div>
+						<div><span style="font-size: 1.2em; font-weight: bold;">{{ term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
               			<div v-for="synset in terms[token['terms'][0]]['babelnet']" style="text-align: left;">
 						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
 						    <b>{{ synset[1] }}</b>,
@@ -233,6 +233,14 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
           if (modals[i].name == 'token'+tokenId)
 			return modals[i];
 		return null;
+	  },
+	  term_text (token) {
+		  let term_refs = token['terms'];
+		  let term = this.terms[term_refs[0]];
+		  let text = '';
+		  for (let i=term['start']; i<term['end']; i++)
+		    text = text + this.tokens[i].text + ' ';
+		  return text;
 	  },
 	  showSynsets (tokenId) {
         this.modalFromToken('synsets_panel', tokenId).open();

@@ -587,6 +587,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         if file_key:
             terms = analyze_dict.get('terms', [])
             if terms:
+                # from (virtual) lists of tokens per term, derive lists of term indexes per token
                 for i, term in enumerate(terms):
                     print(i, term)
                     for k in range(term['start'], term['end']):
@@ -594,6 +595,16 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                         token_terms = tokens[k].get('terms', [])
                         token_terms.append(i)
                         tokens[k]['terms'] = token_terms
+                # remove ref to single-token term from tokens with more than 1 refs
+                for token in tokens:
+                    term_refs = token.get('terms', [])
+                    if len(term_refs) > 1:
+                        for ref in term_refs:
+                            term = terms[ref]
+                            if len(term) == 1 and term['start'] == token:
+                                term_refs = [r for r in term_refs if r != ref]
+                                token['terms'] = term_refs
+                                break
         var_dict['terms'] = terms
         var_dict['tokens'] = tokens
         var_dict['paragraphs'] = analyze_dict['paragraphs']
