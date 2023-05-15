@@ -266,7 +266,7 @@ for item in collData['entity_types']:
 default_entity_types = [] # ['PERSON','ORG','GPE', 'LOC',]
 span_type_buttons = {
     'nounchunk': {'selected': True, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
-    'babelnet': {'selected': False, 'label': capfirst(_("BabeNet annotations")), 'border': '', 'background': entity_color,},
+    'babelnet': {'selected': True, 'label': capfirst(_("BabeNet annotations")), 'border': '', 'background': entity_color,},
 }
 
 def define_span_types():
@@ -395,10 +395,6 @@ def index_entities(ents, tokens, entity_dict):
         if not '_' in text and not text in entity_dict[label]:
             entity_dict[label].append(text)
 
-def sorted_frequencies(d):
-    sd =  OrderedDict(sorted(d.items(), key = itemgetter(1), reverse = True))
-    return [{'key': key, 'freq': freq} for key, freq in sd.items()]
-
 token_level_dict = defaultdict(lambda:'c2')
 def map_token_pos_to_level(language_code):
     global token_level_dict
@@ -413,6 +409,18 @@ def map_token_pos_to_level(language_code):
             key = '_'.join(item[:2])
             # token_level_dict[key] = min(item[2].lower(), token_level_dict[key])
             token_level_dict[key] = min(item[2].lower(), token_level_dict.get(key, 'c1'))
+
+def token_to_level(token, frequencies):
+    pos = token['pos']
+    lemma = token['lemma']
+    """
+    for item in frequencies:
+        if item['key'] == lemma:
+            return item['level']
+    return ''
+    """
+    item = frequencies[lemma]
+    return item[1]
 
 language_code_dict = {
     'english': 'en',
@@ -431,21 +439,27 @@ language_code_dict = {
 
 off_error = _('sorry, it looks like the language processing service is off')
 
+def sorted_frequencies(d):
+    sd =  OrderedDict(sorted(d.items(), key = itemgetter(1), reverse = True))
+    return [{'key': key, 'freq': freq} for key, freq in sd.items()]
+
 def add_level_to_frequencies(frequencies, pos):
+    """ as a side-effect, replace the frequency in each dict item with a tuple [frequency, level];
+        return a dict of levels frequencies """
     level_count_dict = defaultdict(int)
-    for frequency in frequencies:
-        key = '_'.join([frequency['key'].lower(), pos])
-        level = token_level_dict.get(key, None)
-        if level:
-            frequency['level'] = level
-            frequency[level[0]] = True
-        else:
-            level = 'c2'
-            if frequency['key'].islower():
-                frequency['level'] = 'c2'        
-                frequency['c'] = True
-        level_count_dict[level] += frequency['freq']
+    for lemma, frequency in frequencies.items():
+        key = '_'.join([lemma.lower(), pos])
+        level = token_level_dict.get(key, 'c2')
+        frequencies[lemma] = [frequency, level]
+        level_count_dict[level] += frequency
     return level_count_dict
+
+def getter_1_0(item):
+    return item[1][0]
+
+def sorted_frequencies_with_levels(d):
+    sd =  OrderedDict(sorted(d.items(), key = getter_1_0, reverse = True))
+    return [{'key': key, 'freq': freq_level[0], 'level': freq_level[1], freq_level[1][0]: True} for key, freq_level in sd.items()]
 
 def text_dashboard_return(request, var_dict):
     if not var_dict:
@@ -541,75 +555,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             var_dict[k] = analyze_dict[k]
         return var_dict
 
-    if nounchunks:
-        noun_chunks = analyze_dict['noun_chunks']
-        # by default all tokens are outside entity spans and noun_chunk spans
-        # for token in tokens:
-        for i, token in enumerate(tokens):
-            token['iob_ent'] = 'o'
-            token['iob_chunk'] = 'o'
-            token['ent'] = 'n'
-            tokens[i] = token
-        # annotate tokens with iob info on position in containing entitied
-        for i, ent in enumerate(entities):
-            entity_type = ent['label']
-            entity_dict[entity_type]['count'] += 1
-            if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
-                ent['end_token'] -= 1
-            for k in range(ent['start_token'], ent['end_token']):
-                token = tokens[k]
-                token['ent'] = entity_type
-                iob_ent = ''
-                if k == ent['start_token']:
-                    iob_ent += 'b'
-                if k == ent['end_token']-1:
-                    iob_ent += 'e'
-                if not iob_ent:
-                    iob_ent = 'i'
-                token['iob_ent'] = iob_ent           
-                tokens[k] = token
-        # annotate tokens with info on position in containing noun chunks
-        for i, chunk in enumerate(noun_chunks):
-            for k in range(chunk[0], chunk[1]):
-                token = tokens[k]
-                token['chunk'] = i
-                iob_chunk = ''
-                if k == chunk[0]:
-                    iob_chunk += 'b'
-                if k == chunk[1]-1:
-                    iob_chunk += 'e'
-                if not iob_chunk:
-                    iob_chunk = 'i'
-                token['iob_chunk'] = iob_chunk           
-                tokens[k] = token
-        # annotate tokens with babelnet synsets filtered by domain ?
-        terms = []
-        if file_key:
-            terms = analyze_dict.get('terms', [])
-            if terms:
-                # from (virtual) lists of tokens per term, derive lists of term indexes per token
-                for i, term in enumerate(terms):
-                    print(i, term)
-                    for k in range(term['start'], term['end']):
-                        print(k, tokens[k]['text'])
-                        token_terms = tokens[k].get('terms', [])
-                        token_terms.append(i)
-                        tokens[k]['terms'] = token_terms
-                # remove ref to single-token term from tokens with more than 1 refs
-                for token in tokens:
-                    term_refs = token.get('terms', [])
-                    if len(term_refs) > 1:
-                        for ref in term_refs:
-                            term = terms[ref]
-                            if len(term) == 1 and term['start'] == token:
-                                term_refs = [r for r in term_refs if r != ref]
-                                token['terms'] = term_refs
-                                break
-        var_dict['terms'] = terms
-        var_dict['tokens'] = tokens
-        var_dict['paragraphs'] = analyze_dict['paragraphs']
-        return var_dict
-
     pos_frequencies = defaultdict(int)
     kw_frequencies = defaultdict(int)
     adjective_frequencies = defaultdict(int)
@@ -678,16 +623,13 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         voc_density = n_tokens and n_unique/n_tokens or 0
     lex_density = n_tokens and n_lexical/n_tokens or 0
     kw_frequencies = sorted_frequencies(kw_frequencies)
-    verb_frequencies = sorted_frequencies(verb_frequencies)
-    noun_frequencies = sorted_frequencies(noun_frequencies)
-    adjective_frequencies = sorted_frequencies(adjective_frequencies)
-    adverb_frequencies = sorted_frequencies(adverb_frequencies)
     if wordlists:
         propn_frequencies = sorted_frequencies(propn_frequencies)
         cconj_frequencies = sorted_frequencies(cconj_frequencies)
         sconj_frequencies = sorted_frequencies(sconj_frequencies)
         var_dict.update({'propn_frequencies': propn_frequencies,
             'cconj_frequencies': cconj_frequencies, 'sconj_frequencies': sconj_frequencies,})
+
     levels_counts = defaultdict(int)
     if token_level_dict:
         lc_dict = add_level_to_frequencies(verb_frequencies, 'verb')
@@ -703,10 +645,100 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         for item in lc_dict.items():
             levels_counts[item[0]] += item[1]
 
+    if nounchunks:
+        noun_chunks = analyze_dict['noun_chunks']
+        # by default all tokens are outside entity spans and noun_chunk spans
+        # for token in tokens:
+        for i, token in enumerate(tokens):
+            token['iob_ent'] = 'o'
+            token['iob_chunk'] = 'o'
+            token['ent'] = 'n'
+            tokens[i] = token
+        # annotate tokens with iob info on position in containing entitied
+        for i, ent in enumerate(entities):
+            entity_type = ent['label']
+            entity_dict[entity_type]['count'] += 1
+            if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
+                ent['end_token'] -= 1
+            for k in range(ent['start_token'], ent['end_token']):
+                token = tokens[k]
+                token['ent'] = entity_type
+                iob_ent = ''
+                if k == ent['start_token']:
+                    iob_ent += 'b'
+                if k == ent['end_token']-1:
+                    iob_ent += 'e'
+                if not iob_ent:
+                    iob_ent = 'i'
+                token['iob_ent'] = iob_ent           
+                tokens[k] = token
+        # annotate tokens with info on position in containing noun chunks
+        for i, chunk in enumerate(noun_chunks):
+            for k in range(chunk[0], chunk[1]):
+                token = tokens[k]
+                token['chunk'] = i
+                iob_chunk = ''
+                if k == chunk[0]:
+                    iob_chunk += 'b'
+                if k == chunk[1]-1:
+                    iob_chunk += 'e'
+                if not iob_chunk:
+                    iob_chunk = 'i'
+                token['iob_chunk'] = iob_chunk           
+                tokens[k] = token
+        # annotate tokens with babelnet synsets already searched by text and filtered by domain
+        terms = []
+        if file_key:
+            terms = analyze_dict.get('terms', [])
+            if terms:
+                # from (virtual) lists of tokens per term, derive lists of term indexes per token NO
+                # annotate first and last token of each term (could be the same)
+                for i, term in enumerate(terms):
+                    # filter terms based on vocabulary frequency
+                    if term['end']-term['start'] == 1:
+                        token = tokens[term['start']]
+                        pos = token['pos']
+                        frequencies = \
+                            (pos=='NOUN' and noun_frequencies) or \
+                            (pos=='ADJ' and adjective_frequencies) or \
+                            (pos=='VERB' and verb_frequencies) or \
+                            (pos=='ADV' and adverb_frequencies)
+                        level = token_to_level(token, frequencies)
+                        if level in ['a', 'a1', 'a2', 'b', 'b1',]:
+                            continue
+                    for k in range(term['start'], term['end']):
+                        # print(k, tokens[k]['text'])
+                        token_terms = tokens[k].get('terms', [])
+                        token_terms.append(i)
+                        tokens[k]['terms'] = token_terms
+                    tokens[term['start']]['term_start'] = i
+                    tokens[term['end']]['term_end'] = i
+                # remove ref to single-token term from tokens with multiple refs
+                for token in tokens:
+                    term_refs = token.get('terms', [])
+                    if len(term_refs) > 1:
+                        for ref in term_refs:
+                            term = terms[ref]
+                            if len(term) == 1 and term['start'] == token:
+                                term_refs = [r for r in term_refs if r != ref]
+                                token['terms'] = term_refs
+                                break
+        var_dict['terms'] = terms
+        var_dict['tokens'] = tokens
+        var_dict['paragraphs'] = analyze_dict['paragraphs']
+
+    # next 4 code lines must be after BabelNet synsets processing
+    # since they modify the structure of the frequencies from dict (key->list) to a list of dicts
+    verb_frequencies = sorted_frequencies_with_levels(verb_frequencies)
+    noun_frequencies = sorted_frequencies_with_levels(noun_frequencies)
+    adjective_frequencies = sorted_frequencies_with_levels(adjective_frequencies)
+    adverb_frequencies = sorted_frequencies(adverb_frequencies)
+
     var_dict.update({'verb_frequencies': verb_frequencies, 'noun_frequencies': noun_frequencies,
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
         'levels_counts': levels_counts, 'n_long_tokens': n_long_tokens,})
-    if wordlists and not readability:
+
+    if (wordlists or nounchunks) and not readability: 
         return var_dict
 
     index_sentences(sentences, tokens)

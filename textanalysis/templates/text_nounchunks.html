@@ -121,15 +121,15 @@ button.span_type.active {
           <td style="vertical-align:top;">{{ p['i'] }}</td>
           <td>
               <template v-for="token in tokens.slice(p['start'], p['end'])">
-			  <div style="display: inline-block">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"> }} </span>
+			  <component :is="'div'" style="display: inline-block">
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"></span>
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
                              :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
-                </span>
+				</span>
 				<modal v-if="token['terms'] && token['terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
 						<div><span style="font-size: 1.2em; font-weight: bold;">{{ term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
-              			<div v-for="synset in terms[token['terms'][0]]['babelnet']" style="text-align: left;">
+						<div v-for="synset in terms[token['terms'][0]]['babelnet']" style="text-align: left;">
 						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
 						    <b>{{ synset[1] }}</b>,
 						    <i>{{ synset[2] }}</i> ,
@@ -137,7 +137,7 @@ button.span_type.active {
 						</div>
 					</div>
 				</modal>
-			  </div>	
+			  </component>	
               </template>
           </td>
         </tr>
