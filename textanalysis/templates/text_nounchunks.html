@@ -190,18 +190,18 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 		width: 800,
 		height: 200,
 	  },
-      label_paragraph: "{% trans "paragraph"|capfirst %}",
-      label_see: "{% trans "see"|capfirst %}",
-      label_id: '{% trans "id"|capfirst %}',
-      label_title: '{% trans "title"|capfirst %}',
-      label_url: '{% trans "url"|capfirst %}',
-      label_language: '{% trans "language"|capfirst %}',
-      label_span_selection: "{% trans "span types to highlight"|capfirst %}",
-      label_select: "{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}",
-      label_noun_chunks: "{% trans "noun chunks are noun phrases without subordinates"|capfirst %}",
-      label_synsets: "{% trans "synsets are ako concepts with associated multilanguage lexicon"|capfirst %}",
-      label_wait: "{% trans "please wait"|capfirst %}",
-      label_work_in_progress: "{% trans "links to BabelNet available soon"|capfirst %}",
+      label_paragraph: `{% trans "paragraph"|capfirst %}`,
+      label_see: `{% trans "see"|capfirst %}`,
+      label_id: `{% trans "id"|capfirst %}`,
+      label_title: `{% trans "title"|capfirst %}`,
+      label_url: `{% trans "url"|capfirst %}`,
+      label_language: `{% trans "language"|capfirst %}`,
+      label_span_selection: `{% trans "span types to highlight"|capfirst %}`,
+      label_select: `{% trans "select types of span by toggling the buttons above; thick border means 'selected'"|capfirst %}`,
+      label_noun_chunks: `{% trans "noun chunks are noun phrases without subordinates"|capfirst %}`,
+      label_synsets: `{% trans "synsets are ako concepts with associated multilanguage lexicon"|capfirst %}`,
+      label_wait: `{% trans "please wait"|capfirst %}`,
+      label_work_in_progress: `{% trans "links to BabelNet available soon"|capfirst %}`,
     },
     el: '#app',
     methods: {
@@ -253,7 +253,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       this.wait = true;
       if (! this['obj_id'])
         this['obj_id'] = 0;
-        fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+        fetch('/textanalysis/nounchunks/`{% if file_key %}+this['file_key']+'/`{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/`{% endif %}, {
         method: 'GET',
         headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
       })

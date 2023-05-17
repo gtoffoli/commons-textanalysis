@@ -51,6 +51,31 @@ mimetype_extension_list = (
     ('officedocument.spreadsheetml', 'xlsx'),
 )
 
+def get_file_text(file, content_type, title=''):
+    encoding = 'utf8'
+    f = tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b', delete=False)
+    n = f.write(file)
+    print('get_file_text', n)
+    if content_type.count('pdf'):
+        text = textract.process(f.name, encoding=encoding, extension='pdf')
+    elif content_type.count('rtf'):
+        text = textract.process(f.name, encoding=encoding, extension='rtf')
+    elif content_type.count('msword'):
+        text = textract.process(f.name, encoding=encoding, extension='doc')
+    elif content_type.count('officedocument.wordprocessingml') and content_type.count('document'):
+        text = textract.process(f.name, encoding=encoding, extension='docx')
+    elif content_type.count('officedocument.presentationml'):
+        text = textract.process(f.name, encoding=encoding, extension='pptx')
+    elif content_type.count('officedocument.spreadsheetml'):
+        text = textract.process(f.name, encoding=encoding, extension='xlsx')
+    f.close()
+    err = None
+    try:
+        text = text.decode()
+    except (UnicodeDecodeError, AttributeError) as err:
+        return '', response, err
+    return title, text, err
+
 def get_web_resource_text(url):
     fileid = get_googledoc_fileid(url)
     if fileid:
@@ -79,7 +104,8 @@ def get_web_resource_text(url):
         title = doc.title()
         text = extract_annotate_with_bs4(text)
     else:
-        with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b') as f:
+        # with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b') as f:
+        with tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b', delete=False) as f:
             for chunk in response.iter_content(1024):
                 f.write(chunk)   
         if content_type.count('pdf'):

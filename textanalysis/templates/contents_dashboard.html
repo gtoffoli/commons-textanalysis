@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.css">
 <link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
+<!-- <link rel="stylesheet" href="{% static "vue/upload_dialog/UploadDialog.css" %}"> -->
 <style>
 hr {
   margin:0;
@@ -239,6 +240,28 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 [class*="multiselect"]:after {
   font-style: italic;
 }
+
+#uploadmyfile{
+  /* display: none; */
+}
+
+.drop{
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  background-color: #eee;
+  border:10px solid #eee;
+  display: flex;
+  vertical-align: middle;
+  align-items: stretch; /* center; */
+  justify-content: center;
+  padding: 1rem;
+  transition: background-color .2s ease-in-out;
+}
+.isDragging{
+  background-color: #999;
+  border-color: #fff;
+}
 </style>
 {% endblock extra_style %}
 
@@ -361,13 +384,25 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 					  <pre v-if="showJson" class="language-json"><code>{{ values }}</code></pre>
 				  </div>
 			  </div>
-              <div><a v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!corpus.open" v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
               <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div></div>
+              <div><a v-if="!corpus.active" v-on:click.stop="openFileUpload(corpus);" :title="label_add_item_from_file"><i class="fa fa-upload" style="cursor: pointer;"></i></a>
+				<modal v-bind="modal_props" ref="upload_dialog" :name="corpus.file_key">
+					<div style="display: block; text-align: center;">
+						<div class="panel-head">{{ label_upload_file }} {{ corpus.file_key }}</div>
+					    <div style="text-align: center;">
+					        <input type="file" id="uploadmyfile" @change="requestUploadFile(corpus)">
+					    </div>
+				        <drop_file :name="'upload_'+corpus.file_key" :drop_prompt="label_drop_file_prompt" :file_type="file_type" />
+						<div>
+							<button class="btn btn-outline-dark" @click="closeFileUpload(corpus)">Cancel</button>
+							<button class="btn btn-outline-dark" @click="saveFileUpload(corpus)" :disabled="(entered_text.length<20)">Save</button>
+						</div>
+					</div>
+				</modal>
+              </div>
               <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
-<!--
-              <div><a v-if="!corpus.active" v-on:click.stop="showModal(corpus);" :title="label_add_item_from_web"><i class="fa fa-copy" style="cursor: pointer;"></i></a></div>
--->
               <div><a v-if="!corpus.active" v-on:click.stop="openTextInput(corpus);" :title="label_add_item_from_text"><i class="fa fa-copy" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="corpus_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center;">
@@ -380,7 +415,6 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 					</div>
 				</modal>
               </div>
-              <div></div>
               <div></div>
               <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
@@ -459,7 +493,7 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
               <button v-on:click="newSelected();" class="btn btn-outline-dark marginR10">{{ label_new_corpus }}</button>
         	  <button v-if="compare" v-on:click="compareSelected();" class="btn btn-outline-dark">{{ label_similarity }}</button>
           </template>  
-          <template v-else>{{ msg_anonymous }}</template>  
+          <template v-else>{{ msg_anonymous }}.</template>  
         </div>
         <div id="result" class="box-result">{{ result }}</div>
     </div>
@@ -477,11 +511,15 @@ Vue.use(VuejsDialog.main.default)
 // Register globally
 Vue.component('vue-multiselect', VueMultiselect.default)
 import VueJsModal from '/static/vue-js-modal/components/Modal.js';
+// import TriggerUploadDialog from '/static/vue/upload_dialog/TriggerUploadDialog.js';
+import DropAnImage from '/static/vue/upload_dialog/DropAnImage.js';
 
 var app = new Vue({
     name: 'contents_dashboard',
     components: {
 	  'modal': VueJsModal,
+	  // 'upload': TriggerUploadDialog,
+	  'drop_file': DropAnImage,
     },
     el: '#app',
     data: {
@@ -495,37 +533,41 @@ var app = new Vue({
       compare: false,
       all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
       source_id: '',
-      msg_anonymous: "It seems that you are not logged in.",
-      label_user: '{{user.get_display_name}}',
-      label_corpora: '{% trans "corpora"|capfirst %}',
-      label_expand_collapse: '{% trans "expand / collapse" %}',
-      label_selected: '{% trans "selected resources"|capfirst %}',
-      label_corpus: '{% trans "corpus"|capfirst %}',
-      label_empty_corpus: '{% trans "empty corpus"|capfirst %}',
-      label_new_corpus: '{% trans "new corpus"|capfirst %}',
-      label_delete_corpus: '{% trans "delete corpus"|capfirst %}',
-      label_add_item_from_web: '{% trans "add item to corpus from web resource"|capfirst %}',
-      label_add_item_from_web_prompt: '{% trans "insert the URL of a web resource, then click on"|capfirst %}',
-      label_add_item_from_text: '{% trans "add item to corpus from text box"|capfirst %}',
-      label_add_item_from_text_prompt: '{% trans "insert a text, then click on"|capfirst %}',
-      label_remove_item: "Remove item",
-      label_show_hide_corpus_menu: '{% trans "show / hide corpus menu"|capfirst %}',
-      label_show_hide_item_menu: '{% trans "show / hide item menu"|capfirst %}',
-      label_manage_domains:  '{% trans "manage associated BabelNet domains"|capfirst %}',
-      label_similarity: '{% trans "similarity"|capfirst %}',
-      label_corpus_dashboard: '{% trans "Corpus Dashboard" %}',
-      label_dependency: '{% trans "Dependency parse" %}',
-      label_context: '{% trans "Keywords In Context" %}',
-      label_wordlists: '{% trans "Word Lists by POS" %}',
-      label_annotation: '{% trans "Annotated text" %}',
-      label_nounchunks: '{% trans "Named Entities" %}',
-      label_readability: '{% trans "Text Readability" %}',
-      label_cohesion: '{% trans "Text Cohesion" %}',
-      label_summarization: '{% trans "Text Summarization" %}',
-      label_analysis: '{% trans "Text Analysis Dashboard" %}',
-      label_confirm_deletion: '{% trans "confirm deletion" %}',
-      label_confirm_change:  '{% trans "confirm change" %}',
-      label_enter_text: '{% trans "enter text for new item of corpus"|capfirst %}',
+      file_type: 'pdf',
+      msg_anonymous: `{% trans "it seems that you are not logged in"|capfirst %}`,
+      label_user: `{{user.get_display_name}}`,
+      label_corpora: `{% trans "corpora"|capfirst %}`,
+      label_expand_collapse: `{% trans "expand / collapse" %}`,
+      label_selected: `{% trans "selected resources"|capfirst %}`,
+      label_corpus: `{% trans "corpus"|capfirst %}`,
+      label_empty_corpus: `{% trans "empty corpus"|capfirst %}`,
+      label_new_corpus: `{% trans "new corpus"|capfirst %}`,
+      label_delete_corpus: `{% trans "delete corpus"|capfirst %}`,
+      label_add_item_from_file: `{% trans "add item from local file to corpus"|capfirst %}`,
+      label_upload_file: `{% trans "upload file from local device to corpus"|capfirst %}`,
+      label_drop_file_prompt: `{% trans "drop a file"|capfirst %}`,
+      label_add_item_from_web: `{% trans "add item to corpus from web resource"|capfirst %}`,
+      label_add_item_from_web_prompt: `{% trans "insert the URL of a web resource, then click on"|capfirst %}`,
+      label_add_item_from_text: `{% trans "add item from text box to corpus"|capfirst %}`,
+      label_add_item_from_text_prompt: `{% trans "insert a text, then click on"|capfirst %}`,
+      label_remove_item: `{% trans "remove item"|capfirst %}`,
+      label_show_hide_corpus_menu: `{% trans "show / hide corpus menu"|capfirst %}`,
+      label_show_hide_item_menu: `{% trans "show / hide item menu"|capfirst %}`,
+      label_manage_domains:  `{% trans "manage associated BabelNet domains"|capfirst %}`,
+      label_similarity: `{% trans "similarity"|capfirst %}`,
+      label_corpus_dashboard: `{% trans "Corpus Dashboard" %}`,
+      label_dependency: `{% trans "Dependency parse" %}`,
+      label_context: `{% trans "Keywords In Context" %}`,
+      label_wordlists: `{% trans "Word Lists by POS" %}`,
+      label_annotation: `{% trans "Annotated text" %}`,
+      label_nounchunks: `{% trans "Named Entities" %}`,
+      label_readability: `{% trans "Text Readability" %}`,
+      label_cohesion: `{% trans "Text Cohesion" %}`,
+      label_summarization: `{% trans "Text Summarization" %}`,
+      label_analysis: `{% trans "Text Analysis Dashboard" %}`,
+      label_confirm_deletion: `{% trans "confirm deletion" %}`,
+      label_confirm_change:  `{% trans "confirm change" %}`,
+      label_enter_text: `{% trans "enter text for new item of corpus"|capfirst %}`,
       value: [],
       values: [],
       all_domains: [],
@@ -607,7 +649,7 @@ var app = new Vue({
       },
       corpusUpdateDomains: function(file_key, domains) {
         let data = {file_key: file_key, domains: domains};
-        fetch('/ajax_update_domains/', {
+        fetch('/textanalysis/ajax_update_domains/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -624,7 +666,7 @@ var app = new Vue({
       },
       corpusAddResourceItem: function(file_key, url, text) {
         let data = {file_key: file_key, url: url, text: text};
-        fetch('/ajax_resource_to_item/', {
+        fetch('/textanalysis/ajax_resource_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -713,7 +755,7 @@ var app = new Vue({
         // if the list is of type corpus, update the corpus in the server and refresh the local view
         if (file_key !== undefined) {
           let data = {file_key: file_key, item: item, index: index};
-          fetch('/ajax_insert_item/', {
+          fetch('/textanalysis/ajax_insert_item/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(data)
@@ -748,7 +790,7 @@ var app = new Vue({
       },
       newSelected() {
         console.log('newSelected');
-        fetch('/ajax_new_corpus/', {
+        fetch('/textanalysis/ajax_new_corpus/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify({})
@@ -763,7 +805,7 @@ var app = new Vue({
       },
       preprocessSelected() {
         console.log('preprocessSelected');
-        fetch('/ajax_make_corpus/', {
+        fetch('/textanalysis/ajax_make_corpus/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(app.corpus)
@@ -781,7 +823,7 @@ var app = new Vue({
         console.log('deleteCorpus');
         if (confirm(this.label_confirm_deletion)) {
           let data = {file_key: file_key};
-          fetch('/ajax_delete_corpus/', {
+          fetch('/textanalysis/ajax_delete_corpus/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(data)
@@ -800,7 +842,7 @@ var app = new Vue({
       removeItem(file_key, obj_type, obj_id) {
         console.log('removeItem');
         let data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
-        fetch('/ajax_remove_item/', {
+        fetch('/textanalysis/ajax_remove_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -827,7 +869,7 @@ var app = new Vue({
       },
       compareSelected() {
         console.log('compareSelected');
-        fetch('/ajax_compare_resources/', {
+        fetch('/textanalysis/ajax_compare_resources/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(app.corpus)
@@ -878,6 +920,35 @@ var app = new Vue({
           this.corpusAddResourceItem(corpus.file_key, null, text);		
 		}
 	  },
+      openFileUpload(corpus) {
+		corpus.show_modal = true;
+		this.dialog_from_corpus('upload_dialog', corpus).open();
+      },
+      closeFileUpload(corpus) {
+		this.dialog_from_corpus('upload_dialog', corpus).close();
+		corpus.show_modal = false;
+	  },
+      requestUploadFile(corpus){
+        var src = this.$el.querySelector('#uploadmyfile');
+        console.log(src.files);
+        var file = src.files[0];
+        console.log(file);
+        // var readable_stream = file.stream();
+        // this.corpusAddFileItem(corpus.file_key, readable_stream)
+        this.corpusAddFileItem(corpus.file_key, file)
+      },
+      // corpusAddFileItem(file_key, readable_stream) {
+      corpusAddFileItem(file_key, file) {
+		fetch('/textanalysis/ajax_file_to_item/'+file_key+'/', {
+		  method: 'POST',
+		  body: file,
+          headers: { "Content-Type": file.type, "Content-Disposition": file.name, "X-Requested-With": "XMLHttpRequest" },
+		})
+        .then(response => response.json())
+        .then(data => {
+			console.log('corpusAddFileItem', 'ok', data)
+    	})
+	  },
 	  truncateText(val) {
 		if (typeof val === 'string')
 		  return val.substr(0, 12) + '...';
@@ -889,7 +960,7 @@ var app = new Vue({
 	  // this.$modal.show();
       this['corpus']['items'] = [];
       let data = {project_id: this.project_id};
-      fetch('/ajax_contents/', {
+      fetch('/textanalysis/ajax_contents/', {
         method: 'POST',
         // headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
         body: JSON.stringify(data)

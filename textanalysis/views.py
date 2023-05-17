@@ -6,7 +6,7 @@ import hashlib
 from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
-from django.http import HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.conf import settings
 from django.utils.translation import gettext_lazy as _
@@ -21,7 +21,7 @@ from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
 from textanalysis.readability import compute_lexical_rarity, cs_readability_01
 from textanalysis.babelnet import bn_domains, BN_slugify, BN_format
-from textanalysis.utils import get_web_resource_text, is_ajax
+from textanalysis.utils import get_file_text, get_web_resource_text, is_ajax
 from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
@@ -479,7 +479,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return HttpResponseForbidden()
     description = ''
     if file_key:
-        # data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
         if nounchunks:
             data['domains'] = domains
@@ -839,6 +838,24 @@ def ajax_new_corpus(request):
     result = {'file_key': file_key}
     return JsonResponse(result)
 
+def add_item_to_corpus(request, file_key, result):
+    result['domains'] = load_corpus_metadata(file_key).get('domains', [])
+    data = json.dumps(result)
+    endpoint = nlp_url + '/api/add_doc/'
+    response = requests.post(endpoint, data=data)
+    if not response.status_code==200:
+        return propagate_remote_server_error(response)
+    data = response.json()
+    new_file_key = data['file_key']
+    if new_file_key:
+        if not new_file_key == file_key:
+            rename_corpus_metadata(file_key, new_file_key)
+            file_key = new_file_key
+        result = {'file_key': file_key, 'index': result['index'], 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
+    else:
+        result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
+    return JsonResponse(result)
+
 @csrf_exempt
 def ajax_insert_item(request):
     data = json.loads(request.body.decode('utf-8'))
@@ -887,7 +904,7 @@ def ajax_resource_to_item(request):
         obj_type = 'text'
         title = 'untitled'
         obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
-    # data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'no_domains': no_domains})
+    """
     domains = load_corpus_metadata(file_key).get('domains', [])
     data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'domains': domains})
     endpoint = nlp_url + '/api/add_doc/'
@@ -904,6 +921,24 @@ def ajax_resource_to_item(request):
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
+    """
+    result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text}
+    return add_item_to_corpus(request, file_key, result)
+
+@csrf_exempt
+def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
+    """ called from contents_dashboard template to a file item to a corpus (docbin) """
+    body = request.body
+    print('ajax_file_to_item - body:', len(body))
+    domains = file_key and load_corpus_metadata(file_key).get('domains', []) or []
+    content_type = request.content_type
+    content_disposition = request.headers['Content-Disposition']
+    title, text, err = get_file_text(body, content_type, title=content_disposition)
+    print('ajax_file_to_item - text:', title, len(text))
+    obj_type = 'file'
+    obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
+    result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}
+    return add_item_to_corpus(request, file_key, result)
 
 """
 called from contents_dashboard template to remove an item (doc) from a corpus (docbin)
@@ -1015,6 +1050,54 @@ def ajax_delete_corpus(request):
         return JsonResponse(data)
     else:
         return propagate_remote_server_error(response)
+
+"""
+called from contents_dashboard template
+to compare the texts of a list of resources
+"""
+@csrf_exempt
+def ajax_compare_resources(request):
+    data = json.loads(request.body.decode('utf-8'))
+    resources = data['items']
+    n = len(resources)
+    if n == 0 or (n == 1 and resources[0]['obj_type'] != 'lp'):
+        ajax_response = JsonResponse({"error": "Need at least 2 items"})
+        ajax_response.status_code = 404
+        return ajax_response
+    elif n == 1:
+        return lp_compare_nodes(request, resources[0]['obj_id'])
+    else:
+        user_key = '{id:05d}'.format(id=request.user.id)
+        endpoint = nlp_url + '/api/delete_corpus/'
+        data = json.dumps({'user_key': user_key})
+        response = requests.post(endpoint, data=data)
+        if not response.status_code==200:
+            return propagate_remote_server_error(response)
+        endpoint = nlp_url + '/api/add_doc/'
+        last_language = None
+        for resource in resources:
+            title, description, text = get_obj_text(None, obj_type=resource['obj_type'], obj_id=resource['obj_id'], return_has_text=False, with_children=True)
+            text = '{}, {}. {}'.format(title, title, text)
+            doc_key = '{id:05d}'.format(id=resource['obj_id'])
+            data = json.dumps({'user_key': user_key, 'doc_key': doc_key, 'text': text})
+            response = requests.post(endpoint, data=data)
+            if not response.status_code==200:
+                return propagate_remote_server_error(response)
+            data = response.json()
+            language = data.get('language', '')
+            if last_language and language!=last_language:
+                ajax_response = JsonResponse({"error": "All items must have same language"})
+                ajax_response.status_code = 404
+                return ajax_response
+            last_language = language
+        endpoint = nlp_url + '/api/compare_docs/'
+        data = json.dumps({'user_key': user_key, 'language': language})
+        response = requests.post(endpoint, data=data)
+        if response.status_code==200:
+            result = response.json()
+            return JsonResponse(result)
+        else:
+            return propagate_remote_server_error(response)
 
 def corpus_dashboard_return(request, var_dict):
     if not var_dict:
