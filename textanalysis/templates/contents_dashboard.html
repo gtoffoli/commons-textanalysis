@@ -11,7 +11,7 @@
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.css">
 <link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
-<!-- <link rel="stylesheet" href="{% static "vue/upload_dialog/UploadDialog.css" %}"> -->
+
 <style>
 hr {
   margin:0;
@@ -24,6 +24,7 @@ hr {
   margin: 0 0 0.1em 0;
   background: #fff;
 }
+
 {% if project_name %}
 .panel-head {
   background-color: #FABE66;
@@ -198,13 +199,16 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
 .btn-outline-dark {
   color: #333;
   background-color: #fff;
-  border-color: #B2B2B2;
+  /* border-color: #B2B2B2; */
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  font-weight: normal;
+  font-size: 13px;
 }
-
 .btn-outline-dark:hover {
   color: #fff;
   background-color: #B2B2B2;
-  border-color: #B2B2B2;
+  /* border-color: #B2B2B2; */
 }
 
 .btn-outline-dark:focus, .btn-outline-dark.focus {
@@ -241,21 +245,31 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
   font-style: italic;
 }
 
-#uploadmyfile{
-  /* display: none; */
+div.panel-head-modal {
+  font-size: 14px;
+  padding: 5px 10px;
+  border-top-left-radius: 4px;
+  border-top-right-radius: 4px;
+  background-color: #999;
+  border: 1px solid #ccc;
+  color: white;
 }
 
+#uploadmyfile{
+  display: none;
+}
 .drop{
   position: absolute;
-  width: 100%;
+  display: flex;
+  align-items: stretch; /* center; */
+  justify-content: center;
+  vertical-align: middle;
+  width: 95%;
   height: 100%;
   background-color: #eee;
   border:10px solid #eee;
-  display: flex;
-  vertical-align: middle;
-  align-items: stretch; /* center; */
-  justify-content: center;
   padding: 1rem;
+  margin-bottom: 5em;
   transition: background-color .2s ease-in-out;
 }
 .isDragging{
@@ -389,25 +403,40 @@ ul.ta-menu li, ul.ta-menu li a { display: inline; font-size: 12px; line-height: 
               <div></div>
               <div><a v-if="!corpus.active" v-on:click.stop="openFileUpload(corpus);" :title="label_add_item_from_file"><i class="fa fa-upload" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="upload_dialog" :name="corpus.file_key">
-					<div style="display: block; text-align: center;">
-						<div class="panel-head">{{ label_upload_file }} {{ corpus.file_key }}</div>
-					    <div style="text-align: center;">
-					        <input type="file" id="uploadmyfile" @change="requestUploadFile(corpus)">
+					<div style="display: block; text-align: center; width: 100%;">
+						<div class="panel-head-modal">{{ label_upload_file }} {{ corpus.file_key }}</div>
+					    <div style="text-align: center; margin-top: 5px;">
+                            <label class="btn btn-outline-dark">
+					        	<input type="file" id="uploadmyfile" @change="requestUploadFile(corpus)" />{{ label_pick_file }}</label>
 					    </div>
-				        <drop_file :name="'upload_'+corpus.file_key" :drop_prompt="label_drop_file_prompt" :file_type="file_type" />
-						<div>
+				        <drop_file :name="'upload_'+corpus.file_key" :drop_prompt="label_drop_file_prompt" :file_type="file_type"></drop_file>
+						<div style="position: absolute; bottom: 10px; width: 100%; text-align: center;">
 							<button class="btn btn-outline-dark" @click="closeFileUpload(corpus)">Cancel</button>
-							<button class="btn btn-outline-dark" @click="saveFileUpload(corpus)" :disabled="(entered_text.length<20)">Save</button>
+							<button class="btn btn-outline-dark" @click="saveFileUpload(corpus)">Save</button>
 						</div>
 					</div>
 				</modal>
               </div>
+<!--
               <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
+-->
+              <div><a v-if="!corpus.active" v-on:click.stop="openWebInput(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a>
+				<modal v-bind="modal_props_web" ref="web_dialog" :name="corpus.file_key">
+					<div style="display: block; text-align: center; width: 100%;">
+						<div class="panel-head-modal">{{ label_add_item_from_web }} {{ corpus.file_key }}</div>
+						<div style="margin: 5px;"><input type="text" v-model="entered_text" :placeholder="label_enter_url_here" size="80" maxlength="160" style="" /></div>
+						<div style="margin: 5px;">
+							<button class="btn btn-outline-dark" @click="closeWebInput(corpus)">Cancel</button>
+							<button class="btn btn-outline-dark" @click="saveWebInput(corpus)" :disabled="(entered_text.length<10)">Save</button>
+						</div>
+					</div>
+				</modal>
+              </div>
               <div><a v-if="!corpus.active" v-on:click.stop="openTextInput(corpus);" :title="label_add_item_from_text"><i class="fa fa-copy" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="corpus_dialog" :name="corpus.file_key">
-					<div style="display: block; text-align: center;">
-						<div class="panel-head">{{ label_enter_text }} {{ corpus.file_key }}</div>
-						<div><textarea id="story" name="story" rows="24" cols="80" style="resize: vertical;" v-model="entered_text"></textarea></div>
+					<div style="display: block; text-align: center; width: 100%;">
+						<div class="panel-head-modal">{{ label_enter_text }} {{ corpus.file_key }}</div>
+						<div><textarea id="story" name="story" rows="26" cols="80" style="resize: none;" v-model="entered_text" :placeholder="label_enter_text_here"></textarea></div>
 						<div>
 							<button class="btn btn-outline-dark" @click="closeTextInput(corpus)">Cancel</button>
 							<button class="btn btn-outline-dark" @click="saveTextInput(corpus)" :disabled="(entered_text.length<20)">Save</button>
@@ -511,14 +540,12 @@ Vue.use(VuejsDialog.main.default)
 // Register globally
 Vue.component('vue-multiselect', VueMultiselect.default)
 import VueJsModal from '/static/vue-js-modal/components/Modal.js';
-// import TriggerUploadDialog from '/static/vue/upload_dialog/TriggerUploadDialog.js';
 import DropAnImage from '/static/vue/upload_dialog/DropAnImage.js';
 
 var app = new Vue({
     name: 'contents_dashboard',
     components: {
 	  'modal': VueJsModal,
-	  // 'upload': TriggerUploadDialog,
 	  'drop_file': DropAnImage,
     },
     el: '#app',
@@ -544,9 +571,10 @@ var app = new Vue({
       label_new_corpus: `{% trans "new corpus"|capfirst %}`,
       label_delete_corpus: `{% trans "delete corpus"|capfirst %}`,
       label_add_item_from_file: `{% trans "add item from local file to corpus"|capfirst %}`,
-      label_upload_file: `{% trans "upload file from local device to corpus"|capfirst %}`,
+      label_upload_file: `{% trans "upload a file from local device to corpus"|capfirst %}`,
+      label_pick_file: `{% trans "pick a file"|capfirst %}`,
       label_drop_file_prompt: `{% trans "drop a file"|capfirst %}`,
-      label_add_item_from_web: `{% trans "add item to corpus from web resource"|capfirst %}`,
+      label_add_item_from_web: `{% trans "add item from web resource to corpus"|capfirst %}`,
       label_add_item_from_web_prompt: `{% trans "insert the URL of a web resource, then click on"|capfirst %}`,
       label_add_item_from_text: `{% trans "add item from text box to corpus"|capfirst %}`,
       label_add_item_from_text_prompt: `{% trans "insert a text, then click on"|capfirst %}`,
@@ -568,6 +596,8 @@ var app = new Vue({
       label_confirm_deletion: `{% trans "confirm deletion" %}`,
       label_confirm_change:  `{% trans "confirm change" %}`,
       label_enter_text: `{% trans "enter text for new item of corpus"|capfirst %}`,
+      label_enter_text_here: `{% trans "enter text here" %}`,
+      label_enter_url_here: `{% trans "enter url here" %}`,
       value: [],
       values: [],
       all_domains: [],
@@ -593,6 +623,13 @@ var app = new Vue({
 	      overlay: false
 	    },
 */
+	  },
+	  modal_props_web: { 
+		draggable: true,
+		clickToClose: false,
+		focusTrap: true,
+		width: 640,
+		height: 100,
 	  },
     },
     computed: {
@@ -878,6 +915,7 @@ var app = new Vue({
         .then(data => (this['result'] = data['result']))
         .catch(err => (this['result'] = err))
       },
+/*
       promptWebResourceUrl(corpus) {
         this.$dialog
         .prompt({
@@ -897,6 +935,7 @@ var app = new Vue({
           console.log('Prompt dismissed');
         });
       },
+*/
       dialog_from_corpus(ref, corpus) {
         let modals = this.$refs[ref];
         for (let i=0; i<modals.length; i++)
@@ -933,22 +972,37 @@ var app = new Vue({
         console.log(src.files);
         var file = src.files[0];
         console.log(file);
-        // var readable_stream = file.stream();
-        // this.corpusAddFileItem(corpus.file_key, readable_stream)
-        this.corpusAddFileItem(corpus.file_key, file)
+        this.corpusAddFileItem(corpus, file)
       },
-      // corpusAddFileItem(file_key, readable_stream) {
-      corpusAddFileItem(file_key, file) {
-		fetch('/textanalysis/ajax_file_to_item/'+file_key+'/', {
+      corpusAddFileItem(corpus, file) {
+		fetch('/textanalysis/ajax_file_to_item/'+corpus.file_key+'/', {
 		  method: 'POST',
 		  body: file,
           headers: { "Content-Type": file.type, "Content-Disposition": file.name, "X-Requested-With": "XMLHttpRequest" },
 		})
         .then(response => response.json())
         .then(data => {
-			console.log('corpusAddFileItem', 'ok', data)
+			console.log('corpusAddFileItem', 'ok', data);
+			this.closeFileUpload(corpus);
     	})
 	  },
+      openWebInput(corpus) {
+		corpus.show_modal = true;
+		this.dialog_from_corpus('web_dialog', corpus).open();
+	  },
+      closeWebInput(corpus) {
+		this.dialog_from_corpus('web_dialog', corpus).close();
+		corpus.show_modal = false;
+	  },
+      saveWebInput(corpus) {
+		let text = this.entered_text;
+		this.dialog_from_corpus('web_dialog', corpus).close();
+		corpus.show_modal = false;
+		if (text.length > 10) {
+          this.corpusAddResourceItem(corpus.file_key, null, text);		
+		}
+	  },
+
 	  truncateText(val) {
 		if (typeof val === 'string')
 		  return val.substr(0, 12) + '...';
