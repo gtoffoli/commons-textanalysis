@@ -9,8 +9,8 @@
 <link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
 <link rel="stylesheet" href="{% static "vue_apps/vddl/vddl.css" %}">
-<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.css">
-<link rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
+<!-- <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.css"> -->
+<link id="vue-multiselect.css" rel="stylesheet" href="https://unpkg.com/vue-multiselect@2.1.6/dist/vue-multiselect.min.css">
 
 <style>
 hr {
@@ -138,7 +138,7 @@ div.panel-head-corpora {
 }
 .list-r > div .panel-heading-corpus {
   display: grid;
-  grid-template-columns: auto 10% 10% 5% 5% 5% 5% 5% 5% 3%;
+  grid-template-columns: auto 15% 15% 10% 9% 4% 4% 4% 4% 4% 4% 3%;
   color: #fff;
   background: #B2B2B2;
 }
@@ -280,10 +280,10 @@ div.panel-head-modal {
 {% endblock extra_style %}
 
 {% block extra_head %}
-    <script src="https://use.fontawesome.com/d391635073.js"></script>
-    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
-    <!-- <script src="https://unpkg.com/http-vue-loader"></script> -->
-    <script src="{% static "vue/vue.js" %}"></script>
+<script id="fontawesome.js" src="https://use.fontawesome.com/d391635073.js"></script>
+<script src="{% static "nlp/js/jquery.min.js" %}"></script>
+<!-- <script src="https://unpkg.com/http-vue-loader"></script> -->
+<script src="{% static "vue/vue.js" %}"></script>
 {% comment %}
     <script src="https://cdn.jsdelivr.net/npm/vue@2.6.12/dist/vue.js"></script>
     <script type="module" src="https://cdn.jsdelivr.net/npm/sortablejs@1.13.0/Sortable.js"></script>
@@ -291,13 +291,13 @@ div.panel-head-modal {
     <script src="https://cdn.jsdelivr.net/npm/vddl@0.7.1/dist/vddl.js"></script>
 	<script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
 {% endcomment %}
-    <script type="module" src="{% static "vue_apps/sortable/Sortable.js" %}"></script>
-    <script type="module" src="{% static "vue_apps/vuedraggable/vuedraggable.js" %}"></script>
-    <script src="{% static "vue_apps/vddl/vddl.js" %}"></script>
-	<script src="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.js"></script>
-	<script src="https://unpkg.com/vue-multiselect@2.1.6"></script>
-	<!-- <script type="text/javascript" src="https://unpkg.com/vue-js-modal@1.3.35/dist/index.js"></script> -->
-	{% include "_vue-js-modal.html" %}
+<script type="module" src="{% static "vue_apps/sortable/Sortable.js" %}"></script>
+<script type="module" src="{% static "vue_apps/vuedraggable/vuedraggable.js" %}"></script>
+<script src="{% static "vue_apps/vddl/vddl.js" %}"></script>
+<!-- <script src="https://cdn.jsdelivr.net/npm/vuejs-dialog@1.4.2/dist/vuejs-dialog.min.js"></script> -->
+<script id="vue-multiselect.js" src="https://unpkg.com/vue-multiselect@2.1.6"></script id="fontawesome">
+<!-- <script type="text/javascript" src="https://unpkg.com/vue-js-modal@1.3.35/dist/index.js"></script> -->
+{% include "_vue-js-modal.html" %}
 {% endblock extra_head %}
 
 {% block body_class %}contents_dashboard{% endblock %}
@@ -372,10 +372,9 @@ div.panel-head-modal {
         </div>
         <hr>
 
-        <!--h4 class="text-center"><small>{{ label_corpora }}</small> {{ label_user }}</h4-->
         <div class="panel-head-corpora">
             <h3 class="pull-left marginT5 marginB5 demiBold">{{ label_corpora }}</h3>
-            <h4 class="pull-right marginT5 marginB5 demiBold">{{ label_user }}</h4>
+            <!-- <h4 class="pull-right marginT5 marginB5 demiBold">{{ label_user }}</h4> -->
             <div style="clear:both"></div>
         </div>
 
@@ -390,6 +389,11 @@ div.panel-head-modal {
               	   <span class="demiBold" v-else>{{ label_corpus }}</span>
                    <span class="demiBold">{{ corpus.file_key }}</span>
               </div>
+              <div>{{ label_owner }}: {{ corpus.owner }}</div>
+              <div>{{ state_dict[corpus.state] }}
+				   <a v-if="corpus.is_owner && [5,3].indexOf(corpus.state)>=0" href="#" v-on:click.stop="narrower_access(corpus);"><i class="fa fa-minus" :title="label_narrower_access"></i></a>
+				   <a v-if="corpus.is_owner && [1,5].indexOf(corpus.state)>=0" href="#" v-on:click.stop="wider_access(corpus);"><i class="fa fa-plus" :title="label_wider_access"></i></a>
+			  </div>
               <div>
 				  <div v-if="corpus.filter">
 					  <vue-multiselect v-model="values" :options="all_domains" :multiple="true" :allowEmpty="true" :close-on-select="false" :clear-on-select="true" :preserve-search="false" placeholder="" :preselect-first="false" :searchable="false" :optionHeight="20">
@@ -417,9 +421,6 @@ div.panel-head-modal {
 					</div>
 				</modal>
               </div>
-<!--
-              <div><a v-if="!corpus.active" v-on:click.stop="promptWebResourceUrl(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a></div>
--->
               <div><a v-if="!corpus.active" v-on:click.stop="openWebInput(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props_web" ref="web_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
@@ -536,7 +537,7 @@ div.panel-head-modal {
 {% block script_base %}
 <script type="module">
 // Tell Vue to install the VuejsDialog plugin.
-Vue.use(VuejsDialog.main.default)
+// Vue.use(VuejsDialog.main.default)
 // Register globally
 Vue.component('vue-multiselect', VueMultiselect.default)
 import VueJsModal from '/static/vue-js-modal/components/Modal.js';
@@ -567,6 +568,10 @@ var app = new Vue({
       label_expand_collapse: `{% trans "expand / collapse" %}`,
       label_selected: `{% trans "selected resources"|capfirst %}`,
       label_corpus: `{% trans "corpus"|capfirst %}`,
+      label_owner: `{% trans "by" %}`,
+      label_state: `{% trans "state" %}`,
+      label_narrower_access: `{% trans "narrower access" %}`,
+      label_wider_access: `{% trans "wider access" %}`,
       label_empty_corpus: `{% trans "empty corpus"|capfirst %}`,
       label_new_corpus: `{% trans "new corpus"|capfirst %}`,
       label_delete_corpus: `{% trans "delete corpus"|capfirst %}`,
@@ -600,6 +605,8 @@ var app = new Vue({
       label_enter_url_here: `{% trans "enter url here" %}`,
       value: [],
       values: [],
+      state_dict: {},
+      sorted_states: [],
       all_domains: [],
       domains: [],
       isOpen: true,
@@ -669,7 +676,7 @@ var app = new Vue({
         } else {
 		  if (! (JSON.stringify(item.domains) === JSON.stringify(this.values)))
 		    if (confirm(this.label_confirm_change)) {
-			  this.corpusUpdateDomains(item.file_key, this.values);
+			  this.corpusUpdateMetadata(item, 'domains', this.values);
               item.domains = this.values;
               this.values = [];
             }
@@ -684,9 +691,25 @@ var app = new Vue({
             return corpus;
         return null;
       },
-      corpusUpdateDomains: function(file_key, domains) {
-        let data = {file_key: file_key, domains: domains};
-        fetch('/textanalysis/ajax_update_domains/', {
+      narrower_access: function(corpus) {
+		let state = corpus['state'];
+		let index = this.sorted_states.indexOf(state);
+		state = this.sorted_states[index-1];
+		this.corpusUpdateMetadata(corpus, 'state', state);
+		corpus['state'] = state;
+        this.$forceUpdate();
+	  },
+      wider_access: function(corpus) {
+		let state = corpus['state']
+		let index = this.sorted_states.indexOf(state)
+		state = this.sorted_states[index+1]
+		this.corpusUpdateMetadata(corpus, 'state', state);
+		corpus['state'] = state;
+        this.$forceUpdate();
+	  },
+      corpusUpdateMetadata: function(corpus, key, value) {
+        let data = {file_key: corpus.file_key, key: key, value: value};
+        fetch('/textanalysis/ajax_corpus_update/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -1029,6 +1052,10 @@ var app = new Vue({
           }
           else if (key == 'all_domains')
             this.all_domains = data['all_domains'];
+          else if (key == 'state_dict')
+            this.state_dict = data['state_dict'];
+          else if (key == 'sorted_states')
+            this.sorted_states = data['sorted_states'];
           else {
             let resource_list = this.resource_lists[key];
             let items = data[key];
@@ -1052,5 +1079,14 @@ var app = new Vue({
     updated: function () {
     },
 });
+</script>
+<script src="{% static "js/switch_sources.js" %}"></script>
+<script>
+	// console.log('remoteCssLoaded');
+	let remote_css_ids = remoteCssLoaded ();
+	console.log(remote_css_ids);
+	// console.log('remoteJsLoaded');
+	let remote_js_ids = remoteJsLoaded();
+	console.log(remote_js_ids);
 </script>
 {% endblock script_base %}

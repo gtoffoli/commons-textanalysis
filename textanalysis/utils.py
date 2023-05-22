@@ -492,7 +492,12 @@ def path_from_file_key(file_key):
     return os.path.join(settings.CORPORA, file_key)+'.spacy'
 
 def load_corpus_metadata(file_key):
-    """ reads a list of domain strings from a json file associated to a docbin spacy file """
+    """ reads a dictionary from a json file associated to a docbin spacy file; keys / values:
+    site_id / id of the current site object at creation time
+    username / username of corpus creator
+    state / current access-visibility state (PRIVATE / RESTRICTED / PUBLIC)
+    domains / list of BabelNet domain strings 
+    """
     metadata = {}
     path = path_from_file_key(file_key).replace('.spacy', '.json')
     if os.path.exists(path):

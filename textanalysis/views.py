@@ -12,9 +12,12 @@ from django.conf import settings
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import capfirst
 from django.views.decorators.csrf import csrf_exempt
+from django.contrib.sites.shortcuts import get_current_site
+from django.contrib.auth.models import User
 
 from commons.models import Document, OER
-from commons.models import is_site_member, PUBLISHED,RESTRICTED
+from commons.models import is_site_member
+from commons.models import DRAFT, RESTRICTED, PUBLISHED, PUBLICATION_STATE_DICT
 from commons.user_spaces import project_contents, user_contents
 
 from textanalysis.forms import TextAnalysisInputForm
@@ -808,18 +811,29 @@ def ajax_contents(request):
     if not response.status_code==200:
         return propagate_remote_server_error(response)
     data = response.json()
-    corpora = data['corpora']
-    for corpus in corpora:
+    corpora = []
+    for corpus in data['corpora']:
         file_key = corpus['file_key']
         metadata = load_corpus_metadata(file_key)
         corpus.update(metadata)
+        site_id = corpus.get('site_id', None)
+        username = corpus.get('username', '')
+        owner = username and User.objects.get(username=username) or None
+        state = corpus.get('state', DRAFT)
+        if not (user==owner or state==PUBLISHED or (get_current_site(request).id==site_id and state==RESTRICTED)):
+            continue
+        corpus['owner'] = owner and owner.get_display_name() or _('anonymous')
+        corpus['is_owner'] = owner and owner.id == user.id or False
         corpus['open'] = False
         corpus['filter'] = False
+        corpora.append(corpus)
     if project_id:
         data = project_contents(project_id)
     else: # if user.is_authenticated:
         data = user_contents(user)
     data['corpora'] = corpora
+    data['state_dict'] = PUBLICATION_STATE_DICT
+    data['sorted_states'] = [1, 5, 3]
     data['all_domains'] = [BN_format(domain) for domain in bn_domains]
     return JsonResponse(data)
 
@@ -833,7 +847,8 @@ def ajax_new_corpus(request):
         return propagate_remote_server_error(response)
     data = response.json()
     file_key = data['file_key']
-    metadata = { 'user': request.user.username, 'state': RESTRICTED, }
+    site_id = get_current_site(request).id
+    metadata = {'site_id': site_id, 'username': request.user.username, 'state': DRAFT,}
     save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key}
     return JsonResponse(result)
@@ -1010,25 +1025,14 @@ def ajax_get_corpora(request):
 
 """
 called from contents_dashboard template
-to save the entire set of BN domains associated to a corpus
+to update an attribute in corpus metadata
 """
 @csrf_exempt
-def ajax_update_domains(request):
+def ajax_corpus_update(request):
     data = json.loads(request.body.decode('utf-8'))
     file_key = data['file_key']
-    domains = data['domains']
-    """
-    endpoint = nlp_url + '/api/update_domains/'
-    data = json.dumps({'file_key': file_key, 'domains': domains})
-    response = requests.post(endpoint, data=data)
-    if response.status_code==200:
-        result = response.json()
-        return JsonResponse(result)
-    else:
-        return propagate_remote_server_error(response)
-    """
     metadata = load_corpus_metadata(file_key)
-    metadata['domains'] = domains
+    metadata[data['key']] = data['value']
     save_corpus_metadata(file_key, metadata)
     return JsonResponse(data)
 
