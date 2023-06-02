@@ -450,20 +450,110 @@ def parse_tbx(tbx_str: str) -> dict:
     json_str = json_str.replace('"@type": "termType", "#text":', '"termType":')
     json_str = json_str.replace('"@type": "subjectField", "#text":', '"subjectField":')
     json_str = json_str.replace('"@type": "administrativeStatus", "#text":', '"administrativeStatus":')
+    json_str = json_str.replace('"@type": "context", "#text":', '"context":')
+    json_str = json_str.replace('"@type": "partOfSpeech", "#text":', '"partOfSpeech":')
+    json_str = json_str.replace('"@type": "definition", "#text":', '"definition":')
+    json_str = json_str.replace('"@type": "source", "#text":', '"source":')
 
     py_dict = json.loads(json_str)
 
     concepts = py_dict['tbx']['text']['body']['conceptEntry']
+    concept_dicts = []
     for concept in concepts:
+        concept_dict = {'id': concept['@id']}
         lang = type(concept['langSec']) is dict and concept['langSec'].get('lang', None) or None
         if lang:
             concept['langSec'] = [{'lang': lang, 'termSec': concept['langSec']['termSec']}]
+        subjectField = concept.get('descrip', '')
+        if subjectField:
+            subjectField = subjectField.get('subjectField', '')
+        concept_dict['domains'] = subjectField and subjectField.split(';') or []
+        # each conceptEntry can contain one or more langSec
+        lang_dicts = []
         for lang_item in concept['langSec']:
-            term = type(lang_item['termSec']) is dict and lang_item['termSec'].get('term', None) or None
-            if term:
-                lang_item['termSec'] = [{'term': term, 'termNote': lang_item['termSec']['termNote'], 'descrip': lang_item['termSec']['descrip']}]
-
-    return py_dict
+            lang_dict = {'lang': lang_item['lang']}
+            descripGrp = lang_item.get('descripGrp', None)
+            if descripGrp:
+                descrip = descripGrp.get('descrip', None)
+                if descrip:
+                    definition = descrip.get('definition', None)
+                    if definition:
+                        lang_dict['definition'] = definition
+                admin = descripGrp.get('admin', None)
+                if admin:
+                    source = admin.get('source', None)
+                    if source:
+                        # lang_dict['source'] = source
+                        lang_dict['def. source'] = source
+            # each langSec can contain one or more termSec
+            term_items = lang_item['termSec']
+            if not type(term_items) == list:
+                term_items = [term_items]
+            term_dicts = []
+            for term_item in term_items:
+                term_dict = {'term': term_item['term']}
+                termType = term_item.get('termType', None)
+                if termType:
+                    # term_dict['termType'] = termType
+                    term_dict['type'] = termType
+                partOfSpeech = term_item.get('partOfSpeech', None)
+                if partOfSpeech:
+                    # term_dict['partOfSpeech'] = partOfSpeech
+                    term_dict['POS'] = partOfSpeech
+                reliabilityCode = term_item.get('reliabilityCode', None)
+                if reliabilityCode:
+                    # term_dict['reliabilityCode'] = reliabilityCode
+                    term_dict['reliability'] = reliabilityCode
+                administrativeStatus = term_item.get('administrativeStatus', None)
+                if administrativeStatus:
+                    # term_dict['administrativeStatus'] = administrativeStatus
+                    term_dict['status'] = administrativeStatus.replace('Term-admn-sts', '')
+                # each termSec can contain one or more termNote
+                term_notes = term_item.get('termNote', [])     
+                if term_notes and not type(term_notes) == list:
+                    term_notes = [term_notes]
+                for term_note in term_notes:
+                    partOfSpeech = term_note.get('partOfSpeech', None)
+                    if partOfSpeech:
+                        # term_dict['partOfSpeech'] = partOfSpeech
+                        term_dict['POS'] = partOfSpeech
+                    termType = term_note.get('termType', None)
+                    if termType:
+                        # term_dict['termType'] = termType
+                        term_dict['type'] = termType
+                    administrativeStatus = term_note.get('administrativeStatus', None)
+                    if administrativeStatus:
+                        # term_dict['administrativeStatus'] = administrativeStatus.replace('Term-admn-sts', '')
+                        term_dict['status'] = administrativeStatus.replace('Term-admn-sts', '')
+                # each termSec can contain zero, one or more (?) descrip items
+                term_descrips = term_item.get('descrip', [])
+                if term_descrips and not type(term_descrips) == list:
+                    term_descrips = [term_descrips]
+                for term_descrip in term_descrips:
+                    reliabilityCode = term_descrip.get('reliabilityCode', None)
+                    if reliabilityCode:
+                        # term_dict['reliabilityCode'] = reliabilityCode
+                        term_dict['reliability'] = reliabilityCode
+                # each termSec can contain zero or one descripGrp
+                descripGrp = term_item.get('descripGrp', None)     
+                if descripGrp:
+                    descrip = descripGrp.get('descrip', None)
+                    if descrip:
+                        context = descrip.get('context', None)
+                        if context:
+                            term_dict['context'] = context
+                    admin = descripGrp.get('admin', None)
+                    if admin:
+                        source = admin.get('source', None)
+                        if source:
+                            # term_dict['source'] = source
+                            term_dict['term source'] = source
+                term_dicts.append(term_dict)
+            lang_dict['termSec'] = term_dicts
+            lang_dicts.append(lang_dict)
+        concept_dict['langSec'] = lang_dicts
+        concept_dicts.append(concept_dict)
+    return {'tbx': {'text': {'body': {'conceptEntry': concept_dicts}}}}
 
 def write_output_file(json_filename: str, json_contents: str) -> None:
     """ _write_output_file

@@ -1450,13 +1450,12 @@ def tbx_languages(concepts):
     return sorted(list(languages))
 
 def tbx_subjects(concepts):
-    subjects = set()
+    all_subjects = set()
     for concept in concepts:
-        subjectField = concept['descrip']['subjectField']
-        items = subjectField.split(';')
-        for item in items:
-            subjects.add(item.strip())
-    return sorted(list(subjects))
+        domains = concept.get('domains', [])
+        for domain in domains:
+            all_subjects.add(domain.strip())
+    return sorted(list(all_subjects), key=lambda x: x.lower())
 
 @csrf_exempt
 def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
@@ -1473,7 +1472,7 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         tbx_dict = parse_tbx(xml_str)
         tbx = tbx_dict['tbx']
         concepts = tbx['text']['body']['conceptEntry']
-        data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']
+        # data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']
         data['concepts'] = concepts
         data['languages'] = tbx_languages(concepts)
         data['subjects'] = tbx_subjects(concepts)
