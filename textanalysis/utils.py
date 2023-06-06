@@ -439,12 +439,14 @@ def parse_xml(xml_str: str) -> str:
     """
     return json.dumps(xmltodict.parse(xml_str))
 
-def parse_tbx(tbx_str: str) -> dict:
+def tbx_xml_2_dict(tbx_str: str) -> dict:
     """ parse_xml
     Takes an xml string and returns the equivalent Python dict slightly simpliflied.
+    Adds an 'index' section intended to make easier the terminology/glossary rendering in tabular form.
     """
     json_str = parse_xml(tbx_str)
 
+    # specify how to flatten the tbx structure
     json_str = json_str.replace('@xml:lang', 'lang')
     json_str = json_str.replace('"@type": "reliabilityCode", "#text":', '"reliabilityCode":')
     json_str = json_str.replace('"@type": "termType", "#text":', '"termType":')
@@ -455,23 +457,33 @@ def parse_tbx(tbx_str: str) -> dict:
     json_str = json_str.replace('"@type": "definition", "#text":', '"definition":')
     json_str = json_str.replace('"@type": "source", "#text":', '"source":')
 
+    # define the sort order, useful for the rendeing
+    all_concept_columns = ['id', 'subjects',]
+    all_lang_columns = ['lang', 'definition', 'def. source',]
+    all_term_columns = ['term', 'type', 'POS', 'status', 'reliability', 'term source', 'context',]
+
     py_dict = json.loads(json_str)
 
+    langs = set()
+    columns = set(['id', 'lang', 'term',])
     concepts = py_dict['tbx']['text']['body']['conceptEntry']
     concept_dicts = []
     for concept in concepts:
         concept_dict = {'id': concept['@id']}
-        lang = type(concept['langSec']) is dict and concept['langSec'].get('lang', None) or None
+        lang = type(concept['langSec']) is dict and concept['langSec'].get('lang', None)
         if lang:
             concept['langSec'] = [{'lang': lang, 'termSec': concept['langSec']['termSec']}]
         subjectField = concept.get('descrip', '')
         if subjectField:
             subjectField = subjectField.get('subjectField', '')
-        concept_dict['domains'] = subjectField and subjectField.split(';') or []
+            columns.add('subjects')
+        concept_dict['subjects'] = subjectField and subjectField.split(';') or []
         # each conceptEntry can contain one or more langSec
         lang_dicts = []
         for lang_item in concept['langSec']:
-            lang_dict = {'lang': lang_item['lang']}
+            lang = lang_item['lang']
+            langs.add(lang)
+            lang_dict = {'lang': lang}
             descripGrp = lang_item.get('descripGrp', None)
             if descripGrp:
                 descrip = descripGrp.get('descrip', None)
@@ -479,12 +491,14 @@ def parse_tbx(tbx_str: str) -> dict:
                     definition = descrip.get('definition', None)
                     if definition:
                         lang_dict['definition'] = definition
+                        columns.add('definition')
                 admin = descripGrp.get('admin', None)
                 if admin:
                     source = admin.get('source', None)
                     if source:
                         # lang_dict['source'] = source
                         lang_dict['def. source'] = source
+                        columns.add('def. source')
             # each langSec can contain one or more termSec
             term_items = lang_item['termSec']
             if not type(term_items) == list:
@@ -496,18 +510,22 @@ def parse_tbx(tbx_str: str) -> dict:
                 if termType:
                     # term_dict['termType'] = termType
                     term_dict['type'] = termType
+                    columns.add('type')
                 partOfSpeech = term_item.get('partOfSpeech', None)
                 if partOfSpeech:
                     # term_dict['partOfSpeech'] = partOfSpeech
                     term_dict['POS'] = partOfSpeech
+                    columns.add('POS')
                 reliabilityCode = term_item.get('reliabilityCode', None)
                 if reliabilityCode:
                     # term_dict['reliabilityCode'] = reliabilityCode
                     term_dict['reliability'] = reliabilityCode
+                    columns.add('reliability')
                 administrativeStatus = term_item.get('administrativeStatus', None)
                 if administrativeStatus:
                     # term_dict['administrativeStatus'] = administrativeStatus
                     term_dict['status'] = administrativeStatus.replace('Term-admn-sts', '')
+                    columns.add('status')
                 # each termSec can contain one or more termNote
                 term_notes = term_item.get('termNote', [])     
                 if term_notes and not type(term_notes) == list:
@@ -517,14 +535,17 @@ def parse_tbx(tbx_str: str) -> dict:
                     if partOfSpeech:
                         # term_dict['partOfSpeech'] = partOfSpeech
                         term_dict['POS'] = partOfSpeech
+                        columns.add('POS')
                     termType = term_note.get('termType', None)
                     if termType:
                         # term_dict['termType'] = termType
                         term_dict['type'] = termType
+                        columns.add('type')
                     administrativeStatus = term_note.get('administrativeStatus', None)
                     if administrativeStatus:
                         # term_dict['administrativeStatus'] = administrativeStatus.replace('Term-admn-sts', '')
                         term_dict['status'] = administrativeStatus.replace('Term-admn-sts', '')
+                        columns.add('status')
                 # each termSec can contain zero, one or more (?) descrip items
                 term_descrips = term_item.get('descrip', [])
                 if term_descrips and not type(term_descrips) == list:
@@ -534,6 +555,7 @@ def parse_tbx(tbx_str: str) -> dict:
                     if reliabilityCode:
                         # term_dict['reliabilityCode'] = reliabilityCode
                         term_dict['reliability'] = reliabilityCode
+                        columns.add('reliability')
                 # each termSec can contain zero or one descripGrp
                 descripGrp = term_item.get('descripGrp', None)     
                 if descripGrp:
@@ -542,18 +564,37 @@ def parse_tbx(tbx_str: str) -> dict:
                         context = descrip.get('context', None)
                         if context:
                             term_dict['context'] = context
+                            columns.add('context')
                     admin = descripGrp.get('admin', None)
                     if admin:
                         source = admin.get('source', None)
                         if source:
                             # term_dict['source'] = source
                             term_dict['term source'] = source
+                            columns.add('term source')
                 term_dicts.append(term_dict)
             lang_dict['termSec'] = term_dicts
             lang_dicts.append(lang_dict)
         concept_dict['langSec'] = lang_dicts
         concept_dicts.append(concept_dict)
-    return {'tbx': {'text': {'body': {'conceptEntry': concept_dicts}}}}
+    langs = sorted(list(langs))
+    concept_columns = [c for c in all_concept_columns if c in columns]
+    lang_columns = [c for c in all_lang_columns if c in columns]
+    term_columns = [c for c in all_term_columns if c in columns]
+    return {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+
+def tbx_dict_2_tsv(tbx_dict: str) -> str:
+    """
+    Takes a Python dict representing an xml-tbx document parsed with tbx_xml_2_dict, simpliflied but enriched with an 'index' section.
+    Produces a text file in TSV format (tab-separated values), whose columns are specified by the 'index' section.
+    """
+    text = tbx_dict['tbx']['text']
+    index = text['index']
+    concept_dicts = text['body']['conceptEntry']
+    # builds the heading row
+    # loops on the concept list
+    # loops on thr language list
+    # loops on the term list
 
 def write_output_file(json_filename: str, json_contents: str) -> None:
     """ _write_output_file
@@ -575,7 +616,7 @@ def tbxfile_to_json(path: str, filename: str) -> None:
     tbx_filename = os.path.join(path, filename+'.tbx')
     json_filename = os.path.join(path, filename+'.json')
     tbx_str = read_input_file(tbx_filename)
-    json_str = json.dumps(parse_tbx(tbx_str))
+    json_str = json.dumps(tbx_xml_2_dict(tbx_str))
     write_output_file(json_filename, json_str)
 
 def path_from_file_key(file_key):

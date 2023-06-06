@@ -29,7 +29,7 @@ from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
-from textanalysis.utils import parse_tbx
+from textanalysis.utils import tbx_xml_2_dict
 from textanalysis.utils import load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
 
 if settings.DEBUG:
@@ -1452,9 +1452,9 @@ def tbx_languages(concepts):
 def tbx_subjects(concepts):
     all_subjects = set()
     for concept in concepts:
-        domains = concept.get('domains', [])
-        for domain in domains:
-            all_subjects.add(domain.strip())
+        subjects = concept.get('subjects', [])
+        for subject in subjects:
+            all_subjects.add(subject.strip())
     return sorted(list(all_subjects), key=lambda x: x.lower())
 
 @csrf_exempt
@@ -1469,7 +1469,7 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         data['title'] = document.label
         f = document.open()
         xml_str = f.read()
-        tbx_dict = parse_tbx(xml_str)
+        tbx_dict = tbx_xml_2_dict(xml_str)
         tbx = tbx_dict['tbx']
         concepts = tbx['text']['body']['conceptEntry']
         # data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']
