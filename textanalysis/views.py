@@ -1469,7 +1469,7 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         data['title'] = document.label
         f = document.open()
         xml_str = f.read()
-        tbx_dict = tbx_xml_2_dict(xml_str)
+        tbx_dict = tbx_xml_2_dict(xml_str, split_subjects=True)
         tbx = tbx_dict['tbx']
         concepts = tbx['text']['body']['conceptEntry']
         # data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']

@@ -439,7 +439,7 @@ def parse_xml(xml_str: str) -> str:
     """
     return json.dumps(xmltodict.parse(xml_str))
 
-def tbx_xml_2_dict(tbx_str: str) -> dict:
+def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     """ parse_xml
     Takes an xml string and returns the equivalent Python dict slightly simpliflied.
     Adds an 'index' section intended to make easier the terminology/glossary rendering in tabular form.
@@ -474,10 +474,12 @@ def tbx_xml_2_dict(tbx_str: str) -> dict:
         if lang:
             concept['langSec'] = [{'lang': lang, 'termSec': concept['langSec']['termSec']}]
         subjectField = concept.get('descrip', '')
-        if subjectField:
-            subjectField = subjectField.get('subjectField', '')
+        subjects = subjectField and subjectField.get('subjectField', '') or ''
+        if subjects:
             columns.add('subjects')
-        concept_dict['subjects'] = subjectField and subjectField.split(';') or []
+            if split_subjects:
+                subjects = subjects.split(';') or []
+        concept_dict['subjects'] = subjects
         # each conceptEntry can contain one or more langSec
         lang_dicts = []
         for lang_item in concept['langSec']:
@@ -490,6 +492,7 @@ def tbx_xml_2_dict(tbx_str: str) -> dict:
                 if descrip:
                     definition = descrip.get('definition', None)
                     if definition:
+                        definition = join_blankspaces(definition)
                         lang_dict['definition'] = definition
                         columns.add('definition')
                 admin = descripGrp.get('admin', None)
@@ -563,6 +566,7 @@ def tbx_xml_2_dict(tbx_str: str) -> dict:
                     if descrip:
                         context = descrip.get('context', None)
                         if context:
+                            context = join_blankspaces(context)
                             term_dict['context'] = context
                             columns.add('context')
                     admin = descripGrp.get('admin', None)
@@ -575,6 +579,7 @@ def tbx_xml_2_dict(tbx_str: str) -> dict:
                 term_dicts.append(term_dict)
             lang_dict['termSec'] = term_dicts
             lang_dicts.append(lang_dict)
+        lang_dicts.sort(key=lambda x: x['lang'])
         concept_dict['langSec'] = lang_dicts
         concept_dicts.append(concept_dict)
     langs = sorted(list(langs))
@@ -590,19 +595,50 @@ def tbx_dict_2_tsv(tbx_dict: str) -> str:
     """
     text = tbx_dict['tbx']['text']
     index = text['index']
+    concept_columns = index['conceptColumns']
+    concept_blanks = ['' for key in concept_columns]
+    lang_columns = index['langColumns']
+    lang_blanks = ['' for key in lang_columns]
+    term_columns = index['termColumns']
     concept_dicts = text['body']['conceptEntry']
     # builds the heading row
+    col_names = concept_columns + lang_columns + term_columns
+    headings = '\t'.join(col_names)
+    lines = [headings]
     # loops on the concept list
-    # loops on thr language list
-    # loops on the term list
+    for concept_dict in text['body']['conceptEntry']:
+        concept_values = [concept_dict.get(key, '') for key in concept_columns]
+        # loops on the language list
+        lang_dicts = concept_dict['langSec']
+        i_lang = 0
+        for lang_dict in concept_dict['langSec']:
+            lang_values = [lang_dict.get(key, '') for key in lang_columns]
+            # loops on the term list
+            i_term = 0
+            for term_dict in lang_dict['termSec']:
+                values = []
+                term_values = [term_dict.get(key, '') for key in term_columns]
+                if i_lang == 0 and i_term == 0:
+                    values += concept_values
+                else:
+                    values += concept_blanks
+                if i_term == 0:
+                    values += lang_values
+                else:
+                    values +=lang_blanks
+                values += term_values
+                lines.append('\t'.join(values))
+                i_term += 1 
+            i_lang += 1
+    csv_data = '\n'.join(lines)
+    return csv_data
 
-def write_output_file(json_filename: str, json_contents: str) -> None:
+def write_output_file(filename: str, contents: str) -> None:
     """ _write_output_file
     Just writes text to a file.
     """
-
-    with open(json_filename, 'w') as file_obj:
-        file_obj.write(json_contents)
+    with open(filename, 'w',  encoding="utf8") as file_obj:
+        file_obj.write(contents)
         file_obj.close()
 
 def tbxfile_to_json(path: str, filename: str) -> None:
@@ -616,8 +652,23 @@ def tbxfile_to_json(path: str, filename: str) -> None:
     tbx_filename = os.path.join(path, filename+'.tbx')
     json_filename = os.path.join(path, filename+'.json')
     tbx_str = read_input_file(tbx_filename)
-    json_str = json.dumps(tbx_xml_2_dict(tbx_str))
+    json_str = json.dumps(tbx_xml_2_dict(tbx_str, split_subjects=True))
     write_output_file(json_filename, json_str)
+
+def tbxfile_to_csv(path: str, filename: str) -> None:
+    """ tbxfile_to_csv
+    Reads from file and parses an xml string in TBX format.
+    Converts to JSON the parsed object.
+    Removes some syntax derived from xml.
+    Converts JSON to CSV (with tab separated values)
+    Writes the result string to a .csv file in the same folder.
+    """
+    tbx_filename = os.path.join(path, filename+'.tbx')
+    csv_filename = os.path.join(path, filename+'.csv')
+    tbx_str = read_input_file(tbx_filename)
+    tbx_dict = tbx_xml_2_dict(tbx_str)
+    csv_str = tbx_dict_2_tsv(tbx_dict)
+    write_output_file(csv_filename, csv_str)
 
 def path_from_file_key(file_key):
     return os.path.join(settings.CORPORA, file_key)+'.spacy'
@@ -649,3 +700,12 @@ def rename_corpus_metadata(file_key, new_file_key):
     path = path_from_file_key(file_key).replace('.spacy', '.json')
     new_path = path_from_file_key(new_file_key).replace('.spacy', '.json')
     os.rename(path, new_path)
+
+def set_excel_header(response, filename):
+    mimetype = 'application/vnd.ms-excel'
+    response['Content-Type'] = '%s; charset=utf-8' % mimetype
+    response['Content-Disposition'] = 'attachment; filename=%s.csv' % filename
+    return response
+
+def join_blankspaces(text):
+    return ' '.join(text.split())
