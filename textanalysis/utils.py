@@ -2,6 +2,8 @@ from six import BytesIO
 import os
 import re
 import json
+import csv
+from io import StringIO
 import pyphen
 import string
 from collections import defaultdict
@@ -428,7 +430,6 @@ def read_input_file(filepath: str) -> str:
     """ read_input_file
     Just read text from a file.
     """
-
     with open(filepath, 'r', encoding="utf8") as f:
         xml_str = f.read()
     return xml_str
@@ -439,8 +440,13 @@ def parse_xml(xml_str: str) -> str:
     """
     return json.dumps(xmltodict.parse(xml_str))
 
+# define the sort order, useful for the rendeing
+all_concept_columns = ['id', 'subjects',]
+all_lang_columns = ['lang', 'definition', 'def. source',]
+all_term_columns = ['term', 'type', 'POS', 'status', 'reliability', 'term source', 'context',]
+
 def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
-    """ parse_xml
+    """ tbx_xml_2_dict
     Takes an xml string and returns the equivalent Python dict slightly simpliflied.
     Adds an 'index' section intended to make easier the terminology/glossary rendering in tabular form.
     """
@@ -456,11 +462,6 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     json_str = json_str.replace('"@type": "partOfSpeech", "#text":', '"partOfSpeech":')
     json_str = json_str.replace('"@type": "definition", "#text":', '"definition":')
     json_str = json_str.replace('"@type": "source", "#text":', '"source":')
-
-    # define the sort order, useful for the rendeing
-    all_concept_columns = ['id', 'subjects',]
-    all_lang_columns = ['lang', 'definition', 'def. source',]
-    all_term_columns = ['term', 'type', 'POS', 'status', 'reliability', 'term source', 'context',]
 
     py_dict = json.loads(json_str)
 
@@ -588,7 +589,7 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     term_columns = [c for c in all_term_columns if c in columns]
     return {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
 
-def tbx_dict_2_tsv(tbx_dict: str) -> str:
+def tbx_dict_2_tsv(tbx_dict: dict) -> str:
     """
     Takes a Python dict representing an xml-tbx document parsed with tbx_xml_2_dict, simpliflied but enriched with an 'index' section.
     Produces a text file in TSV format (tab-separated values), whose columns are specified by the 'index' section.
@@ -633,6 +634,58 @@ def tbx_dict_2_tsv(tbx_dict: str) -> str:
     csv_data = '\n'.join(lines)
     return csv_data
 
+def tbx_tsv_2_dict(tsv_data: str) -> dict:
+    lines = tsv_data.splitlines()
+    reader = csv.reader(lines, delimiter='\t')
+    parsed_tsv = list(reader)
+    columns = parsed_tsv[0]
+    rows = parsed_tsv[1:]
+    row_dicts = []
+    for row in rows:
+        row_dicts.append(dict(zip(columns, row)))
+    langs = set()
+    for d in row_dicts:
+        if d['lang']:
+            langs.add(d['lang'])
+    langs = sorted(list(langs))
+    concept_columns = [c for c in all_concept_columns if c in columns]
+    lang_columns = [c for c in all_lang_columns if c in columns]
+    term_columns = [c for c in all_term_columns if c in columns]
+    row_dicts.reverse()
+    concept_dicts = []
+    lang_dicts = []
+    term_dicts = []
+    for row in row_dicts:
+        term_dict = {}
+        for c in term_columns:
+            if row[c]:
+                term_dict[c] = row[c]
+        term_dicts.append(term_dict)
+        if row['lang']:
+            lang_dict = {}
+            for c in lang_columns:
+                if row[c]:
+                    lang_dict[c] = row[c]
+            term_dicts.reverse()
+            lang_dict['termSec'] = term_dicts
+            term_dicts = []
+            lang_dicts.append(lang_dict)
+        if row['id']:
+            concept_dict = {}
+            for c in concept_columns:
+                if row[c]:
+                    if c == 'subjects':
+                        concept_dict[c] = [row[c]]
+                    else:
+                        concept_dict[c] = row[c]
+            lang_dicts.reverse()
+            concept_dict['langSec'] = lang_dicts
+            lang_dicts = []
+            concept_dicts.append(concept_dict)
+    concept_dicts.reverse()
+    tbx_dict = {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+    return tbx_dict
+
 def write_output_file(filename: str, contents: str) -> None:
     """ _write_output_file
     Just writes text to a file.
@@ -648,7 +701,6 @@ def tbxfile_to_json(path: str, filename: str) -> None:
     Removes some syntax derived from xml.
     Writes the result string to a .json file in the same folder.
     """
-
     tbx_filename = os.path.join(path, filename+'.tbx')
     json_filename = os.path.join(path, filename+'.json')
     tbx_str = read_input_file(tbx_filename)
@@ -669,6 +721,20 @@ def tbxfile_to_csv(path: str, filename: str) -> None:
     tbx_dict = tbx_xml_2_dict(tbx_str)
     csv_str = tbx_dict_2_tsv(tbx_dict)
     write_output_file(csv_filename, csv_str)
+
+def csvfile_to_json(path: str, filename: str) -> None:
+    """ csvfile_to_json
+    Reads a CSV file (with tab separated values) and parses it to a list of lists.
+    First row contains a list of TBX field names related to concept, language and term in the order.
+    Parse the other rows, in reverse order, to reconstruct term, language and concept sub-dicts.
+    Writes the resulting dict as a file in JSON format in the same folder.
+    """
+    csv_filename = os.path.join(path, filename+'.csv')
+    json_filename = os.path.join(path, filename+'.json')
+    tsv_data = read_input_file(csv_filename)
+    tbx_dict = tbx_tsv_2_dict(tsv_data)
+    json_str = json.dumps(tbx_dict)
+    write_output_file(json_filename, json_str)
 
 def path_from_file_key(file_key):
     return os.path.join(settings.CORPORA, file_key)+'.spacy'
