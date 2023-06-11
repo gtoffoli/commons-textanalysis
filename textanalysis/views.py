@@ -29,8 +29,8 @@ from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
-from textanalysis.utils import tbx_xml_2_dict
 from textanalysis.utils import load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
+from textanalysis.tbx import tbx_xml_2_dict
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -1472,10 +1472,12 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         tbx_dict = tbx_xml_2_dict(xml_str, split_subjects=True)
         tbx = tbx_dict['tbx']
         concepts = tbx['text']['body']['conceptEntry']
-        # data['source'] = tbx['tbxHeader']['fileDesc']['sourceDesc']['p']
         data['concepts'] = concepts
         data['languages'] = tbx_languages(concepts)
         data['subjects'] = tbx_subjects(concepts)
+        index = tbx['text']['index']
+        columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
+        data['columns'] = columns
         return JsonResponse(data)
     else:
         return render(request, 'tbx_view.html', var_dict)
