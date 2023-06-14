@@ -113,6 +113,7 @@ button.span_type.active {
           {{ type }}</button>
       </li>
     </ul>
+    </div>
     <div style="font-size: x-small; font-style: italic; margin-bottom: 10px;">{{ label_select }}</div>
     <table style="margin: 0 auto; border-collapse: collapse; width: 100%; table-layout: fixed;">
       <thead><th style="width:5%">#</th><th style="width:95%">{{ label_paragraph }}</th></thead>
@@ -143,7 +144,6 @@ button.span_type.active {
         </tr>
       </tbody>
     </table>
-    </div>
     <div><span style="font-size: smaller; font-style: italic;">(*) {{ label_noun_chunks }}. {{ label_synsets }}.</span></div>
     </template>
     {% endverbatim %}
@@ -253,7 +253,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       this.wait = true;
       if (! this['obj_id'])
         this['obj_id'] = 0;
-        fetch('/textanalysis/nounchunks/`{% if file_key %}+this['file_key']+'/`{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/`{% endif %}, {
+        fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
         method: 'GET',
         headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
       })
