@@ -62,11 +62,12 @@ th, td {
       <thead>
 		  <th style="width:5%">#</th>
 		  <th style="width:5%">{{ label_concept }}</th>
-		  <th v-if="columns.includes('subjects')" style="width:20%">{{ label_subjects }}</th>
+		  <th v-if="columns.includes('subjects')" style="width:15%">{{ label_subjects }}</th>
 		  <th style="width:5%">{{ label_language }}</th>
-		  <th v-if="columns.includes('definition')" style="width:25%">{{ label_definition }}</th>
-		  <th style="width:25%">{{ label_term }}</th>
+		  <th v-if="columns.includes('definition')" style="width:35%">{{ label_definition }}</th>
+		  <th style="width:20%">{{ label_term }}</th>
 		  <th style="width:5%">{{ label_type }}</th>
+		  <th style="width:5%">{{ label_pos }}</th>
 		  <th style="width:6%">{{ label_status }}</th>
 		  <th v-if="columns.includes('reliability')" style="width:4%">{{ label_reliability }}</th>
       </thead>
@@ -84,6 +85,7 @@ th, td {
 		    <template v-else> <td></td> <td v-if="columns.includes('definition')"></td></template>
 		    <td>{{ t['term'] }}</td>
 		    <td><template v-if="t['type']">{{ t['type'] }}</template></td>
+		    <td><template v-if="t['POS']">{{ t['POS'] }}</template></td>
 		    <td><template v-if="t['status']">{{ t['status'] }}</template></td>
 		    <td v-if="columns.includes('reliability')"><template v-if="t['reliability']">{{ t['reliability'] }}</template></td>
         </tr>
@@ -132,8 +134,9 @@ th, td {
           label_concept: '{% trans "concept" %}',
           label_concepts_terms: '{% trans "concepts and terms"|capfirst %}',
           label_subjects: '{% trans "subjects" %}',
-          label_language: '{% trans "lang." %}',
+          label_language: '{% trans "lang" %}',
           label_type: '{% trans "type" %}',
+          label_pos: '{% trans "POS" %}',
           label_reliability: '{% trans "rel." %}',
           label_status: '{% trans "status" %}',
           label_term: '{% trans "term" %}',
