@@ -30,7 +30,7 @@ from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
 from textanalysis.utils import load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
-from textanalysis.tbx import tbx_xml_2_dict
+from textanalysis.tbx import tbx_xml_2_dict, tbx_languages, tbx_subjects
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -689,43 +689,44 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                 token['iob_chunk'] = iob_chunk           
                 tokens[k] = token
         # annotate tokens with babelnet synsets already searched by text and filtered by domain
-        terms = []
+        bn_terms = []
         if file_key:
-            terms = analyze_dict.get('terms', [])
-            if terms:
+            bn_terms = analyze_dict.get('bn_terms', [])
+            if bn_terms:
                 # from (virtual) lists of tokens per term, derive lists of term indexes per token NO
                 # annotate first and last token of each term (could be the same)
-                for i, term in enumerate(terms):
-                    # filter terms based on vocabulary frequency
-                    if term['end']-term['start'] == 1:
-                        token = tokens[term['start']]
+                for i, bn_term in enumerate(bn_terms):
+                    # filter bn_terms based on vocabulary frequency
+                    if bn_term['end']-bn_term['start'] == 1:
+                        token = tokens[bn_term['start']]
                         pos = token['pos']
-                        frequencies = \
-                            (pos=='NOUN' and noun_frequencies) or \
-                            (pos=='ADJ' and adjective_frequencies) or \
-                            (pos=='VERB' and verb_frequencies) or \
-                            (pos=='ADV' and adverb_frequencies)
-                        level = token_to_level(token, frequencies)
-                        if level in ['a', 'a1', 'a2', 'b', 'b1',]:
-                            continue
-                    for k in range(term['start'], term['end']):
+                        if pos in ['NOUN', 'ADJ', 'VERB', 'ADV',]:
+                            frequencies = \
+                                (pos=='NOUN' and noun_frequencies) or \
+                                (pos=='ADJ' and adjective_frequencies) or \
+                                (pos=='VERB' and verb_frequencies) or \
+                                (pos=='ADV' and adverb_frequencies)
+                            level = token_to_level(token, frequencies)
+                            if level in ['a', 'a1', 'a2', 'b', 'b1',]:
+                                continue
+                    for k in range(bn_term['start'], bn_term['end']):
                         # print(k, tokens[k]['text'])
-                        token_terms = tokens[k].get('terms', [])
-                        token_terms.append(i)
-                        tokens[k]['terms'] = token_terms
-                    tokens[term['start']]['term_start'] = i
-                    tokens[term['end']]['term_end'] = i
+                        token_bn_terms = tokens[k].get('bn_terms', [])
+                        token_bn_terms.append(i)
+                        tokens[k]['bn_terms'] = token_bn_terms
+                    tokens[bn_term['start']]['term_start'] = i
+                    tokens[bn_term['end']]['term_end'] = i
                 # remove ref to single-token term from tokens with multiple refs
                 for token in tokens:
-                    term_refs = token.get('terms', [])
+                    term_refs = token.get('bn_terms', [])
                     if len(term_refs) > 1:
                         for ref in term_refs:
-                            term = terms[ref]
-                            if len(term) == 1 and term['start'] == token:
+                            bn_term = bn_terms[ref]
+                            if len(bn_term) == 1 and bn_term['start'] == token:
                                 term_refs = [r for r in term_refs if r != ref]
-                                token['terms'] = term_refs
+                                token['bn_terms'] = term_refs
                                 break
-        var_dict['terms'] = terms
+        var_dict['bn_terms'] = bn_terms
         var_dict['tokens'] = tokens
         var_dict['paragraphs'] = analyze_dict['paragraphs']
 
@@ -1229,7 +1230,7 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs', 'tokens', 'terms',
+        keys = ['paragraphs', 'tokens', 'bn_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
@@ -1436,26 +1437,6 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         return render(request, 'text_nounchunks.html', var_dict)
     elif function == 'wordlists':
         return render(request, 'text_wordlists.html', var_dict)
-
-def tbx_languages(concepts):
-    languages = set()
-    for concept in concepts:
-        langSec = concept['langSec']
-        try:
-            lang = langSec.get('lang', None)
-            languages.add(lang)
-        except:
-            for item in langSec:
-                languages.add(item['lang'])
-    return sorted(list(languages))
-
-def tbx_subjects(concepts):
-    all_subjects = set()
-    for concept in concepts:
-        subjects = concept.get('subjects', [])
-        for subject in subjects:
-            all_subjects.add(subject.strip())
-    return sorted(list(all_subjects), key=lambda x: x.lower())
 
 @csrf_exempt
 def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):

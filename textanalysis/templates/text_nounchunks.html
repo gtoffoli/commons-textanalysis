@@ -127,10 +127,10 @@ button.span_type.active {
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
                              :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
 				</span>
-				<modal v-if="token['terms'] && token['terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
+				<modal v-if="token['bn_terms'] && token['bn_terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
 						<div><span style="font-size: 1.2em; font-weight: bold;">{{ term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
-						<div v-for="synset in terms[token['terms'][0]]['babelnet']" style="text-align: left;">
+						<div v-for="synset in bn_terms[token['bn_terms'][0]]['babelnet']" style="text-align: left;">
 						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
 						    <b>{{ synset[1] }}</b>,
 						    <i>{{ synset[2] }}</i> ,
@@ -178,7 +178,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       error: null,
       wait: null,
       span_types: null, type_buttons: null,
-      terms: null,
+      bn_terms: null,
       synsets: [],
 	  modal_props: { 
 		adaptive: true, // ?
@@ -218,9 +218,9 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       babelnetView (token) {
 		if (!this.type_buttons['babelnet'].selected)
 		  return token['text'];
-		let terms = token['terms'];
-		if (terms && terms.length) {
-		  let synsets = terms[0]['babelnet'];
+		let bn_terms = token['bn_terms'];
+		if (bn_terms && bn_terms.length) {
+		  let synsets = bn_terms[0]['babelnet'];
 		  return '<a href="javascript: app.__vue__.$options.methods.showSynsets('+token.id+');">' + token['text'] + '</a>';
 		} else
 		  return token['text'];
@@ -235,8 +235,8 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 		return null;
 	  },
 	  term_text (token) {
-		  let term_refs = token['terms'];
-		  let term = this.terms[term_refs[0]];
+		  let term_refs = token['bn_terms'];
+		  let term = this.bn_terms[term_refs[0]];
 		  let text = '';
 		  for (let i=term['start']; i<term['end']; i++)
 		    text = text + this.tokens[i].text + ' ';

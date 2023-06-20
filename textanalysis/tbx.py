@@ -33,6 +33,47 @@ def set_excel_header(response, filename):
     response['Content-Disposition'] = 'attachment; filename=%s.csv' % filename
     return response
 
+def tbx_languages(concepts):
+    """ tbx_languages
+    return unique sorted languages from a tbx_dict - used only for the UI
+    """
+    languages = set()
+    for concept in concepts:
+        langSec = concept['langSec']
+        try:
+            lang = langSec.get('lang', None)
+            languages.add(lang)
+        except:
+            for item in langSec:
+                languages.add(item['lang'])
+    return sorted(list(languages))
+
+def tbx_subjects(concepts):
+    """ tbx_subjects
+    return unique sorted subjects from a tbx_dict - used only for the UI
+    """
+    all_subjects = set()
+    for concept in concepts:
+        subjects = concept.get('subjects', [])
+        for subject in subjects:
+            all_subjects.add(subject.strip())
+    return sorted(list(all_subjects), key=lambda x: x.lower())
+
+def tbx_terms(concepts, languages=[]):
+    """ tbx_terms
+    return sorted terms from a tbx_dict, possibly filtered by languages
+    """
+    terms = []
+    for concept in concepts:
+        lang_items = concept['langSec'] 
+        for lang_item in lang_items:
+            if languages and not lang_item['lang'] in languages:
+                continue
+            term_items = lang_item['termSec']
+            for term_item in term_items:
+                terms.append(term_item['term'])
+    return sorted(terms)
+     
 def parse_xml(xml_str: str) -> str:
     """ parse_xml
     Takes an xml string and returns the json equivalent.
