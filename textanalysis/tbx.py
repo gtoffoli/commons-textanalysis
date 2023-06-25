@@ -59,20 +59,37 @@ def tbx_subjects(concepts):
             all_subjects.add(subject.strip())
     return sorted(list(all_subjects), key=lambda x: x.lower())
 
-def tbx_terms(concepts, languages=[]):
+def tbx_terms(concepts, languages=[], merge_sort=False):
     """ tbx_terms
-    return sorted terms from a tbx_dict, possibly filtered by languages
+    if merge_sort is True, return sorted terms from a tbx_dict, possibly filtered by languages,
+    else, return a list of concepts with associated terms,  possibly filtered by languages
     """
+    glossary = []
     terms = []
     for concept in concepts:
         lang_items = concept['langSec'] 
+        lang_terms = {}
         for lang_item in lang_items:
-            if languages and not lang_item['lang'] in languages:
+            if not languages:
+                lang = lang_item['lang']
+            elif not lang_item['lang'] in languages:
                 continue
             term_items = lang_item['termSec']
             for term_item in term_items:
                 terms.append(term_item['term'])
-    return sorted(terms)
+            if not languages and not merge_sort:
+                lang_terms[lang] = terms
+                terms = []
+        if not merge_sort:
+            if languages:
+                glossary.append([concept['id'], terms])
+            else:
+                glossary.append([concept['id'], lang_terms])
+            terms = []
+    if merge_sort:
+        return sorted(terms)
+    else:
+        return glossary
      
 def parse_xml(xml_str: str) -> str:
     """ parse_xml

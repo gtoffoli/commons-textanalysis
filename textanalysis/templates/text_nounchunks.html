@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "Noun chunks, Named entities and BabelNet synsets" %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "noun chunks, BabelNet synsets and glossary terms"|capfirst %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
@@ -82,7 +82,7 @@ button.span_type.active {
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Noun chunks, Named entities and BabelNet synsets" %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "noun chunks, BabelNet synsets and glossary terms"|capfirst %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -129,7 +129,7 @@ button.span_type.active {
 				</span>
 				<modal v-if="token['bn_terms'] && token['bn_terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
-						<div><span style="font-size: 1.2em; font-weight: bold;">{{ term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
+						<div><span style="font-size: 1.2em; font-weight: bold;">{{ bn_term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
 						<div v-for="synset in bn_terms[token['bn_terms'][0]]['babelnet']" style="text-align: left;">
 						    <span><a :href="'https://babelnet.org/synset?id='+synset[0]+'&lang='+user_language_code" target="_blank">{{ synset[0] }}</a></span>, 
 						    <b>{{ synset[1] }}</b>,
@@ -173,11 +173,14 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       title: '{{ title }}',
       url: '{{ url }}',
       language: '{{ language }}',
+      glossary_id: '{{ glossary_id }}',
       label: null,
       tokens: null, paragraphs: null,
+      glossary_matches: null,
       error: null,
       wait: null,
       span_types: null, type_buttons: null,
+      gl_terms: null,
       bn_terms: null,
       synsets: [],
 	  modal_props: { 
@@ -234,7 +237,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 			return modals[i];
 		return null;
 	  },
-	  term_text (token) {
+	  bn_term_text (token) {
 		  let term_refs = token['bn_terms'];
 		  let term = this.bn_terms[term_refs[0]];
 		  let text = '';
@@ -253,7 +256,7 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       this.wait = true;
       if (! this['obj_id'])
         this['obj_id'] = 0;
-        fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}, {
+        fetch('/textanalysis/nounchunks/'{% if file_key %}+this['file_key']+'/'{% endif %}{% if obj_type %}+this['obj_type']+'/'+this['obj_id']+'/'{% endif %}{% if glossary_id %}+this['glossary_id']+'/'{% endif %}, {
         method: 'GET',
         headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
       })

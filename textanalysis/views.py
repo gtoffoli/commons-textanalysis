@@ -29,8 +29,8 @@ from textanalysis.utils import add_to_default_dict, MATTR, lemmas_to_colors
 from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
-from textanalysis.utils import load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
-from textanalysis.tbx import tbx_xml_2_dict, tbx_languages, tbx_subjects
+from textanalysis.utils import read_input_file, load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
+from textanalysis.tbx import tbx_xml_2_dict, tbx_languages, tbx_subjects, tbx_terms
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -96,6 +96,7 @@ postag_color = 'CornflowerBlue'
 entity_color = 'White'
 dependency_color = 'Purple'
 nounchunk_color = 'Khaki' # 'LightSalmon' # 'Tomato' # 'Coral' 
+term_color = 'Orange'
 """
 # from NLPBuddy
 ENTITIES_MAPPING = {
@@ -270,6 +271,7 @@ default_entity_types = [] # ['PERSON','ORG','GPE', 'LOC',]
 span_type_buttons = {
     'nounchunk': {'selected': True, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
     'babelnet': {'selected': True, 'label': capfirst(_("BabeNet annotations")), 'border': '', 'background': entity_color,},
+    'glossary': {'selected': True, 'label': capfirst(_("Glossary terms")), 'border': '', 'background': term_color,},
 }
 
 def define_span_types():
@@ -286,7 +288,7 @@ def define_span_types():
             if entity_type in default_entity_types:
                 span_type_buttons[entity_type]['selected'] = True
     span_type_buttons['n'] = {'selected': False} # null entity
-    return ['nounchunk'] + entity_types + ['babelnet']
+    return ['nounchunk'] + entity_types + ['babelnet', 'glossary',]
 
 def count_word_syllables(word, language_code):
     n_chars = len(word)
@@ -473,7 +475,7 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 @csrf_exempt
-def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', obj=None, title='', body='',
+def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', glossary_id='', obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
@@ -485,7 +487,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
         if nounchunks:
             data['domains'] = domains
-        data = json.dumps(data)
+        # data = json.dumps(data)
     else:
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
@@ -502,7 +504,12 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             body = '{}, {}. {}'.format(title, description, text)
         if contexts:
             return {'text': body, 'title': title}
-        data = json.dumps({'text': body})
+        # data = json.dumps({'text': body})
+        data = {'text': body}
+    if glossary_id:
+        glossary = OER.objects.get(id=glossary_id)
+        data['glossary'] = glossary_to_terms(glossary)
+    data = json.dumps(data)
     if text_cohesion:
         endpoint = nlp_url + '/api/text_cohesion'
     else:
@@ -714,19 +721,44 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                         token_bn_terms = tokens[k].get('bn_terms', [])
                         token_bn_terms.append(i)
                         tokens[k]['bn_terms'] = token_bn_terms
+                    """
                     tokens[bn_term['start']]['term_start'] = i
                     tokens[bn_term['end']]['term_end'] = i
-                # remove ref to single-token term from tokens with multiple refs
+                    """
+                # remove 1 ref to single-token term from tokens with multiple refs
                 for token in tokens:
                     term_refs = token.get('bn_terms', [])
                     if len(term_refs) > 1:
                         for ref in term_refs:
                             bn_term = bn_terms[ref]
-                            if len(bn_term) == 1 and bn_term['start'] == token:
+                            # if len(bn_term) == 1 and bn_term['start'] == token:
+                            if (bn_term['end']-bn_term['start']) == 1 and tokens[bn_term['start']] == token:
                                 term_refs = [r for r in term_refs if r != ref]
                                 token['bn_terms'] = term_refs
                                 break
+        gl_terms = []
+        if glossary_id:
+            # from (virtual) lists of tokens per term, derive lists of term refs per token
+            gl_terms = analyze_dict['glossary_matches']
+            for term in gl_terms:
+                concept_id = term['concept_id']
+                for k in range(term['start'], term['end']):
+                    token_gl_terms = tokens[k].get('gl_terms', [])
+                    token_gl_terms.append(concept_id)
+                    tokens[k]['gl_terms'] = token_gl_terms
+                # remove 1 ref to single-token term from tokens with multiple refs
+                for token in tokens:
+                    term_refs = token.get('gl_terms', [])
+                    if len(term_refs) > 1:
+                        for ref in term_refs:
+                            gl_term = gl_terms[ref]
+                            if (gl_term['end']-gl_term['start']) == 1 and tokens[gl_term['start']] == token:
+                                term_refs = [r for r in term_refs if r != ref]
+                                token['gl_terms'] = term_refs
+                                break
+
         var_dict['bn_terms'] = bn_terms
+        var_dict['gl_terms'] = gl_terms
         var_dict['tokens'] = tokens
         var_dict['paragraphs'] = analyze_dict['paragraphs']
 
@@ -1226,15 +1258,17 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
         return render(request, 'text_dependency.html', var_dict)
 
 @csrf_exempt
-def text_nounchunks(request, file_key='', obj_type='', obj_id='', url=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
+def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossary_id=''):
+    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url, 'glossary_id': glossary_id}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['paragraphs', 'tokens', 'bn_terms',
+        keys = ['paragraphs', 'tokens', 'bn_terms', 'gl_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, glossary_id=glossary_id, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
+        # print('text_nounchunks -----', data['glossary_matches'])
         span_types = define_span_types()
         data['span_types'] = span_types
         data['type_buttons'] = span_type_buttons
@@ -1386,11 +1420,13 @@ def ta_input(request):
             data = form.cleaned_data
             function = data['function']
             request.session['text'] = data['text']
+            glossary = data['glossary']
             if function == 'dashboard': # Text Analysis Dashboard
                 var_dict = {'obj_type': 'text', 'obj_id': 0, 'VUE': True}
                 return render(request, 'text_dashboard.html', var_dict)
             else:
-                return ta(request, function, obj_type='text', obj_id=0)
+                # return ta(request, function, obj_type='text', obj_id=0)
+                return ta(request, function, obj_type='text', obj_id=0, glossary_id=glossary.id)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
@@ -1407,7 +1443,7 @@ def ta_input(request):
             var_dict['error'] = off_error
     return render(request, 'ta_input.html', var_dict)
 
-def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', title=''):
+def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', title='', glossary_id=''):
     var_dict = { 'obj_type': obj_type, 'obj_id': obj_id, 'file_key': file_key, 'url': url, 'text': text, 'title': '' }
     var_dict['VUE'] = True
     if file_key:
@@ -1434,6 +1470,8 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
     elif function == 'cohesion':
         return render(request, 'text_cohesion.html', var_dict)
     elif function == 'nounchunks':
+        if glossary_id:
+            var_dict['glossary_id'] = glossary_id
         return render(request, 'text_nounchunks.html', var_dict)
     elif function == 'wordlists':
         return render(request, 'text_wordlists.html', var_dict)
@@ -1462,6 +1500,25 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         return JsonResponse(data)
     else:
         return render(request, 'tbx_view.html', var_dict)
+
+def glossary_to_terms(glossary, languages=[]):
+    """convert an OER with a .tbx attachment to a tbx_dict format
+    and extract a list of concepts with the terms for the specified language(s)
+    """
+    terms = []
+    document = None
+    for d in glossary.get_sorted_documents():
+        if d.label.endswith('.tbx'):
+            document = d
+            break
+    if document:
+        f = document.open()
+        xml_str = f.read()
+        tbx_dict = tbx_xml_2_dict(xml_str)
+        concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
+        terms = tbx_terms(concepts, languages=languages)
+        print(terms)
+    return terms
 
 def glossary_autocomplete(request):
     MIN_CHARS = 2
