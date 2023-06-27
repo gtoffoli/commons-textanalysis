@@ -2,7 +2,7 @@
 {% load staticfiles %}
 {% load i18n %}
 
-{% block head_title %}{% trans "Text Analysis" %} - {% trans "noun chunks, BabelNet synsets and glossary terms"|capfirst %}{% endblock %}
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "named entities, noun chunks, glossary terms and BabelNet synsets"|capfirst %}{% endblock %}
 
 {% block extra_style %}
 <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
@@ -33,6 +33,7 @@ button.span_type.active {
 
 .ent {
   display: inline-block;
+  color: black;
   border-top: solid black 3px;
   border-bottom: solid black 3px;
   margin-top: 2px;
@@ -40,9 +41,18 @@ button.span_type.active {
   padding-inline-start: 2px;
   padding-inline-end: 2px;
 }
+
+.gl_term {
+  color:lightseagreen;
+}
+.bn_term {
+  color:blue;
+}
+
 .chunk {
   display: inline-block;
-  background-color: Khaki;
+  color: black;
+  background-color:  LightGrey; /* #ff9561; Yellow; Khaki; */
   margin-top: 2px;
   margin-bottom: 2px;
   padding-inline-start: 2px;
@@ -82,7 +92,7 @@ button.span_type.active {
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "noun chunks, BabelNet synsets and glossary terms"|capfirst %} (*)</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "named entities, noun chunks, glossary terms and BabelNet synsets"|capfirst %} (*)</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -119,14 +129,22 @@ button.span_type.active {
       <thead><th style="width:5%">#</th><th style="width:95%">{{ label_paragraph }}</th></thead>
       <tbody>
         <tr v-for="(p, index) in paragraphs">
-          <td style="vertical-align:top;">{{ p['i'] }}</td>
+          <td style="vertical-align:top; text-align:center;">{{ p['i'] }}</td>
           <td>
               <template v-for="token in tokens.slice(p['start'], p['end'])">
 			  <component :is="'div'" style="display: inline-block">
-                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside"  v-html="babelnetView(token)"></span>
+                <span v-if="(token['iob_chunk']=='o' || !type_buttons['nounchunk'].selected) && (token['iob_ent']=='o' || !type_buttons[token['ent']].selected)" class="outside" v-html="termView(token)"></span>
                 <span v-else :class="'' + (type_buttons['nounchunk'].selected? (token['iob_chunk']=='i'?' chunk':'') + (token['iob_chunk'].startsWith('b')?' chunk chunk_start':'') + (token['iob_chunk'].endsWith('e')?' chunk chunk_end':''):'') + (type_buttons[token['ent']].selected? (token['iob_ent']=='i'?' ent':'')+(token['iob_ent'].startsWith('b')?' ent ent_start':'')+(token['iob_ent'].endsWith('e')? ' ent ent_end':''):'')" :title="(token['iob_ent']=='o'?'':token['ent'])"
-                             :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="babelnetView(token)">
+                             :style="(token['ent']=='n'? '' : 'border-color:' + type_buttons[token['ent']]['border'] + ';')" v-html="termView(token)">
 				</span>
+				<modal v-if="token['gl_terms'] && token['gl_terms'].length>0" v-bind="modal_props" ref="glossary_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
+					<div style="padding: 3px;">
+						<div><span style="font-size: 1.2em; font-weight: bold;">{{ gl_term_text(token) }}</span> ({{ token.pos }})</div>
+						<div v-for="concept in gl_concepts(token)" style="text-align: left;">
+							{{ concept[0] }} {{ concept[1] }}
+						</div>
+					</div>
+				</modal>
 				<modal v-if="token['bn_terms'] && token['bn_terms'].length>0" v-bind="modal_props" ref="synsets_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
 						<div><span style="font-size: 1.2em; font-weight: bold;">{{ bn_term_text(token) }}</span> ({{ token.pos }}, {{ language }} => {{ user_language }})</div>
@@ -176,13 +194,13 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       glossary_id: '{{ glossary_id }}',
       label: null,
       tokens: null, paragraphs: null,
-      glossary_matches: null,
       error: null,
       wait: null,
       span_types: null, type_buttons: null,
       gl_terms: null,
       bn_terms: null,
       synsets: [],
+      glossary: null,
 	  modal_props: { 
 		adaptive: true, // ?
 		resizable: true,
@@ -218,24 +236,48 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
       onModalMounted(token) {
 		console.log('mounted', app.$children);
 	  },
-      babelnetView (token) {
-		if (!this.type_buttons['babelnet'].selected)
+      termView (token) {
+		if ((!this.type_buttons['babelnet'].selected) && (!this.type_buttons['glossary'].selected))
 		  return token['text'];
+		let gl_terms = token['gl_terms'];
 		let bn_terms = token['bn_terms'];
-		if (bn_terms && bn_terms.length) {
-		  let synsets = bn_terms[0]['babelnet'];
-		  return '<a href="javascript: app.__vue__.$options.methods.showSynsets('+token.id+');">' + token['text'] + '</a>';
+		if (this.type_buttons['glossary'].selected && !(gl_terms == null)) {
+		  let concept_id = gl_terms[0]['concept_id'];
+		  return '<a class="gl_term" href="javascript: app.__vue__.$options.methods.showConcepts('+token.id+');">' + token['text'] + '</a>';
+		} else if (this.type_buttons['babelnet'].selected && !(bn_terms == null)) {
+		  let synsets = bn_terms [0]['babelnet'];
+		  return '<a class="bn_term" href="javascript: app.__vue__.$options.methods.showSynsets('+token.id+');">' + token['text'] + '</a>';
 		} else
 		  return token['text'];
 	  },
       modalFromToken (ref, tokenId) {
-		// let refs = this.$refs;
 		let refs = app.$refs;
         let modals = refs[ref];
         for (let i=0; i<modals.length; i++)
           if (modals[i].name == 'token'+tokenId)
 			return modals[i];
 		return null;
+	  },
+	  gl_concepts(token) {
+		let concept_ids = new Set();
+		for (var term of token['gl_terms']){
+			concept_ids.add(term['concept_id']);
+		}
+		concept_ids = Array.from(concept_ids);
+		let concepts = [];
+		for (var concept of this.glossary) {
+			if (concept_ids.includes(concept[0]))
+				concepts.push(concept);
+		}
+		return concepts;
+	  },
+	  gl_term_text (token) {
+		  let gl_terms = token['gl_terms'];
+		  let term = gl_terms[0];
+		  let text = '';
+		  for (let i=term['start']; i<term['end']; i++)
+		    text = text + this.tokens[i].text + ' ';
+		  return text;
 	  },
 	  bn_term_text (token) {
 		  let term_refs = token['bn_terms'];
@@ -244,6 +286,12 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 		  for (let i=term['start']; i<term['end']; i++)
 		    text = text + this.tokens[i].text + ' ';
 		  return text;
+	  },
+	  showConcepts (tokenId) {
+        this.modalFromToken('glossary_panel', tokenId).open();
+	  },
+	  hideConcepts (tokenId) {
+        this.modalFromToken('glossary_panel', tokenId).close();
 	  },
 	  showSynsets (tokenId) {
         this.modalFromToken('synsets_panel', tokenId).open();

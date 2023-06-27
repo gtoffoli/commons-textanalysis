@@ -59,8 +59,8 @@ def tbx_subjects(concepts):
             all_subjects.add(subject.strip())
     return sorted(list(all_subjects), key=lambda x: x.lower())
 
-def tbx_terms(concepts, languages=[], merge_sort=False):
-    """ tbx_terms
+def tbx_filter_by_language(concepts, languages=[], merge_sort=False):
+    """ tbx_filter_by_language
     if merge_sort is True, return sorted terms from a tbx_dict, possibly filtered by languages,
     else, return a list of concepts with associated terms,  possibly filtered by languages
     """

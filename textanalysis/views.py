@@ -30,7 +30,7 @@ from textanalysis.utils import LemmaPosDict
 from textanalysis.utils import GenericSyllabizer
 from textanalysis.utils import DEFAULT_ENTITY_COLOR, DEFAULT_LABEL_COLORS
 from textanalysis.utils import read_input_file, load_corpus_metadata, save_corpus_metadata, rename_corpus_metadata
-from textanalysis.tbx import tbx_xml_2_dict, tbx_languages, tbx_subjects, tbx_terms
+from textanalysis.tbx import tbx_xml_2_dict, tbx_languages, tbx_subjects, tbx_filter_by_language
 
 if settings.DEBUG:
     nlp_url = 'http://localhost:8001'
@@ -95,8 +95,8 @@ EMPTY_POS = [
 postag_color = 'CornflowerBlue'
 entity_color = 'White'
 dependency_color = 'Purple'
-nounchunk_color = 'Khaki' # 'LightSalmon' # 'Tomato' # 'Coral' 
-term_color = 'Orange'
+nounchunk_color = 'LightGrey' # "#ff9561", 'Yellow' #'Khaki' # 'LightSalmon' # 'Tomato' # 'Coral' 
+term_color = 'White'
 """
 # from NLPBuddy
 ENTITIES_MAPPING = {
@@ -132,11 +132,11 @@ collData = {
         { 'type': 'X', 'labels': ['other', 'x'], 'bgColor': postag_color, 'borderColor': 'darken' }, # sfpksdpsxmsa
         { 'type': 'SPACE', 'labels': ['space', 'sp'], 'bgColor': postag_color, 'borderColor': 'darken' }, #
 
-        { 'type': 'PER', 'labels': ['Person', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
-        { 'type': 'PERSON', 'labels': ['Person', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
+        { 'type': 'PER', 'labels': ['Person entity', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
+        { 'type': 'PERSON', 'labels': ['Person entity', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
         { 'type': 'NORP', 'labels': ['NORP', 'NORP'], 'bgColor': entity_color, 'borderColor': 'darken' },  # Nationalities or religious or political groups.
         { 'type': 'FAC', 'labels': ['Facility', 'Fac'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Buildings, airports, highways, bridges, etc.
-        { 'type': 'ORG', 'labels': ['Organization', 'Org'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Companies, agencies, institutions, etc.
+        { 'type': 'ORG', 'labels': ['Organization entity', 'Org'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Companies, agencies, institutions, etc.
         { 'type': 'GPE', 'labels': ['Geo-pol.Entity', 'GPE'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Countries, cities, states.
         { 'type': 'LOC', 'labels': ['Non-GPE location', 'Loc'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Non-GPE locations, mountain ranges, bodies of water.
         { 'type': 'PRODUCT', 'labels': ['Product', 'Prod'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Objects, vehicles, foods, etc. (Not services.)
@@ -151,7 +151,7 @@ collData = {
         { 'type': 'QUANTITY', 'labels': ['Quantity', 'Quant'], 'bgColor': entity_color, 'borderColor': 'darken' }, #  Measurements, as of weight or distance.
         { 'type': 'ORDINAL', 'labels': ['Ordinal', 'Ord'], 'bgColor': entity_color, 'borderColor': 'darken' }, # “first”, “second”, etc.
         { 'type': 'CARDINAL', 'labels': ['Cardinal', 'Card'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Numerals that do not fall under another type.
-        { 'type': 'MISC', 'labels': ['Miscellaneus', 'Mix'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Numerals that do not fall under another type.
+        { 'type': 'MISC', 'labels': ['Miscellaneous entity', 'Mix'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Numerals that do not fall under another type.
     ],
     'relation_types': [
         { 'type': 'acl', 'labels': ['adjectival clause', 'acl'], 'color': dependency_color},
@@ -267,11 +267,11 @@ for item in collData['entity_types']:
     entity_type = item['type'].upper()
     entity_dict[entity_type] = {'label': item['labels'][0], 'count': 0}
  
-default_entity_types = [] # ['PERSON','ORG','GPE', 'LOC',]
+default_entity_types = ['PER','ORG','GPE', 'LOC',]
 span_type_buttons = {
-    'nounchunk': {'selected': True, 'label': capfirst(_("Noun chunk")), 'border': 'black', 'background': nounchunk_color,},
-    'babelnet': {'selected': True, 'label': capfirst(_("BabeNet annotations")), 'border': '', 'background': entity_color,},
-    'glossary': {'selected': True, 'label': capfirst(_("Glossary terms")), 'border': '', 'background': term_color,},
+    'nounchunk': {'selected': False, 'label': capfirst(_("noun chunks")), 'border': 'black', 'background': nounchunk_color,},
+    'glossary': {'selected': True, 'label': capfirst(_("glossary terms")), 'border': 'lightseagreen', 'background': term_color,},
+    'babelnet': {'selected': True, 'label': capfirst(_("babenet synsets")), 'border': 'blue', 'background': term_color,},
 }
 
 def define_span_types():
@@ -283,12 +283,11 @@ def define_span_types():
             span_type_buttons[entity_type] = {}
             span_type_buttons[entity_type]['label'] = entity_dict[entity_type]['label']
             span_type_buttons[entity_type]['background'] = entity_color
-            # span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS[entity_type]
             span_type_buttons[entity_type]['border'] = DEFAULT_LABEL_COLORS.get(entity_type, DEFAULT_ENTITY_COLOR)
             if entity_type in default_entity_types:
                 span_type_buttons[entity_type]['selected'] = True
     span_type_buttons['n'] = {'selected': False} # null entity
-    return ['nounchunk'] + entity_types + ['babelnet', 'glossary',]
+    return  entity_types + ['nounchunk'] + ['glossary', 'babelnet',]
 
 def count_word_syllables(word, language_code):
     n_chars = len(word)
@@ -475,7 +474,7 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 @csrf_exempt
-def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', glossary_id='', obj=None, title='', body='',
+def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict={}, obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
@@ -506,9 +505,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             return {'text': body, 'title': title}
         # data = json.dumps({'text': body})
         data = {'text': body}
-    if glossary_id:
-        glossary = OER.objects.get(id=glossary_id)
-        data['glossary'] = glossary_to_terms(glossary)
+    if tbx_dict:
+        data['glossary'] = glossary_filter_terms(tbx_dict)
     data = json.dumps(data)
     if text_cohesion:
         endpoint = nlp_url + '/api/text_cohesion'
@@ -661,6 +659,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         for i, token in enumerate(tokens):
             token['iob_ent'] = 'o'
             token['iob_chunk'] = 'o'
+            token['iob_term'] = 'o'
             token['ent'] = 'n'
             tokens[i] = token
         # annotate tokens with iob info on position in containing entitied
@@ -737,25 +736,62 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                                 token['bn_terms'] = term_refs
                                 break
         gl_terms = []
-        if glossary_id:
-            # from (virtual) lists of tokens per term, derive lists of term refs per token
-            gl_terms = analyze_dict['glossary_matches']
+        if tbx_dict:
+            gl_terms = analyze_dict.get('glossary_matches', [])
+        if gl_terms:
+            # - glossary_matches are a list of dicts with keys {'concept_id', 'start', 'end'}
+            # - in the glossary, multiple terms can be associated to the same concept
+            # - matches with glossary terms can overlap inside the text; we don't want overlaps
+            # 1. From lists of tokens per term, derive lists of terms per token
+            # 2. then, get free of overlaps, by choosing longer matches
             for term in gl_terms:
-                concept_id = term['concept_id']
                 for k in range(term['start'], term['end']):
                     token_gl_terms = tokens[k].get('gl_terms', [])
-                    token_gl_terms.append(concept_id)
+                    token_gl_terms.append(term)
                     tokens[k]['gl_terms'] = token_gl_terms
-                # remove 1 ref to single-token term from tokens with multiple refs
-                for token in tokens:
-                    term_refs = token.get('gl_terms', [])
-                    if len(term_refs) > 1:
-                        for ref in term_refs:
-                            gl_term = gl_terms[ref]
-                            if (gl_term['end']-gl_term['start']) == 1 and tokens[gl_term['start']] == token:
-                                term_refs = [r for r in term_refs if r != ref]
-                                token['gl_terms'] = term_refs
-                                break
+            """
+            # in case of overlapping terms (token belonging to multiple term), keep only the longest one
+            for token in tokens:
+                terms = token.get('gl_terms', [])
+                n_terms = len(terms)
+                if n_terms == 0:
+                    continue
+                if n_terms == 1:
+                    token['gl_terms'] = terms[0]
+                    continue
+                # n_terms > 1: find longest match including current token
+                i_max = 0
+                n_tokens_max = 0
+                for i in range(n_terms):
+                    term = terms[i]
+                    n_tokens = term['end'], term['start']
+                    if n_tokens > n_tokens_max:
+                        n_tokens_max = n_tokens
+                        i_max = i
+                # find longest match including current token and remove other terms
+                for i in range(n_terms):
+                    if i != i_max:
+                        term = terms[i]
+                        for k in range(term['start'], term['end']):
+                            tokens[k]['gl_terms'].remove(term)
+                        terms.remove(term)
+                        gl_terms.remove(term)
+                token['gl_terms'] = terms
+            """
+            # add to text tokens iob marks related to matches with glossary terms
+            for term in gl_terms:
+                for k in range(term['start'], term['end']):
+                    token = tokens[k]
+                    token['concept'] = term['concept_id']
+                    iob_term = ''
+                    if k == term['start']:
+                        iob_term += 'b'
+                    if k == term['end']-1:
+                        iob_term += 'e'
+                    if not iob_term:
+                        iob_term = 'i'
+                    token['iob_term'] = iob_term           
+                    tokens[k] = token
 
         var_dict['bn_terms'] = bn_terms
         var_dict['gl_terms'] = gl_terms
@@ -767,7 +803,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     verb_frequencies = sorted_frequencies_with_levels(verb_frequencies)
     noun_frequencies = sorted_frequencies_with_levels(noun_frequencies)
     adjective_frequencies = sorted_frequencies_with_levels(adjective_frequencies)
-    adverb_frequencies = sorted_frequencies(adverb_frequencies)
+    adverb_frequencies = sorted_frequencies_with_levels(adverb_frequencies)
 
     var_dict.update({'verb_frequencies': verb_frequencies, 'noun_frequencies': noun_frequencies,
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
@@ -1259,14 +1295,20 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
 
 @csrf_exempt
 def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossary_id=''):
+    # print('text_nounchunks', glossary_id)
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url, 'glossary_id': glossary_id}
     var_dict['VUE'] = True
     if is_ajax(request):
+        data = var_dict
+        tbx_dict = {}
+        if glossary_id:
+            oer_glossary = OER.objects.get(id=glossary_id)
+            tbx_dict = glossary_to_tbx_dict(oer_glossary)
+            # print('-----', tbx_dict)
         keys = ['paragraphs', 'tokens', 'bn_terms', 'gl_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
-        data = var_dict
         # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, glossary_id=glossary_id, nounchunks=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
         # print('text_nounchunks -----', data['glossary_matches'])
         span_types = define_span_types()
@@ -1274,6 +1316,8 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         data['type_buttons'] = span_type_buttons
         data['user_language_code'] = request.LANGUAGE_CODE
         data['user_language'] = dict(settings.LANGUAGES).get(request.LANGUAGE_CODE, _('unknown'))
+        if glossary_id:
+            data['glossary'] = glossary_filter_terms(tbx_dict)
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)
@@ -1501,13 +1545,12 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
     else:
         return render(request, 'tbx_view.html', var_dict)
 
-def glossary_to_terms(glossary, languages=[]):
+def glossary_to_tbx_dict(oer_glossary):
     """convert an OER with a .tbx attachment to a tbx_dict format
-    and extract a list of concepts with the terms for the specified language(s)
     """
-    terms = []
+    tbx_dict = {}
     document = None
-    for d in glossary.get_sorted_documents():
+    for d in oer_glossary.get_sorted_documents():
         if d.label.endswith('.tbx'):
             document = d
             break
@@ -1515,10 +1558,14 @@ def glossary_to_terms(glossary, languages=[]):
         f = document.open()
         xml_str = f.read()
         tbx_dict = tbx_xml_2_dict(xml_str)
-        concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
-        terms = tbx_terms(concepts, languages=languages)
-        print(terms)
-    return terms
+    return tbx_dict
+
+def glossary_filter_terms(tbx_dict, languages=[]):
+    """from a glossary in tbx_dict format extract a list of concepts 
+    with the associated terms, possibly filtered for the specified language(s)
+    """
+    concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
+    return tbx_filter_by_language(concepts, languages=languages)
 
 def glossary_autocomplete(request):
     MIN_CHARS = 2
