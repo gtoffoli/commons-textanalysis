@@ -743,41 +743,12 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             # - in the glossary, multiple terms can be associated to the same concept
             # - matches with glossary terms can overlap inside the text; we don't want overlaps
             # 1. From lists of tokens per term, derive lists of terms per token
-            # 2. then, get free of overlaps, by choosing longer matches
+            # 2. then, get free of overlaps, by choosing longer matches (NO!)
             for term in gl_terms:
                 for k in range(term['start'], term['end']):
                     token_gl_terms = tokens[k].get('gl_terms', [])
                     token_gl_terms.append(term)
                     tokens[k]['gl_terms'] = token_gl_terms
-            """
-            # in case of overlapping terms (token belonging to multiple term), keep only the longest one
-            for token in tokens:
-                terms = token.get('gl_terms', [])
-                n_terms = len(terms)
-                if n_terms == 0:
-                    continue
-                if n_terms == 1:
-                    token['gl_terms'] = terms[0]
-                    continue
-                # n_terms > 1: find longest match including current token
-                i_max = 0
-                n_tokens_max = 0
-                for i in range(n_terms):
-                    term = terms[i]
-                    n_tokens = term['end'], term['start']
-                    if n_tokens > n_tokens_max:
-                        n_tokens_max = n_tokens
-                        i_max = i
-                # find longest match including current token and remove other terms
-                for i in range(n_terms):
-                    if i != i_max:
-                        term = terms[i]
-                        for k in range(term['start'], term['end']):
-                            tokens[k]['gl_terms'].remove(term)
-                        terms.remove(term)
-                        gl_terms.remove(term)
-                token['gl_terms'] = terms
-            """
             # add to text tokens iob marks related to matches with glossary terms
             for term in gl_terms:
                 for k in range(term['start'], term['end']):
@@ -1317,7 +1288,8 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         data['user_language_code'] = request.LANGUAGE_CODE
         data['user_language'] = dict(settings.LANGUAGES).get(request.LANGUAGE_CODE, _('unknown'))
         if glossary_id:
-            data['glossary'] = glossary_filter_terms(tbx_dict)
+            # data['glossary'] = glossary_filter_terms(tbx_dict)
+            data['glossary'] = tbx_dict
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)

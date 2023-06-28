@@ -44,9 +44,11 @@ button.span_type.active {
 
 .gl_term {
   color:lightseagreen;
+  font-weight: bold;
 }
 .bn_term {
   color:blue;
+  font-weight: bold;
 }
 
 .chunk {
@@ -140,8 +142,15 @@ button.span_type.active {
 				<modal v-if="token['gl_terms'] && token['gl_terms'].length>0" v-bind="modal_props" ref="glossary_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
 						<div><span style="font-size: 1.2em; font-weight: bold;">{{ gl_term_text(token) }}</span> ({{ token.pos }})</div>
-						<div v-for="concept in gl_concepts(token)" style="text-align: left;">
-							{{ concept[0] }} {{ concept[1] }}
+						<div v-for="concept in gl_concepts(token)" style="text-align: left; margin-left: 1.5em;">
+							concept {{ concept['id'] }}, subjects: <b>{{ concept['subjects'] }}</b>
+							<div v-for="langSec in concept['langSec']" style="text-align: left; margin-left: 1.5em;">
+								<b>{{ langSec['lang'] }}</b>: {{ langSec['definition'] }}
+								<div v-for="termSec in langSec['termSec']" style="text-align: left; margin-left: 1.5em;">
+									term: <b>{{ termSec['term'] }}</b>
+										<span v-if="termSec['type']!='fullForm'"> ({{ termSec['type'] }})</span>
+								</div>
+							</div>
 						</div>
 					</div>
 				</modal>
@@ -265,8 +274,9 @@ import VueJsModal from '/static/vue-js-modal/components/Modal.js';
 		}
 		concept_ids = Array.from(concept_ids);
 		let concepts = [];
-		for (var concept of this.glossary) {
-			if (concept_ids.includes(concept[0]))
+		let glossary = this.glossary['tbx']['text']['body']['conceptEntry']
+		for (var concept of glossary) {
+			if (concept_ids.includes(concept['id']))
 				concepts.push(concept);
 		}
 		return concepts;
