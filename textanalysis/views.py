@@ -474,7 +474,7 @@ def text_dashboard_return(request, var_dict):
         return var_dict # only for manual test
 
 @csrf_exempt
-def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict={}, obj=None, title='', body='',
+def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict=None, obj=None, title='', body='',
        wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
@@ -486,7 +486,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
         if nounchunks:
             data['domains'] = domains
-        # data = json.dumps(data)
     else:
         if obj_type == 'text':
             title, description, body = ['', '', request.session.get('text', '')]
@@ -720,10 +719,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                         token_bn_terms = tokens[k].get('bn_terms', [])
                         token_bn_terms.append(i)
                         tokens[k]['bn_terms'] = token_bn_terms
-                    """
-                    tokens[bn_term['start']]['term_start'] = i
-                    tokens[bn_term['end']]['term_end'] = i
-                    """
                 # remove 1 ref to single-token term from tokens with multiple refs
                 for token in tokens:
                     term_refs = token.get('bn_terms', [])
@@ -865,7 +860,8 @@ def ajax_contents(request):
         corpus['owner'] = owner and owner.get_display_name() or _('anonymous')
         corpus['is_owner'] = owner and owner.id == user.id or False
         corpus['open'] = False
-        corpus['filter'] = False
+        corpus['manage_domains'] = False
+        corpus['manage_glossaries'] = False
         corpora.append(corpus)
     if project_id:
         data = project_contents(project_id)
@@ -874,6 +870,8 @@ def ajax_contents(request):
     data['corpora'] = corpora
     data['state_dict'] = PUBLICATION_STATE_DICT
     data['sorted_states'] = [1, 5, 3]
+    all_glossaries = get_all_glossaries(request).order_by('title')
+    data['all_glossaries'] = dict([[glossary.id, glossary.title] for glossary in all_glossaries])
     data['all_domains'] = [BN_format(domain) for domain in bn_domains]
     return JsonResponse(data)
 
@@ -924,9 +922,10 @@ def ajax_insert_item(request):
     title, description, text = text_utils.get_obj_text(None, obj_type=obj_type, obj_id=obj_id, return_has_text=False, with_children=True)
     text = ". ".join([title, description, text])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
-    # metadata = load_corpus_metadata(file_key)
-    domains = load_corpus_metadata(file_key).get('domains', [])
-    data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'domains': domains})
+    metadata = load_corpus_metadata(file_key)
+    glossaries = metadata.get('glossaries', [])
+    domains = metadata.get('domains', [])
+    data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'glossaries': glossaries, 'domains': domains})
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
@@ -957,26 +956,11 @@ def ajax_resource_to_item(request):
         obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
     elif text:
         obj_type = 'text'
-        title = 'untitled'
+        # title = 'untitled'
         obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
-    """
-    domains = load_corpus_metadata(file_key).get('domains', [])
-    data = json.dumps({'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'domains': domains})
-    endpoint = nlp_url + '/api/add_doc/'
-    response = requests.post(endpoint, data=data)
-    if not response.status_code==200:
-        return propagate_remote_server_error(response)
-    data = response.json()
-    new_file_key = data['file_key']
-    if new_file_key:
-        if not new_file_key == file_key:
-            rename_corpus_metadata(file_key, new_file_key)
-            file_key = new_file_key
-        result = {'file_key': file_key, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
-    else:
-        result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
-    return JsonResponse(result)
-    """
+        title_end = text.find('\n')
+        title = text[:title_end]
+        text = text[title_end+1:]
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text}
     return add_item_to_corpus(request, file_key, result)
 
@@ -1288,7 +1272,6 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         data['user_language_code'] = request.LANGUAGE_CODE
         data['user_language'] = dict(settings.LANGUAGES).get(request.LANGUAGE_CODE, _('unknown'))
         if glossary_id:
-            # data['glossary'] = glossary_filter_terms(tbx_dict)
             data['glossary'] = tbx_dict
         return JsonResponse(data)
     else:
@@ -1539,6 +1522,12 @@ def glossary_filter_terms(tbx_dict, languages=[]):
     concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
     return tbx_filter_by_language(concepts, languages=languages)
 
+def get_all_glossaries(request):
+    view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
+    qs = OER.objects.filter(state__in=view_states, documents__label__icontains='.tbx')
+    qs = qs.filter_by_site(OER)
+    return qs
+
 def glossary_autocomplete(request):
     MIN_CHARS = 2
     q = request.GET.get('q', None)
@@ -1546,10 +1535,13 @@ def glossary_autocomplete(request):
     results = []
     if request.user.is_authenticated:
         if q and len(q) >= MIN_CHARS:
+            """
             view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
-            print('glossary_autocomplete', q, view_states)
             qs = OER.objects.filter(state__in=view_states, title__icontains=q, documents__label__icontains='.tbx').order_by('title')
             qs = qs.filter_by_site(OER)
+            """
+            qs = get_all_glossaries(request)
+            qs = qs.filter(title__icontains=q).order_by('title')
             results = [{'id': oer.id, 'text': oer.title[:80]} for oer in qs] + create_option
     body = json.dumps({ 'results': results, 'more': False, })
     return HttpResponse(body, content_type='application/json')

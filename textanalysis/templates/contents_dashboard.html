@@ -395,7 +395,13 @@ div.panel-head-modal {
 				   <a v-if="corpus.is_owner && [1,5].indexOf(corpus.state)>=0" href="#" v-on:click.stop="wider_access(corpus);"><i class="fa fa-plus" :title="label_wider_access"></i></a>
 			  </div>
               <div>
-				  <div v-if="corpus.filter">
+				  <div v-if="corpus.manage_glossaries">
+					  <vue-multiselect v-model="values" :options="all_glossary_titles" :multiple="true" :allowEmpty="true" :close-on-select="false" :clear-on-select="true" :preserve-search="false" placeholder="" :preselect-first="false" :searchable="false" :optionHeight="20">
+					    <template slot="selection" slot-scope="{ values, search, is_open }"><span class="multiselect__single" v-if="values.length" v-show="!isOpen">{{ values.length }} glossaries selected</span></template>
+					  </vue-multiselect>
+					  <pre v-if="showJson" class="language-json"><code>{{ values }}</code></pre>
+				  </div>
+				  <div v-if="corpus.manage_domains">
 					  <vue-multiselect v-model="values" :options="all_domains" :multiple="true" :allowEmpty="true" :close-on-select="false" :clear-on-select="true" :preserve-search="false" placeholder="" :preselect-first="false" :searchable="false" :optionHeight="20">
 					    <template slot="selection" slot-scope="{ values, search, is_open }"><span class="multiselect__single" v-if="values.length" v-show="!isOpen">{{ values.length }} domains selected</span></template>
 					  </vue-multiselect>
@@ -403,8 +409,8 @@ div.panel-head-modal {
 				  </div>
 			  </div>
               <div><a v-if="!corpus.open" v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
-              <div><a v-if="!corpus.active && !corpus.open" v-on:click.stop="toggle_filter(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
-              <div></div>
+              <div><a v-if="!corpus.active && !corpus.open && !corpus.manage_domains" v-on:click.stop="toggle_manage_glossaries(corpus);" :title="label_manage_glossaries"><i class="fa fa-columns" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!corpus.active && !corpus.open && !corpus.manage_glossaries" v-on:click.stop="toggle_manage_domains(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
               <div><a v-if="!corpus.active" v-on:click.stop="openFileUpload(corpus);" :title="label_add_item_from_file"><i class="fa fa-upload" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="upload_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
@@ -437,7 +443,7 @@ div.panel-head-modal {
 				<modal v-bind="modal_props" ref="corpus_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
 						<div class="panel-head-modal">{{ label_enter_text }} {{ corpus.file_key }}</div>
-						<div><textarea id="story" name="story" rows="26" cols="80" style="resize: none;" v-model="entered_text" :placeholder="label_enter_text_here"></textarea></div>
+						<div><textarea id="story" name="story" rows="26" cols="80" style="resize: none;" v-model="entered_text" :placeholder="label_enter_title_here + '\n' +label_enter_text_here"></textarea></div>
 						<div>
 							<button class="btn btn-outline-dark" @click="closeTextInput(corpus)">Cancel</button>
 							<button class="btn btn-outline-dark" @click="saveTextInput(corpus)" :disabled="(entered_text.length<20)">Save</button>
@@ -536,8 +542,6 @@ div.panel-head-modal {
 
 {% block script_base %}
 <script type="module">
-// Tell Vue to install the VuejsDialog plugin.
-// Vue.use(VuejsDialog.main.default)
 // Register globally
 Vue.component('vue-multiselect', VueMultiselect.default)
 import VueJsModal from '/static/vue-js-modal/components/Modal.js';
@@ -556,7 +560,7 @@ var app = new Vue({
       resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
       resource_list: {list_id: 'list', label: 'LIST', items: [], selected: null},
       corpora: [],
-      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: false, filter: false, open: false, show_modal: false},
+      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: false, manage_glossaries: false, manage_domains: false, open: false, show_modal: false},
       result: '',
       compare: false,
       all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
@@ -586,7 +590,8 @@ var app = new Vue({
       label_remove_item: `{% trans "remove item"|capfirst %}`,
       label_show_hide_corpus_menu: `{% trans "show / hide corpus menu"|capfirst %}`,
       label_show_hide_item_menu: `{% trans "show / hide item menu"|capfirst %}`,
-      label_manage_domains:  `{% trans "manage associated BabelNet domains"|capfirst %}`,
+      label_manage_glossaries: `{% trans "manage associated glossaries"|capfirst %}`,
+      label_manage_domains: `{% trans "manage associated BabelNet domains"|capfirst %}`,
       label_similarity: `{% trans "similarity"|capfirst %}`,
       label_corpus_dashboard: `{% trans "Corpus Dashboard" %}`,
       label_dependency: `{% trans "Dependency parse" %}`,
@@ -601,14 +606,16 @@ var app = new Vue({
       label_confirm_deletion: `{% trans "confirm deletion" %}`,
       label_confirm_change:  `{% trans "confirm change" %}`,
       label_enter_text: `{% trans "enter text for new item of corpus"|capfirst %}`,
-      label_enter_text_here: `{% trans "enter text here" %}`,
+      label_enter_title_here: `{% trans "enter item title in this line" %}`,
+      label_enter_text_here: `{% trans "enter text starting on second line" %}`,
       label_enter_url_here: `{% trans "enter url here" %}`,
       value: [],
-      values: [],
       state_dict: {},
       sorted_states: [],
+      all_glossaries: [],
+      all_glossary_titles: [],
       all_domains: [],
-      domains: [],
+      values: [],
       isOpen: true,
       is_open: true,
       search: false,
@@ -623,13 +630,6 @@ var app = new Vue({
 		focusTrap: true, // ?
 		width: 640,
 		height: 480,
-/*
-	    visible: false,
-	    visibility: {
-	      modal: true,
-	      overlay: false
-	    },
-*/
 	  },
 	  modal_props_web: { 
 		draggable: true,
@@ -655,7 +655,6 @@ var app = new Vue({
 	        let target = targets[i];
 		    if (target.hasAttribute('corpus')) {
 		      let file_key = target.attributes.corpus.value;
-	          console.log('file_key:', file_key);
 		      return file_key;
 		    };
 		  };
@@ -669,10 +668,37 @@ var app = new Vue({
         Vue.set(item, 'open', !item.open);
         this.$forceUpdate();
       },
-      toggle_filter: function(item) {
-		let filter = !item.filter
-        if (filter) {
-          this.values = item.domains;
+      glossaryGetByKey(searchKey) {
+		for (let [key, value] of Object.entries(this.all_glossaries)) {
+		  if (key === searchKey)
+		    return value;
+		}
+	  },
+      glossaryGetByValue(searchValue) {
+		for (let [key, value] of Object.entries(this.all_glossaries)) {
+		  if (value === searchValue)
+		    return key;
+		}
+	  },
+      toggle_manage_glossaries: function(item) {
+		let manage_glossaries = !item.manage_glossaries;
+        if (manage_glossaries) {
+          this.values = item.glossaries;
+        } else {
+		  if (! (JSON.stringify(item.glossaries) === JSON.stringify(this.values)))
+		    if (confirm(this.label_confirm_change)) {
+			  this.corpusUpdateMetadata(item, 'glossaries', this.values);
+              item.glossaries = this.values;
+              this.values = [];
+            }
+		}
+        Vue.set(item, 'manage_glossaries', manage_glossaries);
+        this.$forceUpdate();
+	  },
+      toggle_manage_domains: function(item) {
+		let manage_domains = !item.manage_domains
+        if (manage_domains) {
+          this.values = item.domains
         } else {
 		  if (! (JSON.stringify(item.domains) === JSON.stringify(this.values)))
 		    if (confirm(this.label_confirm_change)) {
@@ -681,7 +707,7 @@ var app = new Vue({
               this.values = [];
             }
 		}
-        Vue.set(item, 'filter', filter);
+        Vue.set(item, 'manage_domains', manage_domains);
         this.$forceUpdate();
       },
       findEmptyCorpus: function() {
@@ -708,6 +734,9 @@ var app = new Vue({
         this.$forceUpdate();
 	  },
       corpusUpdateMetadata: function(corpus, key, value) {
+        if (key === 'glossaries') {
+		  value = value.map(this.glossaryGetByValue)
+		}
         let data = {file_key: corpus.file_key, key: key, value: value};
         fetch('/textanalysis/ajax_corpus_update/', {
           method: 'POST',
@@ -938,27 +967,6 @@ var app = new Vue({
         .then(data => (this['result'] = data['result']))
         .catch(err => (this['result'] = err))
       },
-/*
-      promptWebResourceUrl(corpus) {
-        this.$dialog
-        .prompt({
-          title: this.label_add_item_from_web,
-          body: "",
-        }, {
-          promptHelp: this.label_add_item_from_web_prompt + ' "[+:okText]"'
-        })
-        .then(dialog => {
-          // Triggered when proceed button is clicked: process the user response
-          let url = dialog.data;
-          console.log(url);
-          this.corpusAddResourceItem(corpus.file_key, url, null);
-        })
-        .catch(() => {
-          // Triggered when dialog is dismissed by user
-          console.log('Prompt dismissed');
-        });
-      },
-*/
       dialog_from_corpus(ref, corpus) {
         let modals = this.$refs[ref];
         for (let i=0; i<modals.length; i++)
@@ -978,7 +986,7 @@ var app = new Vue({
 		let text = this.entered_text;
 		this.dialog_from_corpus('corpus_dialog', corpus).close();
 		corpus.show_modal = false;
-		if (text.length > 20) {
+		if (text.length > 20 && text.includes('\n')) {
           this.corpusAddResourceItem(corpus.file_key, null, text);		
 		}
 	  },
@@ -1049,6 +1057,10 @@ var app = new Vue({
           if (key == 'corpora') {
             this.corpora = data[key];
             this.empty_corpus = this.findEmptyCorpus();
+          }
+          else if (key == 'all_glossaries') {
+            this.all_glossaries = data['all_glossaries'];
+            this.all_glossary_titles = Object.values(this.all_glossaries);
           }
           else if (key == 'all_domains')
             this.all_domains = data['all_domains'];
