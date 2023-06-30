@@ -141,7 +141,7 @@ button.span_type.active {
 				</span>
 				<modal v-if="token['gl_terms'] && token['gl_terms'].length>0" v-bind="modal_props" ref="glossary_panel" :name="'token'+token.id" @hook:mounted="onModalMounted(token)">
 					<div style="padding: 3px;">
-						<div><span style="font-size: 1.2em; font-weight: bold;">{{ gl_term_text(token) }}</span> ({{ token.pos }})</div>
+						<div><span style="font-size: 1.2em; font-weight: bold;">{{ gl_term_text(token) }}</span></div>
 						<div v-for="concept in gl_concepts(token)" style="text-align: left; margin-left: 1.5em;">
 							concept {{ concept['id'] }}, subjects: <b>{{ concept['subjects'] }}</b>
 							<div v-for="langSec in concept['langSec']" style="text-align: left; margin-left: 1.5em;">

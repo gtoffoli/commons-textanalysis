@@ -475,7 +475,7 @@ def text_dashboard_return(request, var_dict):
 
 @csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict=None, obj=None, title='', body='',
-       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, domains=[]):
+       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, glossaries=[], domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if readability:
         wordlists = True
@@ -485,6 +485,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     if file_key:
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
         if nounchunks:
+            data['glossaries'] = glossaries
             data['domains'] = domains
     else:
         if obj_type == 'text':
@@ -502,7 +503,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             body = '{}, {}. {}'.format(title, description, text)
         if contexts:
             return {'text': body, 'title': title}
-        # data = json.dumps({'text': body})
         data = {'text': body}
     if tbx_dict:
         data['glossary'] = glossary_filter_terms(tbx_dict)
@@ -661,7 +661,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             token['iob_term'] = 'o'
             token['ent'] = 'n'
             tokens[i] = token
-        # annotate tokens with iob info on position in containing entitied
+        # annotate tokens with iob info on position in containing entities
         for i, ent in enumerate(entities):
             entity_type = ent['label']
             entity_dict[entity_type]['count'] += 1
@@ -715,7 +715,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                             if level in ['a', 'a1', 'a2', 'b', 'b1',]:
                                 continue
                     for k in range(bn_term['start'], bn_term['end']):
-                        # print(k, tokens[k]['text'])
                         token_bn_terms = tokens[k].get('bn_terms', [])
                         token_bn_terms.append(i)
                         tokens[k]['bn_terms'] = token_bn_terms
@@ -730,9 +729,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                                 term_refs = [r for r in term_refs if r != ref]
                                 token['bn_terms'] = term_refs
                                 break
-        gl_terms = []
-        if tbx_dict:
-            gl_terms = analyze_dict.get('glossary_matches', [])
+        gl_terms = analyze_dict.get('glossary_matches', [])
         if gl_terms:
             # - glossary_matches are a list of dicts with keys {'concept_id', 'start', 'end'}
             # - in the glossary, multiple terms can be associated to the same concept
@@ -892,6 +889,10 @@ def ajax_new_corpus(request):
     return JsonResponse(result)
 
 def add_item_to_corpus(request, file_key, result):
+    glossary_ids = load_corpus_metadata(file_key).get('glossaries', [])
+    if glossary_ids:
+        glossary_oers = OER.objects.filter(id__in=glossary_ids)
+        result['glossaries'] = [glossary_filter_terms(glossary_to_tbx_dict(oer)) for oer in glossary_oers]
     result['domains'] = load_corpus_metadata(file_key).get('domains', [])
     data = json.dumps(result)
     endpoint = nlp_url + '/api/add_doc/'
@@ -968,12 +969,10 @@ def ajax_resource_to_item(request):
 def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
     """ called from contents_dashboard template to a file item to a corpus (docbin) """
     body = request.body
-    print('ajax_file_to_item - body:', len(body))
     domains = file_key and load_corpus_metadata(file_key).get('domains', []) or []
     content_type = request.content_type
     content_disposition = request.headers['Content-Disposition']
     title, text, err = get_file_text(body, content_type, title=content_disposition)
-    print('ajax_file_to_item - text:', title, len(text))
     obj_type = 'file'
     obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}
@@ -1250,7 +1249,6 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
 
 @csrf_exempt
 def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossary_id=''):
-    # print('text_nounchunks', glossary_id)
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url, 'glossary_id': glossary_id}
     var_dict['VUE'] = True
     if is_ajax(request):
@@ -1259,20 +1257,28 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         if glossary_id:
             oer_glossary = OER.objects.get(id=glossary_id)
             tbx_dict = glossary_to_tbx_dict(oer_glossary)
-            # print('-----', tbx_dict)
         keys = ['paragraphs', 'tokens', 'bn_terms', 'gl_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
-        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, nounchunks=True)
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
-        # print('text_nounchunks -----', data['glossary_matches'])
-        span_types = define_span_types()
-        data['span_types'] = span_types
         data['type_buttons'] = span_type_buttons
         data['user_language_code'] = request.LANGUAGE_CODE
         data['user_language'] = dict(settings.LANGUAGES).get(request.LANGUAGE_CODE, _('unknown'))
-        if glossary_id:
+        if file_key:
+            glossary_ids = load_corpus_metadata(file_key).get('glossaries', [])
+            if glossary_ids:
+                glossary_oers = OER.objects.filter(id__in=glossary_ids)
+                data['glossary'] = glossary_to_tbx_dict(glossary_oers[0])
+        elif glossary_id:
             data['glossary'] = tbx_dict
+        span_types = define_span_types()
+        if not data.get('noun_chunks', []):
+            span_types.remove('nounchunk')
+        if not data['gl_terms']:
+            span_types.remove('glossary')
+        if not data['bn_terms']:
+            span_types.remove('babelnet')
+        data['span_types'] = span_types
         return JsonResponse(data)
     else:
         return render(request, 'text_nounchunks.html', var_dict)
