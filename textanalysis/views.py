@@ -756,6 +756,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                     token['iob_term'] = iob_term           
                     tokens[k] = token
 
+        var_dict['noun_chunks'] = noun_chunks
         var_dict['bn_terms'] = bn_terms
         var_dict['gl_terms'] = gl_terms
         var_dict['tokens'] = tokens
@@ -1257,7 +1258,7 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         if glossary_id:
             oer_glossary = OER.objects.get(id=glossary_id)
             tbx_dict = glossary_to_tbx_dict(oer_glossary)
-        keys = ['paragraphs', 'tokens', 'bn_terms', 'gl_terms',
+        keys = ['paragraphs', 'tokens', 'noun_chunks', 'bn_terms', 'gl_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, nounchunks=True)
         data.update([[key, dashboard_dict[key]] for key in keys])
@@ -1425,13 +1426,13 @@ def ta_input(request):
             data = form.cleaned_data
             function = data['function']
             request.session['text'] = data['text']
-            glossary = data['glossary']
+            glossary = data.get('glossary', None)
             if function == 'dashboard': # Text Analysis Dashboard
                 var_dict = {'obj_type': 'text', 'obj_id': 0, 'VUE': True}
                 return render(request, 'text_dashboard.html', var_dict)
             else:
-                # return ta(request, function, obj_type='text', obj_id=0)
-                return ta(request, function, obj_type='text', obj_id=0, glossary_id=glossary.id)
+                glossary_id = glossary and glossary.id or None
+                return ta(request, function, obj_type='text', obj_id=0, glossary_id=glossary_id)
     else:
         # do not present the input form if the language server is down
         endpoint = nlp_url + '/api/configuration'
