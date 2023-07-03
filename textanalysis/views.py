@@ -839,7 +839,7 @@ def ajax_contents(request):
     project_id = data['project_id']
     user_key = '{id:05d}'.format(id=request.user.id)
     endpoint = nlp_url + '/api/get_corpora/'
-    data = json.dumps({'user_key': user_key})
+    data = json.dumps({'user_key': ''})
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
         return propagate_remote_server_error(response)
@@ -848,6 +848,8 @@ def ajax_contents(request):
     for corpus in data['corpora']:
         file_key = corpus['file_key']
         metadata = load_corpus_metadata(file_key)
+        if not metadata:
+            continue
         corpus.update(metadata)
         site_id = corpus.get('site_id', None)
         username = corpus.get('username', '')

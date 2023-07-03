@@ -391,8 +391,8 @@ div.panel-head-modal {
               </div>
               <div>{{ label_owner }}: {{ corpus.owner }}</div>
               <div>{{ state_dict[corpus.state] }}
-				   <a v-if="corpus.is_owner && [5,3].indexOf(corpus.state)>=0" href="#" v-on:click.stop="narrower_access(corpus);"><i class="fa fa-minus" :title="label_narrower_access"></i></a>
-				   <a v-if="corpus.is_owner && [1,5].indexOf(corpus.state)>=0" href="#" v-on:click.stop="wider_access(corpus);"><i class="fa fa-plus" :title="label_wider_access"></i></a>
+				   <a v-if="!busy(corpus) && corpus.is_owner && [5,3].indexOf(corpus.state)>=0" href="#" v-on:click.stop="narrower_access(corpus);"><i class="fa fa-minus" :title="label_narrower_access"></i></a>
+				   <a v-if="!busy(corpus) && corpus.is_owner && [1,5].indexOf(corpus.state)>=0" href="#" v-on:click.stop="wider_access(corpus);"><i class="fa fa-plus" :title="label_wider_access"></i></a>
 			  </div>
               <div>
 				  <div v-if="corpus.manage_glossaries">
@@ -408,10 +408,10 @@ div.panel-head-modal {
 					  <pre v-if="showJson" class="language-json"><code>{{ values }}</code></pre>
 				  </div>
 			  </div>
-              <div><a v-if="!corpus.open" v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
-              <div><a v-if="!corpus.active && !corpus.open && !corpus.manage_domains" v-on:click.stop="toggle_manage_glossaries(corpus);" :title="label_manage_glossaries"><i class="fa fa-columns" style="cursor: pointer;"></i></a></div>
-              <div><a v-if="!corpus.active && !corpus.open && !corpus.manage_glossaries" v-on:click.stop="toggle_manage_domains(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
-              <div><a v-if="!corpus.active" v-on:click.stop="openFileUpload(corpus);" :title="label_add_item_from_file"><i class="fa fa-upload" style="cursor: pointer;"></i></a>
+              <div><a v-if="corpus.active || !busy(corpus)" v-on:click.stop="toggle_menu(corpus);" :title="label_show_hide_corpus_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="corpus.manage_glossaries || !busy(corpus)" v-on:click.stop="toggle_manage_glossaries(corpus);" :title="label_manage_glossaries"><i class="fa fa-columns" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="corpus.manage_domains || !busy(corpus)" v-on:click.stop="toggle_manage_domains(corpus);" :title="label_manage_domains"><i class="fa fa-filter" style="cursor: pointer;"></i></a></div>
+              <div><a v-if="!busy(corpus)" v-on:click.stop="openFileUpload(corpus);" :title="label_add_item_from_file"><i class="fa fa-upload" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="upload_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
 						<div class="panel-head-modal">{{ label_upload_file }} {{ corpus.file_key }}</div>
@@ -427,7 +427,7 @@ div.panel-head-modal {
 					</div>
 				</modal>
               </div>
-              <div><a v-if="!corpus.active" v-on:click.stop="openWebInput(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a>
+              <div><a v-if="!busy(corpus)" v-on:click.stop="openWebInput(corpus);" :title="label_add_item_from_web"><i class="fa fa-cloud-download" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props_web" ref="web_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
 						<div class="panel-head-modal">{{ label_add_item_from_web }} {{ corpus.file_key }}</div>
@@ -439,7 +439,7 @@ div.panel-head-modal {
 					</div>
 				</modal>
               </div>
-              <div><a v-if="!corpus.active" v-on:click.stop="openTextInput(corpus);" :title="label_add_item_from_text"><i class="fa fa-copy" style="cursor: pointer;"></i></a>
+              <div><a v-if="!busy(corpus)" v-on:click.stop="openTextInput(corpus);" :title="label_add_item_from_text"><i class="fa fa-copy" style="cursor: pointer;"></i></a>
 				<modal v-bind="modal_props" ref="corpus_dialog" :name="corpus.file_key">
 					<div style="display: block; text-align: center; width: 100%;">
 						<div class="panel-head-modal">{{ label_enter_text }} {{ corpus.file_key }}</div>
@@ -452,7 +452,7 @@ div.panel-head-modal {
 				</modal>
               </div>
               <div></div>
-              <div class="text-center"><a href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
+              <div class="text-center"><a v-if="!busy(corpus)" href="#" v-on:click="deleteCorpus(corpus.file_key);" :title="label_delete_corpus"><i class="fa fa-trash bold"></i></a></div>
             </div>
             <ul v-if="corpus.active" style="font-size: 0.8em;">
               <li><a :href="'/textanalysis/corpus/'+corpus.file_key+'/'" target="_blank" rel="noopener nofollow">{{ label_corpus_dashboard }}</a></li>
@@ -566,6 +566,35 @@ var app = new Vue({
       all_types: ['lps', 'shared_lps', 'personal_lps', 'oers', 'shared_oers', 'personal_oers', 'docs', 'corpus'],
       source_id: '',
       file_type: 'pdf',
+      value: [],
+      state_dict: {},
+      sorted_states: [],
+      all_glossaries: [],
+      all_glossary_titles: [],
+      all_domains: [],
+      values: [],
+      isOpen: true,
+      is_open: true,
+      search: false,
+      showJson: false,
+	  entered_text: '',
+	  modal_props: { 
+		adaptive: false, // ?
+		resizable: true, // ok
+		draggable: true, // ok
+		scrollable: true,
+		clickToClose: false, // ok
+		focusTrap: true, // ?
+		width: 640,
+		height: 480,
+	  },
+	  modal_props_web: { 
+		draggable: true,
+		clickToClose: false,
+		focusTrap: true,
+		width: 640,
+		height: 100,
+	  },
       msg_anonymous: `{% trans "it seems that you are not logged in"|capfirst %}`,
       label_user: `{{user.get_display_name}}`,
       label_corpora: `{% trans "corpora"|capfirst %}`,
@@ -609,35 +638,6 @@ var app = new Vue({
       label_enter_title_here: `{% trans "enter item title in this line" %}`,
       label_enter_text_here: `{% trans "enter text starting on second line" %}`,
       label_enter_url_here: `{% trans "enter url here" %}`,
-      value: [],
-      state_dict: {},
-      sorted_states: [],
-      all_glossaries: [],
-      all_glossary_titles: [],
-      all_domains: [],
-      values: [],
-      isOpen: true,
-      is_open: true,
-      search: false,
-      showJson: false,
-	  entered_text: '',
-	  modal_props: { 
-		adaptive: false, // ?
-		resizable: true, // ok
-		draggable: true, // ok
-		scrollable: true,
-		clickToClose: false, // ok
-		focusTrap: true, // ?
-		width: 640,
-		height: 480,
-	  },
-	  modal_props_web: { 
-		draggable: true,
-		clickToClose: false,
-		focusTrap: true,
-		width: 640,
-		height: 100,
-	  },
     },
     computed: {
       empty_corpus: {
@@ -668,31 +668,36 @@ var app = new Vue({
         Vue.set(item, 'open', !item.open);
         this.$forceUpdate();
       },
+      busy: function(item) {
+		return (item.active || item.open || item.manage_glossaries || item.manage_domains);
+	  },
       glossaryGetByKey(searchKey) {
 		for (let [key, value] of Object.entries(this.all_glossaries)) {
-		  if (key === searchKey)
+		  if (parseInt(key) === searchKey)
 		    return value;
 		}
 	  },
       glossaryGetByValue(searchValue) {
 		for (let [key, value] of Object.entries(this.all_glossaries)) {
 		  if (value === searchValue)
-		    return key;
+		    return parseInt(key);
 		}
 	  },
       toggle_manage_glossaries: function(item) {
-		let manage_glossaries = !item.manage_glossaries;
-        if (manage_glossaries) {
-          this.values = item.glossaries;
+		let values = item.glossaries.map(this.glossaryGetByKey);
+        if (!item.manage_glossaries) {
+		  this.values = values;
+		  item.manage_glossaries = true;
         } else {
-		  if (! (JSON.stringify(item.glossaries) === JSON.stringify(this.values)))
+		  if (! (JSON.stringify(values) === JSON.stringify(this.values)))
 		    if (confirm(this.label_confirm_change)) {
-			  this.corpusUpdateMetadata(item, 'glossaries', this.values);
-              item.glossaries = this.values;
-              this.values = [];
+              item.glossaries = this.values.map(this.glossaryGetByValue);
+			  this.corpusUpdateMetadata(item, 'glossaries', item.glossaries);
             }
+          this.values = [];
+		  item.manage_glossaries = false;
 		}
-        Vue.set(item, 'manage_glossaries', manage_glossaries);
+        // Vue.set(item, 'manage_glossaries', manage_glossaries);
         this.$forceUpdate();
 	  },
       toggle_manage_domains: function(item) {
@@ -702,8 +707,8 @@ var app = new Vue({
         } else {
 		  if (! (JSON.stringify(item.domains) === JSON.stringify(this.values)))
 		    if (confirm(this.label_confirm_change)) {
-			  this.corpusUpdateMetadata(item, 'domains', this.values);
               item.domains = this.values;
+			  this.corpusUpdateMetadata(item, 'domains', item.domains);
               this.values = [];
             }
 		}
@@ -734,9 +739,6 @@ var app = new Vue({
         this.$forceUpdate();
 	  },
       corpusUpdateMetadata: function(corpus, key, value) {
-        if (key === 'glossaries') {
-		  value = value.map(this.glossaryGetByValue)
-		}
         let data = {file_key: corpus.file_key, key: key, value: value};
         fetch('/textanalysis/ajax_corpus_update/', {
           method: 'POST',
@@ -1000,9 +1002,7 @@ var app = new Vue({
 	  },
       requestUploadFile(corpus){
         var src = this.$el.querySelector('#uploadmyfile');
-        console.log(src.files);
         var file = src.files[0];
-        console.log(file);
         this.corpusAddFileItem(corpus, file)
       },
       corpusAddFileItem(corpus, file) {
@@ -1094,10 +1094,8 @@ var app = new Vue({
 </script>
 <script src="{% static "js/switch_sources.js" %}"></script>
 <script>
-	// console.log('remoteCssLoaded');
 	let remote_css_ids = remoteCssLoaded ();
 	console.log(remote_css_ids);
-	// console.log('remoteJsLoaded');
 	let remote_js_ids = remoteJsLoaded();
 	console.log(remote_js_ids);
 </script>
