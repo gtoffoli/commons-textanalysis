@@ -78,7 +78,7 @@ pos_table = (
 pos_map = dict(pos_table)
 pos_list = [pos[0] for pos in pos_table]
 
-ENTITY_TYPES = ['PER', 'LOC', 'GPE', 'ORG',]
+ENTITY_TYPES = ['PER', 'LOC', 'GPE', 'ORG'] # , 'PERSON', 'DERIV_PER'
 
 # =====from NLPBuddy
 POS_MAPPING = {
@@ -134,6 +134,7 @@ collData = {
 
         { 'type': 'PER', 'labels': ['Person entity', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
         { 'type': 'PERSON', 'labels': ['Person entity', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
+        # { 'type': 'DERIV_PER', 'labels': ['Derivative person entity', 'Per'], 'bgColor': entity_color, 'borderColor': 'darken' }, # People, including fictional.
         { 'type': 'NORP', 'labels': ['NORP', 'NORP'], 'bgColor': entity_color, 'borderColor': 'darken' },  # Nationalities or religious or political groups.
         { 'type': 'FAC', 'labels': ['Facility', 'Fac'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Buildings, airports, highways, bridges, etc.
         { 'type': 'ORG', 'labels': ['Organization entity', 'Org'], 'bgColor': entity_color, 'borderColor': 'darken' }, # Companies, agencies, institutions, etc.
@@ -278,6 +279,8 @@ def define_span_types():
     entity_types = []
     for item in collData['entity_types']:
         entity_type = item['type'].upper()
+        if not entity_dict.get(entity_type, None):
+            continue
         if entity_dict[entity_type]['count']:
             entity_types.append(entity_type)
             span_type_buttons[entity_type] = {}
@@ -417,14 +420,8 @@ def map_token_pos_to_level(language_code):
 def token_to_level(token, frequencies):
     pos = token['pos']
     lemma = token['lemma']
-    """
-    for item in frequencies:
-        if item['key'] == lemma:
-            return item['level']
-    return ''
-    """
-    item = frequencies[lemma]
-    return item[1]
+    item = frequencies.get(lemma, None)
+    return item and item[1] or '?'
 
 language_code_dict = {
     'english': 'en',
@@ -664,6 +661,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         # annotate tokens with iob info on position in containing entities
         for i, ent in enumerate(entities):
             entity_type = ent['label']
+            if not entity_dict.get(entity_type, None):
+                continue
             entity_dict[entity_type]['count'] += 1
             if tokens[ent['end_token']-1]['pos'] in ['PUNCT']:
                 ent['end_token'] -= 1
@@ -693,6 +692,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                     iob_chunk = 'i'
                 token['iob_chunk'] = iob_chunk           
                 tokens[k] = token
+        var_dict['noun_chunks'] = noun_chunks
         # annotate tokens with babelnet synsets already searched by text and filtered by domain
         bn_terms = []
         if file_key:
@@ -729,6 +729,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                                 term_refs = [r for r in term_refs if r != ref]
                                 token['bn_terms'] = term_refs
                                 break
+        var_dict['bn_terms'] = bn_terms
         gl_terms = analyze_dict.get('glossary_matches', [])
         if gl_terms:
             # - glossary_matches are a list of dicts with keys {'concept_id', 'start', 'end'}
@@ -755,12 +756,10 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                         iob_term = 'i'
                     token['iob_term'] = iob_term           
                     tokens[k] = token
-
-        var_dict['noun_chunks'] = noun_chunks
-        var_dict['bn_terms'] = bn_terms
         var_dict['gl_terms'] = gl_terms
-        var_dict['tokens'] = tokens
-        var_dict['paragraphs'] = analyze_dict['paragraphs']
+
+    var_dict['tokens'] = tokens
+    var_dict['paragraphs'] = analyze_dict['paragraphs']
 
     # next 4 code lines must be after BabelNet synsets processing
     # since they modify the structure of the frequencies from dict (key->list) to a list of dicts
@@ -773,7 +772,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
         'levels_counts': levels_counts, 'n_long_tokens': n_long_tokens,})
 
-    if (wordlists or nounchunks) and not readability: 
+    if (wordlists or nounchunks) and not readability:
         return var_dict
 
     index_sentences(sentences, tokens)
@@ -886,7 +885,7 @@ def ajax_new_corpus(request):
     data = response.json()
     file_key = data['file_key']
     site_id = get_current_site(request).id
-    metadata = {'site_id': site_id, 'username': request.user.username, 'state': DRAFT,}
+    metadata = {'site_id': site_id, 'username': request.user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
     save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key}
     return JsonResponse(result)
@@ -927,7 +926,10 @@ def ajax_insert_item(request):
     text = ". ".join([title, description, text])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
     metadata = load_corpus_metadata(file_key)
-    glossaries = metadata.get('glossaries', [])
+    glossary_ids = metadata.get('glossaries', [])
+    if glossary_ids:
+        glossary_oers = OER.objects.filter(id__in=glossary_ids)
+        glossaries = [glossary_filter_terms(glossary_to_tbx_dict(oer)) for oer in glossary_oers]
     domains = metadata.get('domains', [])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'glossaries': glossaries, 'domains': domains})
     endpoint = nlp_url + '/api/add_doc/'
@@ -1174,7 +1176,6 @@ def corpus_dashboard(request, file_key=''):
                 col.append(int((diff_i_j * 100)/count_self))
             row.append(col)
         cross_table.append(row)
-    # print('corpus_dashboard', cross_table)
     var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
     return corpus_dashboard_return(request, var_dict)
 
@@ -1253,6 +1254,7 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
 @csrf_exempt
 def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossary_id=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url, 'glossary_id': glossary_id}
+    
     var_dict['VUE'] = True
     if is_ajax(request):
         data = var_dict
