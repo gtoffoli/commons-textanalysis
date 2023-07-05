@@ -704,6 +704,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                     # filter bn_terms based on vocabulary frequency
                     if bn_term['end']-bn_term['start'] == 1:
                         token = tokens[bn_term['start']]
+                        if len(token['text']) < 3:
+                            continue
                         pos = token['pos']
                         if pos in ['NOUN', 'ADJ', 'VERB', 'ADV',]:
                             frequencies = \
