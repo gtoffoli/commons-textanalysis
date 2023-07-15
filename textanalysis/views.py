@@ -693,45 +693,6 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                 token['iob_chunk'] = iob_chunk           
                 tokens[k] = token
         var_dict['noun_chunks'] = noun_chunks
-        # annotate tokens with babelnet synsets already searched by text and filtered by domain
-        bn_terms = []
-        if file_key:
-            bn_terms = analyze_dict.get('bn_terms', [])
-            if bn_terms:
-                # from (virtual) lists of tokens per term, derive lists of term indexes per token NO
-                # annotate first and last token of each term (could be the same)
-                for i, bn_term in enumerate(bn_terms):
-                    # filter bn_terms based on vocabulary frequency
-                    if bn_term['end']-bn_term['start'] == 1:
-                        token = tokens[bn_term['start']]
-                        if len(token['text']) < 3:
-                            continue
-                        pos = token['pos']
-                        if pos in ['NOUN', 'ADJ', 'VERB', 'ADV',]:
-                            frequencies = \
-                                (pos=='NOUN' and noun_frequencies) or \
-                                (pos=='ADJ' and adjective_frequencies) or \
-                                (pos=='VERB' and verb_frequencies) or \
-                                (pos=='ADV' and adverb_frequencies)
-                            level = token_to_level(token, frequencies)
-                            if level in ['a', 'a1', 'a2', 'b', 'b1',]:
-                                continue
-                    for k in range(bn_term['start'], bn_term['end']):
-                        token_bn_terms = tokens[k].get('bn_terms', [])
-                        token_bn_terms.append(i)
-                        tokens[k]['bn_terms'] = token_bn_terms
-                # remove 1 ref to single-token term from tokens with multiple refs
-                for token in tokens:
-                    term_refs = token.get('bn_terms', [])
-                    if len(term_refs) > 1:
-                        for ref in term_refs:
-                            bn_term = bn_terms[ref]
-                            # if len(bn_term) == 1 and bn_term['start'] == token:
-                            if (bn_term['end']-bn_term['start']) == 1 and tokens[bn_term['start']] == token:
-                                term_refs = [r for r in term_refs if r != ref]
-                                token['bn_terms'] = term_refs
-                                break
-        var_dict['bn_terms'] = bn_terms
         gl_terms = analyze_dict.get('glossary_matches', [])
         if gl_terms:
             # - glossary_matches are a list of dicts with keys {'concept_id', 'start', 'end'}
@@ -759,6 +720,47 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                     token['iob_term'] = iob_term           
                     tokens[k] = token
         var_dict['gl_terms'] = gl_terms
+        # annotate tokens with babelnet synsets already searched by text and filtered by domain
+        bn_terms = []
+        if file_key:
+            bn_terms = analyze_dict.get('bn_terms', [])
+            if bn_terms:
+                # from (virtual) lists of tokens per term, derive lists of term indexes per token NO
+                # annotate first and last token of each term (could be the same)
+                for i, bn_term in enumerate(bn_terms):
+                    # filter bn_terms based on vocabulary frequency
+                    if bn_term['end']-bn_term['start'] == 1:
+                        token = tokens[bn_term['start']]
+                        if len(token['text']) < 3:
+                            continue
+                        pos = token['pos']
+                        if pos in ['NOUN', 'ADJ', 'VERB', 'ADV',]:
+                            frequencies = \
+                                (pos=='NOUN' and noun_frequencies) or \
+                                (pos=='ADJ' and adjective_frequencies) or \
+                                (pos=='VERB' and verb_frequencies) or \
+                                (pos=='ADV' and adverb_frequencies)
+                            level = token_to_level(token, frequencies)
+                            if level in ['a', 'a1', 'a2', 'b', 'b1',]:
+                                continue
+                    for k in range(bn_term['start'], bn_term['end']):
+                        if tokens[k].get('gl_terms', None):
+                            continue
+                        token_bn_terms = tokens[k].get('bn_terms', [])
+                        token_bn_terms.append(i)
+                        tokens[k]['bn_terms'] = token_bn_terms
+                # remove 1 ref to single-token term from tokens with multiple refs
+                for token in tokens:
+                    term_refs = token.get('bn_terms', [])
+                    if len(term_refs) > 1:
+                        for ref in term_refs:
+                            bn_term = bn_terms[ref]
+                            # if len(bn_term) == 1 and bn_term['start'] == token:
+                            if (bn_term['end']-bn_term['start']) == 1 and tokens[bn_term['start']] == token:
+                                term_refs = [r for r in term_refs if r != ref]
+                                token['bn_terms'] = term_refs
+                                break
+        var_dict['bn_terms'] = bn_terms
 
     var_dict['tokens'] = tokens
     var_dict['paragraphs'] = analyze_dict['paragraphs']

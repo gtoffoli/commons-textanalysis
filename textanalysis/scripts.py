@@ -39,7 +39,7 @@ diacritics_map = {
 }
 
 def good_adjacent(c):
-    return c.isalpha() or '~^}|{` .,'.count(c)
+    return c.isalnum() or '~^}|{` .,\n'.count(c)
 
 def fix_diacritics(text):
     end = len(text)-1
@@ -50,9 +50,13 @@ def fix_diacritics(text):
         while pos >= 0:
             pos = text.find(key, start)
             if pos > 0 and pos < end:
+                """
                 if good_adjacent(text[pos-1]) and good_adjacent(text[pos+1]):
                     text_list[pos] = val
                 start = pos + 1
+                """
+                text_list[pos] = val
+                start = pos + 1            
     return ''.join(text_list)
 
 # see also https://stackoverflow.com/questions/75816685/regex-that-finds-groups-of-lines-where-certain-lines-within-the-group-starting-w
