@@ -417,6 +417,16 @@ def map_token_pos_to_level(language_code):
             # token_level_dict[key] = min(item[2].lower(), token_level_dict[key])
             token_level_dict[key] = min(item[2].lower(), token_level_dict.get(key, 'c1'))
 
+def common_noun_lemmas(language_code):
+    map_token_pos_to_level(language_code)
+    lemmas = []
+    for lemma_upos, level in token_level_dict.items():
+        if level.startswith('a') or level in ['b1', 'b']:
+            lemma, upos = lemma_upos.split('_')[:2]
+            if upos == 'noun':
+                lemmas.append(lemma)
+    return lemmas
+
 def token_to_level(token, frequencies):
     pos = token['pos']
     lemma = token['lemma']
@@ -986,6 +996,34 @@ def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
     obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}
     return add_item_to_corpus(request, file_key, result)
+
+"""
+called from contents_dashboard template to request
+the annotation with terms and synsets of a corpus item
+"""
+@csrf_exempt
+def ajax_add_terms_to_item(request):
+    endpoint = nlp_url + '/api/add_terms/'
+    data = json.loads(request.body.decode('utf-8'))
+    file_key = data['file_key']
+    obj_type = data['obj_type']
+    obj_id = data['obj_id']
+    data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
+    corpus_metadata = load_corpus_metadata(file_key)
+    data['domains'] = corpus_metadata.get('domains', [])
+    glossary_ids = corpus_metadata.get('glossaries', [])
+    if glossary_ids:
+        glossary_oers = OER.objects.filter(id__in=glossary_ids)
+        data['glossaries'] = [glossary_filter_terms(glossary_to_tbx_dict(oer)) for oer in glossary_oers]
+    language_code = file_key[-2:]
+    data['common_nouns'] = common_noun_lemmas(language_code)
+    data = json.dumps(data)
+    response = requests.post(endpoint, data=data)
+    if response.status_code==200:
+        result = response.json()
+        return JsonResponse(result)
+    else:
+        return propagate_remote_server_error(response)
 
 """
 called from contents_dashboard template to remove an item (doc) from a corpus (docbin)

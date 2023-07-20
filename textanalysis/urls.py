@@ -49,6 +49,7 @@ urlpatterns = [
     url(r"^ajax_insert_item/$", views.ajax_insert_item, name="ajax_insert_item"),
     url(r"^ajax_resource_to_item/$", views.ajax_resource_to_item, name="ajax_resource_to_item"),
     url(r"^ajax_file_to_item/(?P<file_key>[\w\d-]+)/$", views.ajax_file_to_item, name="ajax_file_to_item"),
+    url(r"^ajax_add_terms_to_item/$", views.ajax_add_terms_to_item, name="ajax_add_terms_to_item"),
     url(r"^ajax_remove_item/$", views.ajax_remove_item, name="ajax_remove_item"),
     url(r"^ajax_corpus_update/$", views.ajax_corpus_update, name="ajax_corpus_update"),
     url(r"^ajax_compare_resources/$", views.ajax_compare_resources, name="ajax_compare_resources"),

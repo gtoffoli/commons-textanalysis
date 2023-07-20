@@ -9,14 +9,6 @@ CEFR_LEVELS = { # level codes are case-insensitive
     5: 'c2',
 }
 
-"""
-FREQUENCY_INTERVALS = { # level codes are case-insensitive
-    'NOUN': [1200, 1200, 1200,],
-    'VERB': [500, 500, 500],
-    'ADJECTIVE': [500, 500, 500],
-    'ADVERB': [120, 120, 120],
-}
-"""
 FREQUENCY_INTERVALS = { # level codes are case-insensitive
     'NOUN': [400, 500, 600, 800, 700, 600,],
     'VERB': [200, 250, 300, 300, 250, 200,],
