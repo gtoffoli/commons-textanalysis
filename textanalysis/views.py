@@ -46,6 +46,7 @@ obj_type_label_dict = {
     'lp': _('learning path'),
     'web': _('remote web resource'),
     'text': _('manually input text'),
+    'file': _('uploaded file'),
     'corpus': _('text corpus'),
     '': '?',
 }
@@ -901,7 +902,7 @@ def ajax_new_corpus(request):
     site_id = get_current_site(request).id
     metadata = {'site_id': site_id, 'username': request.user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
     save_corpus_metadata(file_key, metadata)
-    result = {'file_key': file_key}
+    result = {'file_key': file_key, 'user_id': user.id}
     return JsonResponse(result)
 
 def add_item_to_corpus(request, file_key, result):
@@ -939,6 +940,7 @@ def ajax_insert_item(request):
     title, description, text = text_utils.get_obj_text(None, obj_type=obj_type, obj_id=obj_id, return_has_text=False, with_children=True)
     text = ". ".join([title, description, text])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
+    """
     metadata = load_corpus_metadata(file_key)
     glossary_ids = metadata.get('glossaries', [])
     if glossary_ids:
@@ -946,6 +948,7 @@ def ajax_insert_item(request):
         glossaries = [glossary_filter_terms(glossary_to_tbx_dict(oer)) for oer in glossary_oers]
     domains = metadata.get('domains', [])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'glossaries': glossaries, 'domains': domains})
+    """
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
@@ -988,10 +991,10 @@ def ajax_resource_to_item(request):
 def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
     """ called from contents_dashboard template to a file item to a corpus (docbin) """
     body = request.body
-    domains = file_key and load_corpus_metadata(file_key).get('domains', []) or []
+    # domains = file_key and load_corpus_metadata(file_key).get('domains', []) or []
     content_type = request.content_type
     content_disposition = request.headers['Content-Disposition']
-    title, text, err = get_file_text(body, content_type, title=content_disposition)
+    title, text = get_file_text(body, content_type, title=content_disposition)
     obj_type = 'file'
     obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}

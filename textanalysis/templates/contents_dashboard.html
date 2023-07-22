@@ -529,7 +529,7 @@ div.panel-head-modal {
                       <a v-on:click.stop="toggle_menu(c_item);" :title="label_show_hide_item_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
                   </div>
                   <div class="text-right">
-					  <template v-if="corpus.is_owner"><a href="#" v-on:click="removeItem(corpus.file_key, c_item.obj_type, c_item.obj_id);" :title="label_remove_item"><i class="fa fa-trash demibold"></i></a></template>
+					  <template v-if="corpus.is_owner"><a href="#" v-on:click="removeItem(corpus, c_item.obj_type, c_item.obj_id);" :title="label_remove_item"><i class="fa fa-trash demibold"></i></a></template>
 				  </div>
                </vddl-draggable>
               </vddl-list>
@@ -568,6 +568,7 @@ var app = new Vue({
     },
     el: '#app',
     data: {
+      user_id: '',
       project_id: {{project_id}},
       is_authenticated: {% if user.is_authenticated %}true{% else %}false{% endif %},
       resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
@@ -787,7 +788,6 @@ var app = new Vue({
               if (data['error']) {
                 this['result'] = data['error'];
                 this.corpora[i].items.pop();
-                this.$forceUpdate();
                 return;
               }
               this.corpora[i].file_key = data['file_key'];
@@ -798,11 +798,11 @@ var app = new Vue({
                   this.corpora[i].items[j].language = data['language'];
                   this.corpora[i].items[j].n_tokens = data['n_tokens'];
                   this.corpora[i].items[j].n_words = data['n_words'];
-                  this.$forceUpdate();
                 }
               }
             }
           }
+          this.$forceUpdate();
         })
         .catch(err => (this['result'] = err))
       },
@@ -905,7 +905,7 @@ var app = new Vue({
         .then(response => response.json())
         .then(data => {
             this['file_key'] = data['file_key'];
-            this['corpora'].push({list_id: 'corpus', file_key: this['file_key'], items: [], selected: true});
+            this['corpora'].push({list_id: 'corpus', file_key: this['file_key'], items: [], selected: true, owner: this.user_id, is_owner: true});
         	}
          )
         .catch(err => (this['result'] = err))
@@ -942,13 +942,14 @@ var app = new Vue({
               for (let i=0; i<this.corpora.length; i++)
                 if (this.corpora[i].file_key==file_key)
                   this.corpora.splice(i,1);
+            this.$forceUpdate();
           })
           .catch(err => (this['result'] = err))
         }
       },
-      removeItem(file_key, obj_type, obj_id) {
+      removeItem(corpus, obj_type, obj_id) {
         console.log('removeItem');
-        let data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
+        let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
         fetch('/textanalysis/ajax_remove_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -970,9 +971,9 @@ var app = new Vue({
         })
         .catch(err => (this['result'] = err))
       },
-      add_terms(file_key, obj_type, obj_id) {
+      add_terms(corpus, obj_type, obj_id) {
         console.log('removeItem');
-        let data = {file_key: file_key, obj_type: obj_type, obj_id: obj_id};
+        let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
         fetch('/textanalysis/ajax_add_terms_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
@@ -981,6 +982,7 @@ var app = new Vue({
         .then(response => response.json())
         .then(data => {
           // do something ?
+          corpus.open = false;
           this.$forceUpdate();
         })
         .catch(err => (this['result'] = err))
@@ -1022,6 +1024,8 @@ var app = new Vue({
 		if (text.length > 20 && text.includes('\n')) {
           this.corpusAddResourceItem(corpus.file_key, null, text);		
 		}
+		this.entered_text = '';
+        this.$forceUpdate();
 	  },
       openFileUpload(corpus) {
 		corpus.show_modal = true;
@@ -1046,6 +1050,7 @@ var app = new Vue({
         .then(data => {
 			console.log('corpusAddFileItem', 'ok', data);
 			this.closeFileUpload(corpus);
+            this.$forceUpdate();
     	})
 	  },
       openWebInput(corpus) {
@@ -1063,6 +1068,8 @@ var app = new Vue({
 		if (text.length > 10) {
           this.corpusAddResourceItem(corpus.file_key, null, text);		
 		}
+		this.entered_text = ''
+        this.$forceUpdate();
 	  },
 
 	  truncateText(val) {

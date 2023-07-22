@@ -54,8 +54,11 @@ def get_file_text(file, content_type, title=''):
     encoding = 'utf8'
     f = tempfile.NamedTemporaryFile(dir='/tmp', mode='w+b', delete=False)
     n = f.write(file)
-    print('get_file_text', n)
-    if content_type.count('pdf'):
+    if content_type.count('text/plain'):
+        f.close()
+        f = open(f.name, encoding=encoding)
+        text = f.read()
+    elif content_type.count('pdf'):
         text = textract.process(f.name, encoding=encoding, extension='pdf')
     elif content_type.count('rtf'):
         text = textract.process(f.name, encoding=encoding, extension='rtf')
@@ -71,9 +74,9 @@ def get_file_text(file, content_type, title=''):
     err = None
     try:
         text = text.decode()
-    except (UnicodeDecodeError, AttributeError) as err:
-        return '', response, err
-    return title, text, err
+    except:
+        pass
+    return title, text
 
 def get_web_resource_text(url):
     fileid = get_googledoc_fileid(url)
