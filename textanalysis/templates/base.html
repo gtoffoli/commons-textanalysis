@@ -1,0 +1,165 @@
+{% load static i18n%}
+{% load i18n %}{% get_current_language_bidi as LANGUAGE_BIDI %}
+{% load menu %}
+{% generate_menu %}
+
+<!DOCTYPE html>
+<html lang="{{ LANGUAGE_CODE }}" {% if LANGUAGE_BIDI %}dir="rtl"{% endif %} xmlns:og="https://ogp.me/ns#">
+  <head>
+    <meta charset="utf-8">
+    <title>{% block head_title_base %}{% block head_title %}{% endblock %}{% endblock %}{% if site_name  %} | {{ site_name }}{% endif %}</title>
+
+      <link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+      <link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+
+     {% block style_base %}
+{% if not VUE %}
+       <link href="{% static "bootstrap/css/bootstrap_bidi.css" %}" rel="stylesheet">
+       <link href="{% static "commons/css/commons_bidi.css" %}" rel="stylesheet">
+       <link href='https://fonts.googleapis.com/css?family=Open+Sans:400italic,600italic,700italic,800italic,400,600,700,800&subset=latin-ext' rel='stylesheet' type='text/css'>
+       <style>
+       ul.ul-left {
+         margin-inline-start:-15px;
+       }
+       ul.ul-right {
+         margin-inline-end:30px;
+       }
+       ul.ul-right li {
+         padding-inline-start:15px;
+       }
+      
+       div.navbar-search {
+         padding-block-start:8px; padding-block-end:10px;
+       }
+       div.navbar-search label {
+         position:absolute; left:24px; top:14px; font-size:12px;
+       }
+       div.navbar-search input.input-search  {
+         padding-inline-start:25px; padding-inline-end:10px; font-size:12px; height:30px;
+       }
+       div.navbar-search select {
+       	font-size: 12px;
+       }
+       @media (max-width: 991px) {
+         ul.ul-right {
+           margin-inline-end:5px;
+         }
+
+       }
+       @media (min-width: 768px) and (max-width: 991px) {
+         ul.ul-right li:first-child {
+           padding-inline-start:0;
+         }
+         div.navbar-search label {
+           left:8px;
+         }
+       }
+       @media (max-width: 767px)
+         div.navbar-search input.input-search  {
+           padding-inline-start:25px; padding-inline-end:5px; font-size:11px; height:30px;
+         }
+         div.navbar-search select {
+           font-size: 11px;
+         }
+       }
+       </style>
+{% endif %}{% comment %} VUE {% endcomment%}
+       {% block extra_style %}{% endblock %}
+     {% endblock %}
+
+     {% block extra_head_base %}
+       {% block extra_head %}{% endblock %}
+     {% endblock %}
+  </head>
+
+  <body class="bc-demigray {% block body_class %}{% endblock %}" id="{% block body_id %}{% endblock %}" style="cursor:default;{% if EMBEDDED %} padding-top:0;{% endif %}">
+    <div class="{% block wrapper_class %}wrapper{% endblock %}">
+{% if VUE %}
+      {% block nav_vue %}{% endblock %}
+{% else %}
+      {% if not EMBEDDED %}
+        <header>
+          <div class="navbar-fixed-top">
+            {% block navbar_base %}
+              <div class="navbar navbar-default">
+                <div class="container">
+                  {% block topbar %}
+                    <div class="navbar-header">
+                      <button class="navbar-toggle" data-toggle="collapse" data-target=".navbar-collapse">
+                        <span class="fa fa-bars"></span>
+                      </button>
+                    </div>
+                    <div class="collapse navbar-collapse navbar-responsive-collapse">
+                      {% block nav %}
+                        {% with menu=menus.main %}<ul class="nav navbar-nav navbar-left ul-left">
+                          {% for item in menu %}
+                            <li class="{% if item.children %} dropdown{% endif %}" id="top-menu-{{ item.slug }}">
+                            {% if item.children %}
+                              <a href="#" class="dropdown-toggle" data-hover="dropdown" data-toggle="dropdown">{% if item.icon %}<i class="icon-{{ item.icon }} icon-white"></i>&nbsp;{% endif %}{{ item.title }}&nbsp;<b class="caret"></b></a>
+                              <ul class="dropdown-menu">
+                                {% for child in item.children %}
+                                  {% if child.selected %}
+                                    <script type="text/javascript">
+                                      $("#top-menu-"+"{{item.slug }}").addClass('active');
+                                    </script>
+                                  {% endif %}
+                                  <li {% if child.selected %}class="active"{% endif %}><a href="{{ child.url }}">{{ classe }} {{ child.title }}</a></li>
+                                {% endfor %}
+                              </ul>
+                            {% else %}
+                              <a href="{{ item.url }}">{% if item.icon %}<i class="icon-{{ item.icon }} icon-white"></i>&nbsp;{% endif %}{{ item.title }}</a>
+                            {% endif %}
+                            </li>
+                          {% endfor %}
+                        </ul>{% endwith %}
+                      {% endblock nav %}
+                    </div>
+                  {% endblock topbar %}
+                </div>
+              </div>
+            {% endblock navbar_base %}
+          </div>
+        </header>
+      {% endif %}{% comment %}EMBEDDED{% endcomment %}
+{% endif %}{% comment %} VUE {% endcomment%}
+
+      {% block body_base %}
+        <section id="content_body">
+          <div class="container">
+           {% block body %}{% endblock %}
+          </div>
+        </section>
+      {% endblock %}
+    </div>
+    {% block footer_base %}
+    {% if not EMBEDDED %}
+      <footer class="footer-fixed">
+        <div class="container">
+         {% block footer %}
+           <div class="row">
+             <div class="col-sm-5 col-md-5">
+               <div class="footer-box">&copy; 2015-{% now 'Y' %} {% trans "the CommonS Consortium"|capfirst %}, Sapienza {% trans "and" %} LINK srl<br>
+                 {% trans "built by"|capfirst %} <a href="https://www.linkroma.it" target="_blank">LINK srl</a>
+                 {% trans "with" %} <a href="https://www.python.org/" target="_blank">Python</a>, <a href="https://www.djangoproject.com/" target="_blank">Django</a>
+                 {% trans "and" %} <a href="https://github.com/gtoffoli/commons" target="_blank">the CommonS Platform</a>
+               </div>
+             </div>
+           </div>
+         {% endblock %}
+        </div>
+      </footer>
+    {% endif %}{% comment %}EMBEDDED{% endcomment %}
+    {% endblock %}
+
+    {% block extra-body %}{% endblock extra-body %}
+
+    {% block script_base %}
+      {% block extra_script %}{% endblock %}
+    {% endblock %}
+    {% block script %}{% endblock %}{% comment %} needed by zinnia {% endcomment%}
+
+    {% block extra_body_base %}
+      {% block extra_body %}{% endblock %}
+    {% endblock %}
+  </body>
+</html>

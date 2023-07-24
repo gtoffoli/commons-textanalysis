@@ -1,11 +1,10 @@
 {% extends "base.html" %}
 
-{% load staticfiles i18n%}
+{% load static i18n%}
 
 {% block head_title %}{% trans "enter input for text analyzer"|capfirst %}{% endblock %}
 
 {% block extra_style %}
-{% include "_select2_css.html" %}
 {% endblock %}
 
 {% block body_class %}text_analysis_input{% endblock %}
@@ -21,11 +20,6 @@
 {% else %}
   <div><label>{% trans "language app version" %}</label> {{ app_version }}</div>
   <div><label>{% trans "spaCy version" %}</label> {{ spacy_version }}</div>
-<!--
-  <div><label>{% trans "spaCy language models"|capfirst %}</label>
-  	<i>{% for model in spacy_models %}{{ model }}{% if not forloop.last %}, {% endif %}{% endfor %}</i>
-  </div>
--->
     <form method="post" action="" target="_blank" id="text_analysis_input_form">{% csrf_token %}
     {% for field in form.hidden_fields %}{{ field }}{% endfor %}
     <fieldset class="padding1020">
@@ -46,8 +40,3 @@
 </div>
 
 {% endblock %}
-<!--
-{% block extra_script %}
-	{% include "_select2_js.html" %}
-{% endblock %}
--->

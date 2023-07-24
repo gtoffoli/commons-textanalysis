@@ -15,10 +15,24 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.models import User
 
-from commons.models import Document, OER
-from commons.models import is_site_member
-from commons.models import DRAFT, RESTRICTED, PUBLISHED, PUBLICATION_STATE_DICT
-from commons.user_spaces import project_contents, user_contents
+if 'commons' in settings.INSTALLED_APPS:
+    from commons.models import Document, OER
+    from commons.models import is_site_member
+    from commons.models import DRAFT, RESTRICTED, PUBLISHED, PUBLICATION_STATE_DICT
+    from commons.user_spaces import project_contents, user_contents
+else:
+    DRAFT = 1
+    SUBMITTED = 2
+    PUBLISHED = 3
+    UN_PUBLISHED = 4
+    RESTRICTED = 5
+    PUBLICATION_STATE_CHOICES = (
+        (DRAFT, _('Private draft')),
+        (RESTRICTED, _('Published internally')),
+        (SUBMITTED, _('Submitted for publication')),
+        (PUBLISHED, _('Published for all')),
+        (UN_PUBLISHED, _('Un-published')),)
+    PUBLICATION_STATE_DICT = dict(PUBLICATION_STATE_CHOICES)
 
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
@@ -877,10 +891,13 @@ def ajax_contents(request):
         corpus['manage_domains'] = False
         corpus['manage_glossaries'] = False
         corpora.append(corpus)
-    if project_id:
-        data = project_contents(project_id)
-    else: # if user.is_authenticated:
-        data = user_contents(user)
+    if 'commons' in settings.INSTALLED_APPS:
+        if project_id:
+            data = project_contents(project_id)
+        else: # if user.is_authenticated:
+            data = user_contents(user)
+    else:
+        data = {}
     data['corpora'] = corpora
     data['state_dict'] = PUBLICATION_STATE_DICT
     data['sorted_states'] = [1, 5, 3]
@@ -940,15 +957,6 @@ def ajax_insert_item(request):
     title, description, text = text_utils.get_obj_text(None, obj_type=obj_type, obj_id=obj_id, return_has_text=False, with_children=True)
     text = ". ".join([title, description, text])
     data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text})
-    """
-    metadata = load_corpus_metadata(file_key)
-    glossary_ids = metadata.get('glossaries', [])
-    if glossary_ids:
-        glossary_oers = OER.objects.filter(id__in=glossary_ids)
-        glossaries = [glossary_filter_terms(glossary_to_tbx_dict(oer)) for oer in glossary_oers]
-    domains = metadata.get('domains', [])
-    data = json.dumps({'file_key': file_key, 'index': index, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text, 'glossaries': glossaries, 'domains': domains})
-    """
     endpoint = nlp_url + '/api/add_doc/'
     response = requests.post(endpoint, data=data)
     if not response.status_code==200:
@@ -979,7 +987,6 @@ def ajax_resource_to_item(request):
         obj_id = hashlib.sha256(url.encode('utf-8')).hexdigest()
     elif text:
         obj_type = 'text'
-        # title = 'untitled'
         obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
         title_end = text.find('\n')
         title = text[:title_end]
@@ -1531,31 +1538,6 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
     elif function == 'wordlists':
         return render(request, 'text_wordlists.html', var_dict)
 
-@csrf_exempt
-def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
-    var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
-    if obj_type:
-        var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
-    var_dict['VUE'] = True
-    if is_ajax(request):
-        data = var_dict
-        document = get_object_or_404(Document, id=obj_id)
-        data['title'] = document.label
-        f = document.open()
-        xml_str = f.read()
-        tbx_dict = tbx_xml_2_dict(xml_str, split_subjects=True)
-        tbx = tbx_dict['tbx']
-        concepts = tbx['text']['body']['conceptEntry']
-        data['concepts'] = concepts
-        data['languages'] = tbx_languages(concepts)
-        data['subjects'] = tbx_subjects(concepts)
-        index = tbx['text']['index']
-        columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
-        data['columns'] = columns
-        return JsonResponse(data)
-    else:
-        return render(request, 'tbx_view.html', var_dict)
-
 def glossary_to_tbx_dict(oer_glossary):
     """convert an OER with a .tbx attachment to a tbx_dict format
     """
@@ -1578,26 +1560,49 @@ def glossary_filter_terms(tbx_dict, languages=[]):
     concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
     return tbx_filter_by_language(concepts, languages=languages)
 
-def get_all_glossaries(request):
-    view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
-    qs = OER.objects.filter(state__in=view_states, documents__label__icontains='.tbx')
-    qs = qs.filter_by_site(OER)
-    return qs
+# currently, TBX glossaries are persisted as OERs; these are defined by CommonSpaces ('commons' app)
+if 'commons' in settings.INSTALLED_APPS:
 
-def glossary_autocomplete(request):
-    MIN_CHARS = 2
-    q = request.GET.get('q', None)
-    create_option = []
-    results = []
-    if request.user.is_authenticated:
-        if q and len(q) >= MIN_CHARS:
-            """
-            view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
-            qs = OER.objects.filter(state__in=view_states, title__icontains=q, documents__label__icontains='.tbx').order_by('title')
-            qs = qs.filter_by_site(OER)
-            """
-            qs = get_all_glossaries(request)
-            qs = qs.filter(title__icontains=q).order_by('title')
-            results = [{'id': oer.id, 'text': oer.title[:80]} for oer in qs] + create_option
-    body = json.dumps({ 'results': results, 'more': False, })
-    return HttpResponse(body, content_type='application/json')
+    @csrf_exempt
+    def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
+        var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
+        if obj_type:
+            var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
+        var_dict['VUE'] = True
+        if is_ajax(request):
+            data = var_dict
+            document = get_object_or_404(Document, id=obj_id)
+            data['title'] = document.label
+            f = document.open()
+            xml_str = f.read()
+            tbx_dict = tbx_xml_2_dict(xml_str, split_subjects=True)
+            tbx = tbx_dict['tbx']
+            concepts = tbx['text']['body']['conceptEntry']
+            data['concepts'] = concepts
+            data['languages'] = tbx_languages(concepts)
+            data['subjects'] = tbx_subjects(concepts)
+            index = tbx['text']['index']
+            columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
+            data['columns'] = columns
+            return JsonResponse(data)
+        else:
+            return render(request, 'tbx_view.html', var_dict)
+    
+    def get_all_glossaries(request):
+        view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
+        qs = OER.objects.filter(state__in=view_states, documents__label__icontains='.tbx')
+        qs = qs.filter_by_site(OER)
+        return qs
+    
+    def glossary_autocomplete(request):
+        MIN_CHARS = 2
+        q = request.GET.get('q', None)
+        create_option = []
+        results = []
+        if request.user.is_authenticated:
+            if q and len(q) >= MIN_CHARS:
+                qs = get_all_glossaries(request)
+                qs = qs.filter(title__icontains=q).order_by('title')
+                results = [{'id': oer.id, 'text': oer.title[:80]} for oer in qs] + create_option
+        body = json.dumps({ 'results': results, 'more': False, })
+        return HttpResponse(body, content_type='application/json')
