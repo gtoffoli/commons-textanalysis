@@ -1496,7 +1496,7 @@ def ta_input(request):
         try:
             response = requests.get(endpoint)
         except:
-            print(response.status_code)
+            pass
         if response and response.status_code == 200:
             var_dict = response.json()
             form = TextAnalysisInputForm()
