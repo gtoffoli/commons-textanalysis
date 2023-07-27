@@ -157,12 +157,13 @@ def clear_section_text(text):
         text = re.sub(r'(\n)(\d+[^\.]\ +)(.*)', r'\1\1\2\3', text) # add newline before note
         text = re.sub(r'(\n)[\d]+.+?([\d]+\.\ \n)', r'\1', text) # remove note containing reference to publication ?
         text = re.sub(r'(\n)[\d]+.+?([\d]+\.\n)', r'\1', text) # remove note containing reference to publication ? DA RIPETERE DOPO ...
-    text = re.sub(r'(\d+\.\d+)(.+)?(\n)', r'\1\2\3\3', text) # add newline after subsection title OK
+    text = re.sub(r'(\d+\.)(.+)(\n)([a-z].*[^\.]\n)', r'\1\2 \4', text) # replace newline with space inside a section title
+    text = re.sub(r'(\d+\.\d*)(.+)?(\n)', r'\1\2.\3\3', text) # add fullstop and newline after section title
     text = re.sub(r'([\.\,\w+])[\d]+(\s)', r'\1\2', text) # remove reference to note
     text = re.sub(r'(.)\n(.)', r'\1 \2', text) # replace  single newline with a space
     text = re.sub(r'(\n)[\d]+.+?([\d]+\.[\ \)]?\n)', r'\1', text) # remove note containing reference to publication ?
     text = re.sub(r'([(?<=\w)\~\^\}\|\{\@\`])-\r?\n*([(?=\w)\~\^\}\|\{\@\`])', r'\1\2', text) # remove residual hiphenation 
-    text = re.sub(r'\n+', '\n', text) # replace  multiple newlines with one
+    # text = re.sub(r'\n+', '\n', text) # replace  multiple newlines with one
     text = re.sub(r'([\ \t])[\ \t]+', ' ', text) # replace multiple spaces with s single space
     text = re.sub(r'\ +(\n)', r'\1', text) # remove space before newline
     return text

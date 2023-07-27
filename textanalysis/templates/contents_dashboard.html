@@ -523,7 +523,7 @@ div.panel-head-modal {
                   <div>{{ c_item.n_tokens }}</div>
                   <div>{{ c_item.n_words }}</div>
                   <div>
-                      <template v-if="corpus.is_owner"><a v-on:click.stop="add_terms(corpus.file_key, c_item.obj_type, c_item.obj_id);" :title="label_add_references"><i class="fa fa-external-link"></i></a></template>
+                      <template v-if="corpus.is_owner"><a v-on:click.stop="add_terms(corpus, c_item.obj_type, c_item.obj_id);" :title="label_add_references"><i class="fa fa-external-link"></i></a></template>
 				  </div>
                   <div>
                       <a v-on:click.stop="toggle_menu(c_item);" :title="label_show_hide_item_menu"><i class="fa fa-bars" style="cursor: pointer;"></i></a>
