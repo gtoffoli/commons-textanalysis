@@ -138,7 +138,7 @@ div.panel-head-corpora {
 }
 .list-r > div .panel-heading-corpus {
   display: grid;
-  grid-template-columns: auto 15% 15% 10% 9% 4% 4% 4% 4% 4% 4% 3%;
+  grid-template-columns: auto 12% 15% 14% 10% 10% 4% 4% 4% 4% 4% 4% 3%;
   color: #fff;
   background: #B2B2B2;
 }
@@ -389,6 +389,7 @@ div.panel-head-modal {
               	   <span class="demiBold" v-else>{{ label_corpus }}</span>
                    <span class="demiBold">{{ corpus.file_key }}</span>
               </div>
+              <div class="demiBold">{{ corpus.title }}</div class="demiBold">
               <div>{{ label_owner }}: {{ corpus.owner }}</div>
               <div>{{ state_dict[corpus.state] }}
 				   <a v-if="!busy(corpus) && corpus.is_owner && [5,3].indexOf(corpus.state)>=0" href="#" v-on:click.stop="narrower_access(corpus);"><i class="fa fa-minus" :title="label_narrower_access"></i></a>
@@ -574,7 +575,7 @@ var app = new Vue({
       resource_lists: {lps: {list_id: 'lps', label: 'LPs', items: [], selected: null},  shared_lps: {list_id: 'shared_lps', label: 'Shared LPs', items: [], selected: null}, personal_lps: {list_id: 'personal_lps', label: 'Personal LPs', items: [], selected: null},oers: {list_id: 'oers', label: 'OERs', items: [], selected: null}, shared_oers: {list_id: 'shared_oers', label: 'Shared OERs', items: [], selected: null}, personal_oers: {list_id: 'personal_oers', label: 'Personal OERs', items: [], selected: null}, docs: {list_id: 'docs', label: 'DOCs', items: [], selected: null} },
       resource_list: {list_id: 'list', label: 'LIST', items: [], selected: null},
       corpora: [],
-      corpus: {list_id: 'corpus', label: 'Corpus', items: [], domains: [], selected: false, manage_glossaries: false, manage_domains: false, open: false, show_modal: false},
+      corpus: {list_id: 'corpus', label: 'Corpus', title: '', items: [], domains: [], selected: false, manage_glossaries: false, manage_domains: false, open: false, show_modal: false},
       result: '',
       vero: true,
       falso: false,
@@ -949,27 +950,29 @@ var app = new Vue({
       },
       removeItem(corpus, obj_type, obj_id) {
         console.log('removeItem');
-        let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
-        fetch('/textanalysis/ajax_remove_item/', {
-          method: 'POST',
-          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
-          body: JSON.stringify(data)
-       	})
-        .then(response => response.json())
-        .then(data => {
-          // identify the corpus
-          for (let i=0; i<this['corpora'].length; i++)
-            if (this['corpora'][i].file_key == file_key)
-              break;
-          // update the index of all items in the target corpus
-          for (let j=0; j<this['corpora'][i].items.length; j++)
-            if (this['corpora'][i].items[j].obj_type == obj_type && this['corpora'][i].items[j].obj_id == obj_id) {
-              this['corpora'][i].items.splice(j, 1);
-              break;
-            }
-            this.$forceUpdate();
-        })
-        .catch(err => (this['result'] = err))
+        if (confirm(this.label_confirm_deletion)) {
+	      let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
+	      fetch('/textanalysis/ajax_remove_item/', {
+	        method: 'POST',
+	        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+	        body: JSON.stringify(data)
+	      })
+	      .then(response => response.json())
+	      .then(data => {
+	        // identify the corpus
+	        for (let i=0; i<this['corpora'].length; i++)
+	          if (this['corpora'][i].file_key == file_key)
+	            break;
+	        // update the index of all items in the target corpus
+	        for (let j=0; j<this['corpora'][i].items.length; j++)
+	          if (this['corpora'][i].items[j].obj_type == obj_type && this['corpora'][i].items[j].obj_id == obj_id) {
+	            this['corpora'][i].items.splice(j, 1);
+	            break;
+	          }
+	          this.$forceUpdate();
+	        })
+	        .catch(err => (this['result'] = err))
+        }
       },
       add_terms(corpus, obj_type, obj_id) {
         console.log('removeItem');

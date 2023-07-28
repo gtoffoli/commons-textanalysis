@@ -908,7 +908,8 @@ def ajax_contents(request):
 
 @csrf_exempt
 def ajax_new_corpus(request):
-    user_key = '{id:05d}'.format(id=request.user.id)
+    user = request.user
+    user_key = '{id:05d}'.format(id=user.id)
     endpoint = nlp_url + '/api/new_corpus/'
     data = json.dumps({'user_key': user_key})
     response = requests.post(endpoint, data=data)
@@ -916,8 +917,9 @@ def ajax_new_corpus(request):
         return propagate_remote_server_error(response)
     data = response.json()
     file_key = data['file_key']
+    title = data.get('title', '')
     site_id = get_current_site(request).id
-    metadata = {'site_id': site_id, 'username': request.user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
+    metadata = {'site_id': site_id, 'title': title, 'username': user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
     save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key, 'user_id': user.id}
     return JsonResponse(result)
