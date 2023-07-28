@@ -1030,7 +1030,7 @@ def ajax_add_terms_to_item(request):
     language_code = file_key[-2:]
     data['common_nouns'] = common_noun_lemmas(language_code)
     data = json.dumps(data)
-    response = requests.post(endpoint, data=data)
+    response = requests.post(endpoint, data=data, timeout=None)
     if response.status_code==200:
         result = response.json()
         return JsonResponse(result)
