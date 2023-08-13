@@ -20,6 +20,8 @@ if 'commons' in settings.INSTALLED_APPS:
     from commons.models import is_site_member
     from commons.models import DRAFT, RESTRICTED, PUBLISHED, PUBLICATION_STATE_DICT
     from commons.user_spaces import project_contents, user_contents
+    from commons.tracking import track_action
+    from commons.text_utils import get_commons_object
 else:
     DRAFT = 1
     SUBMITTED = 2
@@ -33,6 +35,11 @@ else:
         (PUBLISHED, _('Published for all')),
         (UN_PUBLISHED, _('Un-published')),)
     PUBLICATION_STATE_DICT = dict(PUBLICATION_STATE_CHOICES)
+
+def track_analysis(request, verb, obj_type='', obj_id='', activity_id='', function=''):
+    if 'commons' in settings.INSTALLED_APPS:
+        obj = get_commons_object(obj_type, obj_id)
+        track_action(request, request.user, verb, obj, activity_id=activity_id, description=function)
 
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
@@ -497,16 +504,18 @@ def text_dashboard_return(request, var_dict):
 
 @csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict=None, obj=None, title='', body='',
-       wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, glossaries=[], domains=[]):
+    function=None, wordlists=False, analyzed_text=False):
+    # wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, glossaries=[], domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
-    if readability:
+    if function in ['wordlists', 'readability']:
         wordlists = True
     if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'drive', 'flatpage', 'web', 'text',]:
         return HttpResponseForbidden()
+    track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
     description = ''
     if file_key:
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
-        if nounchunks:
+        if function=='nounchunks':
             data['glossaries'] = glossaries
             data['domains'] = domains
     else:
@@ -523,13 +532,13 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
             from commons import text_utils
             title, description, text = text_utils.get_obj_text(obj, obj_type=obj_type, obj_id=obj_id,  return_has_text=False)
             body = '{}, {}. {}'.format(title, description, text)
-        if contexts:
+        if function=='contexts':
             return {'text': body, 'title': title}
         data = {'text': body}
     if tbx_dict:
         data['glossary'] = glossary_filter_terms(tbx_dict)
     data = json.dumps(data)
-    if text_cohesion:
+    if function=='cohesion':
         endpoint = nlp_url + '/api/text_cohesion'
     else:
         endpoint = nlp_url + '/api/analyze'
@@ -570,15 +579,15 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
     var_dict['entity_lists'] = entity_lists,
 
-    if summarization:
+    if function=='summarization':
         return var_dict
 
-    if text_annotation:
+    if function=='annotation':
         for k in ['doc', 'paragraphs',]:
             var_dict[k] = analyze_dict[k]
         return var_dict       
 
-    if text_cohesion:
+    if function=='cohesion':
         for k in ['doc', 'paragraphs', 'repeated_lemmas', 'cohesion_by_similarity', 'cohesion_by_repetitions', 'cohesion_by_entity_graph']:
             var_dict[k] = analyze_dict[k]
         return var_dict
@@ -594,7 +603,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     sconj_frequencies = defaultdict(int)
     n_lexical = 0
     n_long_tokens = 0
-    if readability:
+    if function=='readability':
         mattr = MATTR(text, tokens)
         n_words = 0
         n_hard_words = 0
@@ -608,7 +617,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         pos = token['pos']
         pos_frequencies[pos] += 1
         add_to_default_dict(kw_frequencies, token_text)
-        if readability: # and not pos in ['SPACE', 'PUNCT',]:
+        if function=='readability': # and not pos in ['SPACE', 'PUNCT',]:
             mattr.add_token()
             n_words += 1
             word_characters = len(token_text)
@@ -641,7 +650,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                 add_to_default_dict(adverb_frequencies, lemma)
     n_unique = len(kw_frequencies)
     var_dict['pos_frequencies'] = pos_frequencies
-    if readability:
+    if function=='readability':
         var_dict['n_words'] = n_words
         var_dict['n_hard_words'] = n_hard_words
         var_dict['n_word_characters'] = n_word_characters
@@ -673,7 +682,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         for item in lc_dict.items():
             levels_counts[item[0]] += item[1]
 
-    if nounchunks:
+    if function=='nounchunks':
         noun_chunks = analyze_dict['noun_chunks']
         # by default all tokens are outside entity spans and noun_chunk spans
         # for token in tokens:
@@ -801,7 +810,8 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         'adjective_frequencies': adjective_frequencies, 'adverb_frequencies': adverb_frequencies,
         'levels_counts': levels_counts, 'n_long_tokens': n_long_tokens,})
 
-    if (wordlists or nounchunks) and not readability:
+    # if (wordlists or nounchunks) and not readability:
+    if function in ['wordlists', 'nounchunks']:
         return var_dict
 
     index_sentences(sentences, tokens)
@@ -837,7 +847,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
                      'kw_frequencies': kw_frequencies[:16],
                      'collData': collData, 'docData': docData,
                      })
-    if dependency:
+    if function=='dependency':
         return var_dict
 
     var_dict['VUE'] = True
@@ -894,8 +904,10 @@ def ajax_contents(request):
     if 'commons' in settings.INSTALLED_APPS:
         if project_id:
             data = project_contents(project_id)
+            track_analysis(request, 'Search', activity_id='collection', function=_('list contents related to a project'))
         else: # if user.is_authenticated:
             data = user_contents(user)
+            track_analysis(request, 'Search', activity_id='collection', function=_('list contents owned by the user'))
     else:
         data = {}
     data['corpora'] = corpora
@@ -922,6 +934,7 @@ def ajax_new_corpus(request):
     metadata = {'site_id': site_id, 'title': title, 'username': user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
     save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key, 'user_id': user.id}
+    track_analysis(request, 'Create', activity_id='collection', function=_('create new corpus'))
     return JsonResponse(result)
 
 def add_item_to_corpus(request, file_key, result):
@@ -942,6 +955,7 @@ def add_item_to_corpus(request, file_key, result):
             rename_corpus_metadata(file_key, new_file_key)
             file_key = new_file_key
         result = {'file_key': file_key, 'index': result['index'], 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
+        track_analysis(request, 'Edit', activity_id='collection', function=_('add item to corpus'))
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
@@ -970,6 +984,7 @@ def ajax_insert_item(request):
             rename_corpus_metadata(file_key, new_file_key)
             file_key = new_file_key
         result = {'file_key': file_key, 'index': index, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
+        track_analysis(request, 'Edit', activity_id='collection', function=_('insert item in corpus'))
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
@@ -994,6 +1009,7 @@ def ajax_resource_to_item(request):
         title = text[:title_end]
         text = text[title_end+1:]
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text}
+    track_analysis(request, 'Edit', activity_id='collection', function=_('add to corpus a text resource'))
     return add_item_to_corpus(request, file_key, result)
 
 @csrf_exempt
@@ -1007,6 +1023,7 @@ def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
     obj_type = 'file'
     obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}
+    track_analysis(request, 'Edit', activity_id='collection', function=_('add text of file to corpus'))
     return add_item_to_corpus(request, file_key, result)
 
 """
@@ -1032,6 +1049,7 @@ def ajax_add_terms_to_item(request):
     data = json.dumps(data)
     response = requests.post(endpoint, data=data, timeout=None)
     if response.status_code==200:
+        track_analysis(request, 'Edit', activity_id='collection', function=_('annotate corpus item with terms'))
         result = response.json()
         return JsonResponse(result)
     else:
@@ -1050,6 +1068,7 @@ def ajax_remove_item(request):
     data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
     response = requests.post(endpoint, data=data)
     if response.status_code==200:
+        track_analysis(request, 'Edit', activity_id='collection', function=_('remove item from corpus'))
         data = response.json()
         index = data['index']
         result = {'index': index}
@@ -1084,6 +1103,7 @@ def ajax_make_corpus(request):
         file_key = data['file_key']
         data.update({'obj_type': obj_type, 'obj_id': obj_id, 'label': title})
         processed.append(data)
+    track_analysis(request, 'Create', activity_id='collection', function=_('create new corpus'))
     return JsonResponse({'result': processed, 'file_key': file_key})
 
 """
@@ -1116,6 +1136,7 @@ def ajax_corpus_update(request):
     metadata = load_corpus_metadata(file_key)
     metadata[data['key']] = data['value']
     save_corpus_metadata(file_key, metadata)
+    track_analysis(request, 'Edit', activity_id='collection', function=_('update corpus metadata'))
     return JsonResponse(data)
 
 """
@@ -1133,6 +1154,7 @@ def ajax_delete_corpus(request):
         result = response.json()
         file_key = result['file_key']
         data = {'file_key': file_key}
+        track_analysis(request, 'Delete', activity_id='collection', function=_('delete corpus'))
         return JsonResponse(data)
     else:
         return propagate_remote_server_error(response)
@@ -1231,6 +1253,7 @@ def corpus_dashboard(request, file_key=''):
             row.append(col)
         cross_table.append(row)
     var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
+    track_analysis(request, 'Analyze', activity_id='collection', function=_('analyze entire corpus'))
     return corpus_dashboard_return(request, var_dict)
 
 @csrf_exempt
@@ -1242,7 +1265,8 @@ def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
                 'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
         data = var_dict
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='wordlists')
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
@@ -1256,9 +1280,9 @@ to find and sort document keywords and to list keyword in context
 def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     if is_ajax(request):
-        # var_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, contexts=True)
         if not file_key:
-            dashboard_dict = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
+            # dashboard_dict = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, contexts=True)
+            dashboard_dict = text_dashboard(request, obj_type=obj_type, obj_id=obj_id, function='contexts')
             var_dict['text'] = dashboard_dict['text']
             var_dict['title'] = dashboard_dict['title']
         endpoint = nlp_url + '/api/word_contexts/'
@@ -1279,7 +1303,8 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], summarization=True)
+    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], summarization=True)
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], function='summarization')
     error = var_dict.get('error', None)
     if error:
         print('error:', error)
@@ -1299,7 +1324,8 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
                 'collData', 'docData',
                 'obj_type_label', 'language', 'title', 'label', 'url']
         data = var_dict
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, dependency=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, dependency=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='dependency')
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
@@ -1318,7 +1344,8 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
             tbx_dict = glossary_to_tbx_dict(oer_glossary)
         keys = ['paragraphs', 'tokens', 'noun_chunks', 'bn_terms', 'gl_terms',
                 'obj_type_label', 'language', 'title', 'label', 'url',]
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, nounchunks=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, nounchunks=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, tbx_dict=tbx_dict, function='nounchunks')
         data.update([[key, dashboard_dict[key]] for key in keys])
         data['type_buttons'] = span_type_buttons
         data['user_language_code'] = request.LANGUAGE_CODE
@@ -1355,7 +1382,8 @@ def text_annotation(request, file_key='', obj_type='', obj_id='', url=''):
     if is_ajax(request):
         keys = ['paragraphs', 'language', 'obj_type_label', 'title', 'label',]
         data = var_dict
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_annotation=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_annotation=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='annotation')
         data.update([[key, dashboard_dict[key]] for key in keys])
         data['tokens'] = dashboard_dict['doc']['tokens']
         data['color_dict'] = color_dict
@@ -1373,7 +1401,8 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
         keys = ['paragraphs', 'repeated_lemmas',
                 'cohesion_by_repetitions', 'cohesion_by_similarity', 
                 'obj_type_label', 'language', 'title', 'label', 'url']
-        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
+        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, text_cohesion=True)
+        dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='cohesion')
 
         # normalize cohesion_by_entity_graph scores between 0 and 1
         mean_sentence_length = dashboard_dict['mean_sentence_length']     
@@ -1395,7 +1424,8 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
         return render(request, 'text_cohesion.html', var_dict)
 
 def text_readability(request, params):
-    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], readability=True)
+    # var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], readability=True)
+    var_dict = text_dashboard(request, obj_type=params['obj_type'], obj_id=params['obj_id'], file_key=params['file_key'], url=params['url'], function='readability')
     error = var_dict.get('error', None)
     if error:
         print('error:', error)

@@ -69,7 +69,7 @@ def extract_with_pdfplumber(path):
                     i_char += 1
                     continue
                 j_char = i_char - 1
-                while j_char and not (chars[j_char]['text'].isalpha() or chars[j_char]['text'] in diacritics):
+                while j_char and not (chars[j_char]['text'].isalpha() or chars[j_char]['text'] in diacritics_hr):
                     j_char -= 1
                 prev = chars[j_char]
                 if char['x0'] > min_indentation and \
@@ -108,7 +108,7 @@ def extract_marketing_book(path='/Users/giovanni/OneDrive/_Progetti/_WE-COLLAB/P
             text = extract_with_pdfminer(section_path)
         elif PDFPLUMBER:
             text = extract_with_pdfplumber(section_path)
-        text = fix_diacritics(text)
+        text = fix_diacritics_hr(text)
         text = clear_section_text(text)
         # write to CSV file a row with updated text column
         row['Text'] = text
@@ -116,7 +116,7 @@ def extract_marketing_book(path='/Users/giovanni/OneDrive/_Progetti/_WE-COLLAB/P
     data.to_excel(out_path)
 
 # see: https://www.jlg-utilities.com/documentation_1_1/alphabets/Croatian.html
-diacritics_map = {
+diacritics_map_hr = {
     '~': 'č',
     '^': 'Č',
     '}': 'ć',
@@ -126,12 +126,12 @@ diacritics_map = {
     '@': 'Ž',
     '`': 'ž',
 }
-diacritics = list(diacritics_map.keys())
+diacritics_hr = list(diacritics_map_hr.keys())
 
-def fix_diacritics(text):
+def fix_diacritics_hr(text):
     end = len(text)-1
     text_list = list(text)
-    for key, val in diacritics_map.items():
+    for key, val in diacritics_map_hr.items():
         start = 0
         pos = 0
         while pos >= 0:

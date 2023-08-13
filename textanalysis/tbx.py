@@ -152,7 +152,6 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
                 if admin:
                     source = admin.get('source', None)
                     if source:
-                        # lang_dict['source'] = source
                         lang_dict['def_source'] = source
                         columns.add('def_source')
             # each langSec can contain one or more termSec
@@ -472,3 +471,79 @@ def tbx_json_to_xml_file(path: str, filename: str) -> None:
     tbx_dict = json.loads(json_str)
     xml_str = tbx_dict_2_xml(tbx_dict)
     write_output_file(tbx_filename, xml_str)
+
+def moodle_glossary_xml_2_dict(path: str, filename: str, language='es') -> dict:
+    """ moodle_glossary_xml_2_dict
+    Reads from file and parses an xml string representing an exported Moodle glossary.
+    Converts to JSON the parsed object.
+    Removes some syntax derived from xml.
+    ...
+    """
+    xml_filename = os.path.join(path, filename+'.xml')
+    xml_str = read_input_file(xml_filename)
+    json_str = parse_xml(xml_str)
+    moodle_dict = json.loads(json_str)
+    moodle_dict = prune_moodle_dict(moodle_dict)
+    categories = moodle_glossary_categories(moodle_dict)
+    categories.sort()
+    print('categories:', categories)
+    xml_str = moodle_dict_2_xml(moodle_dict)
+    xml_filename = os.path.join(path, filename+'_1.xml')
+    write_output_file(xml_filename, xml_str)
+    json_str = parse_xml(xml_str)
+    json_filename = os.path.join(path, filename+'.json')
+    write_output_file(json_filename, json_str)
+
+def prune_moodle_dict(moodle_dict: dict) -> dict:
+    entries = moodle_dict['GLOSSARY']['INFO']['ENTRIES']['ENTRY']
+    print('# entries:', len(entries))
+    pruned_entries = []
+    for entry in entries:
+        if 'ENTRYFILES' in entry:
+            del entry['ENTRYFILES']
+        for key in ['FORMAT', 'USEDYNALINK', 'CASESENSITIVE', 'FULLMATCH', 'TEACHERENTRY', 'ALIASES']:
+            if key in entry:
+                del entry[key]
+        pruned_entries.append(entry)
+    moodle_dict['GLOSSARY']['INFO']['ENTRIES']['ENTRY'] = pruned_entries
+    return moodle_dict
+
+def moodle_glossary_categories(moodle_dict: dict) -> list:
+    entries = moodle_dict['GLOSSARY']['INFO']['ENTRIES']['ENTRY']
+    unique_categories = set()
+    for entry in entries:
+        if 'CATEGORIES' in entry:
+            categories = entry['CATEGORIES']
+            for category_item in normalize_multiple_items(categories, 'CATEGORY'):
+                unique_categories.add(category_item['NAME'])
+    return list(unique_categories)
+
+def normalize_multiple_items(parent, key):
+    items = parent[key]
+    if not type(items) == list:
+        items = [items]
+    return items
+
+def moodle_dict_2_xml(moodle_dict: dict) -> str:
+    """
+    Build in memory an etree (XML) object by converting a Python dict
+    which represents a Moodle glossary
+    """
+    xml_str = """<?xml version="1.0" encoding="UTF-8"?>
+<GLOSSARY>
+  <INFO>
+    <NAME>Glosario del curso</NAME>
+    <INTRO>&lt;p&gt;Términos de interés que aparecen en los textos o que pertenecen al &lt;span class=&quot;autolink&quot;&gt;léxico del turismo&lt;/span&gt;&lt;/p&gt;</INTRO>
+        {}
+  </INFO>
+</GLOSSARY>
+"""
+    block_list = []
+    body = Element('ENTRIES')
+    for entry in moodle_dict['GLOSSARY']['INFO']['ENTRIES']['ENTRY']:
+        add_key_val_to_xml(body, 'ENTRY', entry)
+    xml_block = tostring(body, encoding="unicode")
+    block_list.append(xml_block)
+    return xml_str.format('\n'.join(block_list))
+
+    
