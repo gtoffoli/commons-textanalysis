@@ -758,7 +758,7 @@ var app = new Vue({
 	  },
       corpusUpdateMetadata: function(corpus, key, value) {
         let data = {file_key: corpus.file_key, key: key, value: value};
-        fetch('/textanalysis/ajax_corpus_update/', {
+        fetch('/textanalysis/corpus_update/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -775,7 +775,7 @@ var app = new Vue({
       },
       corpusAddResourceItem: function(file_key, url, text) {
         let data = {file_key: file_key, url: url, text: text};
-        fetch('/textanalysis/ajax_resource_to_item/', {
+        fetch('/textanalysis/resource_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -863,7 +863,7 @@ var app = new Vue({
         // if the list is of type corpus, update the corpus in the server and refresh the local view
         if (file_key !== undefined) {
           let data = {file_key: file_key, item: item, index: index};
-          fetch('/textanalysis/ajax_insert_item/', {
+          fetch('/textanalysis/insert_item/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(data)
@@ -898,7 +898,7 @@ var app = new Vue({
       },
       newSelected() {
         console.log('newSelected');
-        fetch('/textanalysis/ajax_new_corpus/', {
+        fetch('/textanalysis/new_corpus/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify({})
@@ -913,7 +913,7 @@ var app = new Vue({
       },
       preprocessSelected() {
         console.log('preprocessSelected');
-        fetch('/textanalysis/ajax_make_corpus/', {
+        fetch('/textanalysis/make_corpus/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(app.corpus)
@@ -931,7 +931,7 @@ var app = new Vue({
         console.log('deleteCorpus');
         if (confirm(this.label_confirm_deletion)) {
           let data = {file_key: file_key};
-          fetch('/textanalysis/ajax_delete_corpus/', {
+          fetch('/textanalysis/delete_corpus/', {
             method: 'POST',
             headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
             body: JSON.stringify(data)
@@ -952,7 +952,7 @@ var app = new Vue({
         console.log('removeItem');
         if (confirm(this.label_confirm_deletion)) {
 	      let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
-	      fetch('/textanalysis/ajax_remove_item/', {
+	      fetch('/textanalysis/remove_item/', {
 	        method: 'POST',
 	        headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
 	        body: JSON.stringify(data)
@@ -977,7 +977,7 @@ var app = new Vue({
       add_terms(corpus, obj_type, obj_id) {
         console.log('removeItem');
         let data = {file_key: corpus.file_key, obj_type: obj_type, obj_id: obj_id};
-        fetch('/textanalysis/ajax_add_terms_to_item/', {
+        fetch('/textanalysis/add_terms_to_item/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(data)
@@ -996,7 +996,7 @@ var app = new Vue({
       },
       compareSelected() {
         console.log('compareSelected');
-        fetch('/textanalysis/ajax_compare_resources/', {
+        fetch('/textanalysis/compare_resources/', {
           method: 'POST',
           headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
           body: JSON.stringify(app.corpus)
@@ -1044,7 +1044,7 @@ var app = new Vue({
         this.corpusAddFileItem(corpus, file)
       },
       corpusAddFileItem(corpus, file) {
-		fetch('/textanalysis/ajax_file_to_item/'+corpus.file_key+'/', {
+		fetch('/textanalysis/file_to_item/'+corpus.file_key+'/', {
 		  method: 'POST',
 		  body: file,
           headers: { "Content-Type": file.type, "Content-Disposition": file.name, "X-Requested-With": "XMLHttpRequest" },
@@ -1086,7 +1086,7 @@ var app = new Vue({
 	  // this.$modal.show();
       this['corpus']['items'] = [];
       let data = {project_id: this.project_id};
-      fetch('/textanalysis/ajax_contents/', {
+      fetch('/textanalysis/contents/', {
         method: 'POST',
         // headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
         body: JSON.stringify(data)

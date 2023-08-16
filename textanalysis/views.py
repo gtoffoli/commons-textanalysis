@@ -36,10 +36,13 @@ else:
         (UN_PUBLISHED, _('Un-published')),)
     PUBLICATION_STATE_DICT = dict(PUBLICATION_STATE_CHOICES)
 
-def track_analysis(request, verb, obj_type='', obj_id='', activity_id='', function=''):
+def track_analysis(request, verb, obj_type='', obj_id='', activity_id='text', function=''):
     if 'commons' in settings.INSTALLED_APPS:
         obj = get_commons_object(obj_type, obj_id)
-        track_action(request, request.user, verb, obj, activity_id=activity_id, description=function)
+        from commons.models import Project
+        root_project = Project.objects.get(slug=settings.SITE_ROOT)
+        # track_action(request, request.user, verb, obj, activity_id=activity_id, description=function)
+        track_action(request, request.user, verb, obj, activity_id=activity_id, target=root_project)
 
 from textanalysis.forms import TextAnalysisInputForm
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
@@ -504,14 +507,14 @@ def text_dashboard_return(request, var_dict):
 
 @csrf_exempt
 def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='', tbx_dict=None, obj=None, title='', body='',
-    function=None, wordlists=False, analyzed_text=False):
+    glossaries=[], domains=[], function=None, wordlists=False, analyzed_text=False):
     # wordlists=False, readability=False, analyzed_text=False, nounchunks=False, contexts=False, summarization=False, text_annotation=False, text_cohesion=False, dependency=False, glossaries=[], domains=[]):
     """ here (originally only) through ajax call from the template 'vue/text_dashboard.html' """
     if function in ['wordlists', 'readability']:
         wordlists = True
     if not file_key and not obj_type in ['project', 'oer', 'lp', 'pathnode', 'doc', 'drive', 'flatpage', 'web', 'text',]:
         return HttpResponseForbidden()
-    track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
+    # track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
     description = ''
     if file_key:
         data = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id}
@@ -904,10 +907,10 @@ def ajax_contents(request):
     if 'commons' in settings.INSTALLED_APPS:
         if project_id:
             data = project_contents(project_id)
-            track_analysis(request, 'Search', activity_id='collection', function=_('list contents related to a project'))
+            track_analysis(request, 'Search', activity_id='collection', function='contents related to a project')
         else: # if user.is_authenticated:
             data = user_contents(user)
-            track_analysis(request, 'Search', activity_id='collection', function=_('list contents owned by the user'))
+            track_analysis(request, 'Search', activity_id='collection', function='contents owned by the user')
     else:
         data = {}
     data['corpora'] = corpora
@@ -934,7 +937,7 @@ def ajax_new_corpus(request):
     metadata = {'site_id': site_id, 'title': title, 'username': user.username, 'state': DRAFT, 'glossaries': [], 'domains': []}
     save_corpus_metadata(file_key, metadata)
     result = {'file_key': file_key, 'user_id': user.id}
-    track_analysis(request, 'Create', activity_id='collection', function=_('create new corpus'))
+    track_analysis(request, 'Create', activity_id='collection', function='create new corpus')
     return JsonResponse(result)
 
 def add_item_to_corpus(request, file_key, result):
@@ -955,7 +958,7 @@ def add_item_to_corpus(request, file_key, result):
             rename_corpus_metadata(file_key, new_file_key)
             file_key = new_file_key
         result = {'file_key': file_key, 'index': result['index'], 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
-        track_analysis(request, 'Edit', activity_id='collection', function=_('add item to corpus'))
+        track_analysis(request, 'Edit', activity_id='collection', function='add item to corpus')
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
@@ -984,7 +987,7 @@ def ajax_insert_item(request):
             rename_corpus_metadata(file_key, new_file_key)
             file_key = new_file_key
         result = {'file_key': file_key, 'index': index, 'language': data['language'], 'n_tokens': data['n_tokens'], 'n_words': data['n_words']}
-        track_analysis(request, 'Edit', activity_id='collection', function=_('insert item in corpus'))
+        track_analysis(request, 'Edit', activity_id='collection', function='insert item in corpus')
     else:
         result = {'file_key': file_key, 'error': 'languages cannot be mixed in corpus'}
     return JsonResponse(result)
@@ -1009,7 +1012,7 @@ def ajax_resource_to_item(request):
         title = text[:title_end]
         text = text[title_end+1:]
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': url, 'text': text}
-    track_analysis(request, 'Edit', activity_id='collection', function=_('add to corpus a text resource'))
+    track_analysis(request, 'Edit', activity_id='collection', function='add to corpus a text resource')
     return add_item_to_corpus(request, file_key, result)
 
 @csrf_exempt
@@ -1023,7 +1026,7 @@ def ajax_file_to_item(request: HttpRequest, file_key: str) -> HttpResponse:
     obj_type = 'file'
     obj_id = hashlib.sha256(text.encode('utf-8')).hexdigest()
     result = {'file_key': file_key, 'index': None, 'obj_type': obj_type, 'obj_id': obj_id, 'label': title, 'url': None, 'text': text}
-    track_analysis(request, 'Edit', activity_id='collection', function=_('add text of file to corpus'))
+    track_analysis(request, 'Edit', activity_id='collection', function='add text of file to corpus')
     return add_item_to_corpus(request, file_key, result)
 
 """
@@ -1049,7 +1052,7 @@ def ajax_add_terms_to_item(request):
     data = json.dumps(data)
     response = requests.post(endpoint, data=data, timeout=None)
     if response.status_code==200:
-        track_analysis(request, 'Edit', activity_id='collection', function=_('annotate corpus item with terms'))
+        track_analysis(request, 'Edit', activity_id='collection', function='annotate corpus item with terms')
         result = response.json()
         return JsonResponse(result)
     else:
@@ -1068,7 +1071,7 @@ def ajax_remove_item(request):
     data = json.dumps({'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id})
     response = requests.post(endpoint, data=data)
     if response.status_code==200:
-        track_analysis(request, 'Edit', activity_id='collection', function=_('remove item from corpus'))
+        track_analysis(request, 'Edit', activity_id='collection', function='remove item from corpus')
         data = response.json()
         index = data['index']
         result = {'index': index}
@@ -1103,7 +1106,7 @@ def ajax_make_corpus(request):
         file_key = data['file_key']
         data.update({'obj_type': obj_type, 'obj_id': obj_id, 'label': title})
         processed.append(data)
-    track_analysis(request, 'Create', activity_id='collection', function=_('create new corpus'))
+    track_analysis(request, 'Create', activity_id='collection', function='create new corpus')
     return JsonResponse({'result': processed, 'file_key': file_key})
 
 """
@@ -1136,7 +1139,7 @@ def ajax_corpus_update(request):
     metadata = load_corpus_metadata(file_key)
     metadata[data['key']] = data['value']
     save_corpus_metadata(file_key, metadata)
-    track_analysis(request, 'Edit', activity_id='collection', function=_('update corpus metadata'))
+    track_analysis(request, 'Edit', activity_id='collection', function='update corpus metadata')
     return JsonResponse(data)
 
 """
@@ -1154,7 +1157,7 @@ def ajax_delete_corpus(request):
         result = response.json()
         file_key = result['file_key']
         data = {'file_key': file_key}
-        track_analysis(request, 'Delete', activity_id='collection', function=_('delete corpus'))
+        track_analysis(request, 'Delete', activity_id='collection', function='delete corpus')
         return JsonResponse(data)
     else:
         return propagate_remote_server_error(response)
@@ -1253,7 +1256,7 @@ def corpus_dashboard(request, file_key=''):
             row.append(col)
         cross_table.append(row)
     var_dict = {'language': language, 'docs': corpus_dict, 'cross_table': cross_table}
-    track_analysis(request, 'Analyze', activity_id='collection', function=_('analyze entire corpus'))
+    track_analysis(request, 'Analyze', activity_id='collection', function='analyze entire corpus')
     return corpus_dashboard_return(request, var_dict)
 
 @csrf_exempt
@@ -1270,6 +1273,7 @@ def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='wordlists')
         return render(request, 'text_wordlists.html', var_dict)
 
 """
@@ -1300,6 +1304,7 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         var_dict['kwics'] = result['kwics']
         return JsonResponse(var_dict)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='contexts')
         return render(request, 'context_dashboard.html', var_dict)
 
 def text_summarization(request, params):
@@ -1329,6 +1334,7 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='dependency')
         return render(request, 'text_dependency.html', var_dict)
 
 @csrf_exempt
@@ -1367,6 +1373,7 @@ def text_nounchunks(request, file_key='', obj_type='', obj_id='', url='', glossa
         data['span_types'] = span_types
         return JsonResponse(data)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='terms')
         return render(request, 'text_nounchunks.html', var_dict)
 
 def normalize_entity_graph_score(key_score, mean_sentence_length):
@@ -1391,6 +1398,7 @@ def text_annotation(request, file_key='', obj_type='', obj_id='', url=''):
         data['pos_map'] = pos_map
         return JsonResponse(data)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='annotation')
         return render(request, 'text_annotation.html', var_dict)
 
 @csrf_exempt
@@ -1421,6 +1429,7 @@ def text_cohesion(request, file_key='', obj_type='', obj_id='', url=''):
         data['lemma_color_map'] = lemmas_to_colors(repeated_lemmas, color_list, color_dict)
         return JsonResponse(data)
     else:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='cohesion')
         return render(request, 'text_cohesion.html', var_dict)
 
 def text_readability(request, params):
@@ -1504,6 +1513,7 @@ def text_readability(request, params):
     index['value'] = cs_readability_01(language_code, mean_sentence_length, mean_syllables_per_word, mean_dependency_depth, mean_dependency_distance, voc_density, lexical_rarity)
     index['range'] = readability_level('flesch_easy', index['value'])
     var_dict['readability_indexes']['cs_readability_01'] = index
+    track_analysis(request, 'Analyze', obj_type=params['obj_type'], obj_id=params['obj_id'], function='readability')
     return render(request, 'text_readability.html', var_dict)
 
 def ta_input(request):
@@ -1547,6 +1557,7 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
+    track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
     if function == 'corpus':
         return render(request, 'corpus_dashboard.html', var_dict)
     elif function == 'dashboard':
