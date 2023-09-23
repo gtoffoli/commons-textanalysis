@@ -15,6 +15,13 @@ from django.views.decorators.csrf import csrf_exempt
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.models import User
 
+if 'nlp' in settings.INSTALLED_APPS:
+    from nlp.viewsw import configuration, get_corpora, get_corpus, new_corpus, remove_corpus, add_doc, remove_doc
+    from nlp.viewsw import analyze, annotate_with_terms, word_contexts, text_cohesion
+
+    nlp_endpoints_map = {
+    }
+
 if 'commons' in settings.INSTALLED_APPS:
     from commons.models import Document, OER
     from commons.models import is_site_member
@@ -40,8 +47,7 @@ def track_analysis(request, verb, obj_type='', obj_id='', activity_id='text', fu
     if 'commons' in settings.INSTALLED_APPS:
         obj = get_commons_object(obj_type, obj_id)
         from commons.models import Project
-        root_project = Project.objects.get(slug=settings.SITE_ROOT)
-        # track_action(request, request.user, verb, obj, activity_id=activity_id, description=function)
+        root_project = settings.SITE_ROOT and Project.objects.get(slug=settings.SITE_ROOT) or None
         track_action(request, request.user, verb, obj, activity_id=activity_id, target=root_project)
 
 from textanalysis.forms import TextAnalysisInputForm
