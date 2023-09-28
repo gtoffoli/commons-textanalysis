@@ -96,9 +96,11 @@ language_labels = dict(settings.LANGUAGES)
 language_labels['fr'] = 'Français'
 language_colors = dict((('en', 'Black'), ('da', 'Orange'), ('el', 'Navy'), ('es', 'Gold'), ('fr', 'Blue'), ('hr', 'Red'), ('it', 'Green'), ('lt', 'Yellow'),))
 language_map = {}
-print(language_map)
 for key in language_labels.keys():
-    language_map[key] = {'label': language_labels[key], 'color': language_colors[key], 'selected': True, }
+    try:
+        language_map[key] = {'label': language_labels[key], 'color': language_colors[key], 'selected': True, }
+    except:
+        pass
 print(language_map)
 
 pos_table = (
