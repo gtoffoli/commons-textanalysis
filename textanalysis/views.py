@@ -92,6 +92,15 @@ distinct_colors = [
 color_dict = dict(distinct_colors)
 color_list = [color_name for color_name, color_code in distinct_colors]
 
+language_labels = dict(settings.LANGUAGES)
+language_labels['fr'] = 'Français'
+language_colors = dict((('en', 'Black'), ('da', 'Orange'), ('el', 'Navy'), ('es', 'Gold'), ('fr', 'Blue'), ('hr', 'Red'), ('it', 'Green'), ('lt', 'Yellow'),))
+language_map = {}
+print(language_map)
+for key in language_labels.keys():
+    language_map[key] = {'label': language_labels[key], 'color': language_colors[key], 'selected': True, }
+print(language_map)
+
 pos_table = (
     ('PROPN', {'label': 'proper noun', 'color': 'Magenta', 'selected': 1,},),
     ('DET', {'label': 'determiner', 'color': 'Lime', 'selected': 0,},),
@@ -1630,6 +1639,7 @@ if 'commons' in settings.INSTALLED_APPS:
             concepts = tbx['text']['body']['conceptEntry']
             data['concepts'] = concepts
             data['languages'] = tbx_languages(concepts)
+            data['language_map'] = language_map
             data['subjects'] = tbx_subjects(concepts)
             index = tbx['text']['index']
             columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
