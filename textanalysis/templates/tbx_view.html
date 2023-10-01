@@ -30,6 +30,9 @@ button.language {
   cursor: pointer;
 }
 
+select, select option {
+  width: 100px;
+}
 </style>
 {% endblock extra_style %}
 
@@ -72,10 +75,12 @@ button.language {
 
     <div style="text-align: center;">
 
+    <h4>{{ label_filters }}</h4>
+
     <div style="display: inline-block; margin-right: 10px;">
       <ul>
         <li class="language" v-for="language in languages">
-          <button class="language" :title="language_map[language]['label']"
+          <button class="language" :title="language_map[language]['label_en']"
           v-on:click.stop="toggle_language(language);"
           :style="'border-color:'+language_map[language]['color']+'; background-color:'+(language_map[language]['selected']==1?'White;':'LightGray;')">
           {{ language_map[language]['label'] }}</button>
@@ -89,19 +94,28 @@ button.language {
       <div style="font-size: x-small; font-style: italic;">{{ label_filter }}</div>
     </div>
 
+    <div style="display: inline-block; margin: 10px;">
+	  <select v-model="hidden_columns" multiple style="width: 100px;">
+		<option v-for="column in hideable_columns" :value="column">{{column}}</option>
+	  </select>
+      <div style="font-size: x-small; font-style: italic;">{{ label_hide_columns }}</div>
+    </div>
+
     <h4>{{ label_concepts_terms }}</h4>
+ 
     <table style="margin: 0 auto; border-collapse: collapse; width: 100%; table-layout: fixed;">
       <thead>
 		  <th style="width:5%">#</th>
 		  <th style="width:5%">{{ label_concept }}</th>
-		  <th v-if="columns.includes('subjects')" style="width:15%">{{ label_subjects }}</th>
+		  <th v-if="filtered_columns.includes('subjects')" style="width:15%">{{ label_subjects }}</th>
 		  <th style="width:5%">{{ label_language }}</th>
-		  <th v-if="columns.includes('definition')" style="width:35%">{{ label_definition }}</th>
+		  <th v-if="filtered_columns.includes('definition')" style="width:35%">{{ label_definition }}</th>
+		  <th v-if="filtered_columns.includes('def_source')" style="width:10%">{{ label_definition_source }}</th>
 		  <th style="width:20%">{{ label_term }}</th>
-		  <th style="width:5%">{{ label_type }}</th>
-		  <th style="width:5%">{{ label_pos }}</th>
-		  <th style="width:6%">{{ label_status }}</th>
-		  <th v-if="columns.includes('reliability')" style="width:4%">{{ label_reliability }}</th>
+		  <th v-if="filtered_columns.includes('type')" style="width:5%">{{ label_type }}</th>
+		  <th v-if="filtered_columns.includes('POS')" style="width:5%">{{ label_pos }}</th>
+		  <th v-if="filtered_columns.includes('status')" style="width:6%">{{ label_status }}</th>
+		  <th v-if="filtered_columns.includes('reliability')" style="width:4%">{{ label_reliability }}</th>
       </thead>
       <tbody>
         <template v-for="(c, c_index) in filtered_concepts">
@@ -110,26 +124,36 @@ button.language {
 			<template v-if="l_index===0 && t_index===0">
 	          <td>{{ c_index+1 }}</td>
 	          <td>{{ c['id'] }}</td>
-	          <td v-if="columns.includes('subjects')"><span v-for="(s, s_index) in c['subjects']">{{ s }}<span v-if="s_index+1 < c['subjects'].length">, </span> </td>
+	          <td v-if="filtered_columns.includes('subjects')"><span v-for="(s, s_index) in c['subjects']">{{ s }}<span v-if="s_index+1 < c['subjects'].length">, </span> </td>
 	        </template>
-			<template v-else> <td></td> <td></td> <td v-if="columns.includes('subjects')"></td> </template>
-		    <template v-if="t_index===0"><td>{{ l['lang'] }}</td><td v-if="columns.includes('definition')">{{ l['definition'] }}</td></template>
-		    <template v-else> <td></td> <td v-if="columns.includes('definition')"></td></template>
+			<template v-else> <td></td> <td></td> <td v-if="filtered_columns.includes('subjects')"></td> </template>
+		    <template v-if="t_index===0"><td>{{ l['lang'] }}</td>
+		      <td v-if="filtered_columns.includes('definition')">{{ l['definition'] }}</td>
+		      <td v-if="filtered_columns.includes('def_source')">{{ l['def_source'] }}</td>
+		    </template>
+		    <template v-else> <td></td> 
+		      <td v-if="filtered_columns.includes('definition')"></td>
+		      <td v-if="filtered_columns.includes('def_source')">{{ l['def_source'] }}</td>
+		    </template>
 		    <td>{{ t['term'] }}</td>
-		    <td><template v-if="t['type']">{{ t['type'] }}</template></td>
-		    <td><template v-if="t['POS']">{{ t['POS'] }}</template></td>
-		    <td><template v-if="t['status']">{{ t['status'] }}</template></td>
-		    <td v-if="columns.includes('reliability')"><template v-if="t['reliability']">{{ t['reliability'] }}</template></td>
+		    <td v-if="filtered_columns.includes('type')"><template v-if="t['type']">{{ t['type'] }}</template></td v-if="filtered_columns.includes('type')">
+		    <td v-if="filtered_columns.includes('POS')"><template v-if="t['POS']">{{ t['POS'] }}</template></td v-if="filtered_columns.includes('pos')">
+		    <td v-if="filtered_columns.includes('status')"><template v-if="t['status']">{{ t['status'] }}</template></td v-if="filtered_columns.includes('status')">
+		    <td v-if="filtered_columns.includes('reliability')"><template v-if="t['reliability']">{{ t['reliability'] }}</template></td>
         </tr>
         </template>
         </template>
       </tbody>
     </table>
 
+    <div style="margin: 5px; padding: 10px;">
     <form @submit.prevent="handleSave">
     <!-- form fields here -->
-    <!-- <button type="submit">Save</button> -->
+    <button type="submit" name="export_tbx" id="export_tbx" class="btn btn-default">{{ label_export_tbx }}</button>&nbsp;&nbsp;
+    <button type="submit" name="export_csv" id="export_csv" class="btn btn-default">{{ label_export_csv }}</button>
     </form>
+    <div style="font-size: x-small; font-style: italic; margin-top: 10px;">{{ label_export_filtering }}</div>
+    </div>
 
     </div>
 
@@ -142,9 +166,13 @@ button.language {
 {% block footer_base %}{% endblock footer_base %}
 
 {% block script_base %}
-  <script>
+<script type="module">
+	// https://v2.vuejs.org/v2/guide/forms.html#Select
+	// https://stackoverflow.com/questions/66503268/why-doesn-t-vuejs-natively-support-multiple-select
+	
       var app = new Vue({
-        name: 'test',
+        name: 'tbx_view',
+        el: '#app',
         data: {
           file_key: null,
           obj_type: '{{ obj_type }}',
@@ -164,31 +192,43 @@ button.language {
           concepts: [],
           subjects: [],
           columns: [],
+          hideable_columns: [],
+          hidden_columns: [],
           
-          label_see: '{% trans "see"|capfirst %}',
-          label_id: '{% trans "id" %}',
-          label_title: '{% trans "title"|capfirst %}',
-          label_url: '{% trans "url"|capfirst %}',
-          label_languages: '{% trans "languages"|capfirst %}',
-          label_wait: '{% trans "please wait"|capfirst %}',
-          label_source: '{% trans "terminology source"|capfirst %}',
-          label_source_collections: '{% trans "source collections"|capfirst %}',
-          label_all_subjects: '{% trans "subjects"|capfirst %}',
-          label_select: "{% trans "select languages to display by toggling the buttons above; grey background means 'non-selected'"|capfirst %}",
-          label_filter: "{% trans "filter terms by included substring: enter 3 chars at least"|capfirst %}",
+          label_see: `{% trans "see"|capfirst %}`,
+          label_id: `{% trans "id" %}`,
+          label_title: `{% trans "title"|capfirst %}`,
+          label_url: `{% trans "url"|capfirst %}`,
+          label_languages: `{% trans "languages"|capfirst %}`,
+          label_wait: `{% trans "please wait"|capfirst %}`,
+          label_source: `{% trans "terminology source"|capfirst %}`,
+          label_source_collections: `{% trans "source collections"|capfirst %}`,
+          label_all_subjects: `{% trans "subjects"|capfirst %}`,
+          label_select: `{% trans "select languages to display by toggling the buttons above; grey background means 'non-selected'"|capfirst %}`,
+          label_filter: `{% trans "filter terms by included substring: enter 3 chars at least"|capfirst %}`,
+          label_hide_columns: `{% trans "select columns to hide"|capfirst %}`,
           label_enter_text_here: `{% trans "enter search string here" %}`,
-          label_concept: '{% trans "concept" %}',
-          label_concepts_terms: '{% trans "concepts and terms"|capfirst %}',
-          label_subjects: '{% trans "subjects" %}',
-          label_language: '{% trans "lang" %}',
-          label_type: '{% trans "type" %}',
-          label_pos: '{% trans "POS" %}',
-          label_reliability: '{% trans "rel." %}',
-          label_status: '{% trans "status" %}',
-          label_term: '{% trans "term" %}',
-          label_definition: '{% trans "definition" %}',
+          label_export_tbx: `{% trans "export as TBX"|capfirst %}`,
+          label_export_csv: `{% trans "export as CSV"|capfirst %}`,
+          label_export_filtering: `{% trans "only visible content will be exported"|capfirst %}`,
+          label_concept: `{% trans "concept" %}`,
+          label_concepts_terms: `{% trans "concepts and terms"|capfirst %}`,
+          label_filters: `{% trans "filters setting"|capfirst %}`,
+          label_subjects: `{% trans "subjects" %}`,
+          label_definition: `{% trans "definition" %}`,
+          label_definition_source: `{% trans "def.source" %}`,
+          label_language: `{% trans "lang" %}`,
+          label_type: `{% trans "type" %}`,
+          label_pos: `{% trans "POS" %}`,
+          label_reliability: `{% trans "rel." %}`,
+          label_status: `{% trans "status" %}`,
+          label_term: `{% trans "term" %}`,
         },
-        el: '#app',
+	    computed: {
+	      filtered_columns: function () {
+	        return this.columns.filter((col) => !this.hidden_columns.includes(col));
+	      }
+	  },
         methods: {
           resize() {
             console.log('resize')
@@ -242,10 +282,9 @@ button.language {
               }
             }
             return filtered;
-		  }
+		  },
         },
         created: function () {
-          $this = this;
           this.wait = true;
           if (! this['obj_id'])
             this['obj_id'] = 0;
@@ -259,6 +298,7 @@ button.language {
               this[key] = data[key];
              };
              this['filtered_concepts'] = data['concepts']
+             this['filtered_columns'] = data['columns']
              this.wait = false;
            })
           .catch(err => (this['error'] = err));

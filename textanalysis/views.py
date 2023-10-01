@@ -92,17 +92,6 @@ distinct_colors = [
 color_dict = dict(distinct_colors)
 color_list = [color_name for color_name, color_code in distinct_colors]
 
-language_labels = dict(settings.LANGUAGES)
-language_labels['fr'] = 'Français'
-language_colors = dict((('en', 'Black'), ('da', 'Orange'), ('el', 'Navy'), ('es', 'Gold'), ('fr', 'Blue'), ('hr', 'Red'), ('it', 'Green'), ('lt', 'Yellow'),))
-language_map = {}
-for key in language_labels.keys():
-    try:
-        language_map[key] = {'label': language_labels[key], 'color': language_colors[key], 'selected': True, }
-    except:
-        pass
-print(language_map)
-
 pos_table = (
     ('PROPN', {'label': 'proper noun', 'color': 'Magenta', 'selected': 1,},),
     ('DET', {'label': 'determiner', 'color': 'Lime', 'selected': 0,},),
@@ -574,7 +563,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     analyze_dict = response.json()
     doc = analyze_dict['doc']
     language_code = analyze_dict['language']
-    language = settings.LANGUAGE_MAPPING[language_code]
+    language = settings.LANGUAGE_MAPPING[language_code]['label']
     map_token_pos_to_level(language_code)
     if file_key:
         text = doc.get('text', '')
@@ -1317,7 +1306,7 @@ def context_dashboard(request, file_key='', obj_type='', obj_id='', url=''):
         url = extended_attrs['url']
         if url and len(url)> 2:
             var_dict['url'] = url
-        var_dict['language'] = settings.LANGUAGE_MAPPING[result['language']]
+        var_dict['language'] = settings.LANGUAGE_MAPPING[result['language']]['label_en']
         var_dict['keywords'] = result['keywords']
         var_dict['kwics'] = result['kwics']
         return JsonResponse(var_dict)
@@ -1641,11 +1630,16 @@ if 'commons' in settings.INSTALLED_APPS:
             concepts = tbx['text']['body']['conceptEntry']
             data['concepts'] = concepts
             data['languages'] = tbx_languages(concepts)
+            language_map = settings.LANGUAGE_MAPPING
+            for language_code in language_map.keys():
+                language_map[language_code]['selected'] = True
             data['language_map'] = language_map
             data['subjects'] = tbx_subjects(concepts)
             index = tbx['text']['index']
             columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
             data['columns'] = columns
+            hideable_columns = index['conceptColumns'][1:] + index['langColumns'][1:] + index['termColumns'][1:]
+            data['hideable_columns'] = hideable_columns
             return JsonResponse(data)
         else:
             return render(request, 'tbx_view.html', var_dict)
