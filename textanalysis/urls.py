@@ -68,6 +68,7 @@ if 'commons' in settings.INSTALLED_APPS:
     urlpatterns += [
         url(r"^tbx_view/$", views.tbx_view, name="tbx_view"),
         url(r"^tbx_view/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.tbx_view, name="tbx_view_2"),
+        url(r"^tbx_export/$", views.tbx_export, name="tbx_export"),
         url('glossary-autocomplete/$', views.glossary_autocomplete, name='glossary-autocomplete',),
     ]
 

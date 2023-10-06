@@ -258,7 +258,12 @@ def tbx_dict_2_tsv(tbx_dict: dict) -> str:
     lines = [headings]
     # loops on the concept list
     for concept_dict in text['body']['conceptEntry']:
-        concept_values = [concept_dict.get(key, '') for key in concept_columns]
+        concept_values = []
+        for key in concept_columns:
+            value = concept_dict[key]
+            if key == 'subjects' and type(value) == list:
+                value = ';'.join(value)
+            concept_values.append(value)
         # loops on the language list
         lang_dicts = concept_dict['langSec']
         i_lang = 0

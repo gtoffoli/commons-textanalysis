@@ -149,8 +149,10 @@ select, select option {
     <div style="margin: 5px; padding: 10px;">
     <form @submit.prevent="handleSave">
     <!-- form fields here -->
-    <button type="submit" name="export_tbx" id="export_tbx" class="btn btn-default">{{ label_export_tbx }}</button>&nbsp;&nbsp;
-    <button type="submit" name="export_csv" id="export_csv" class="btn btn-default">{{ label_export_csv }}</button>
+    <button type="submit" name="export_tbx" id="export_tbx" class="btn btn-default"
+    	v-on:click.stop="export_glossary('tbx');">{{ label_export_tbx }}</button>&nbsp;&nbsp;
+    <button type="submit" name="export_csv" id="export_csv" class="btn btn-default"
+    	v-on:click.stop="export_glossary('csv');">{{ label_export_csv }}</button>
     </form>
     <div style="font-size: x-small; font-style: italic; margin-top: 10px;">{{ label_export_filtering }}</div>
     </div>
@@ -245,6 +247,14 @@ select, select option {
             });
             return selected_items;
           },
+          selected_languages: function() {
+			var selected_items = [];
+			this.languages.forEach(function(language) {
+			  if (app.language_map[language].selected)
+			    selected_items.push(language);
+			});
+			return selected_items;
+		  },
           // https://marketsplash.com/tutorials/vue-js/vue-js-form-submit/
           handleSave: function() {
           },
@@ -283,6 +293,31 @@ select, select option {
             }
             return filtered;
 		  },
+		  export_glossary: function(format) {
+	        let data = {format: format, title: this.title, languages: this.selected_languages(), concepts: this.filtered_concepts, columns: this.columns};
+	        fetch('/textanalysis/tbx_export/', {
+	          method: 'POST',
+	          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },
+	          body: JSON.stringify(data)
+	       	})
+	        .then(response => response.json())
+	        .then(data => {
+				let title = data['title']
+				let format = data['format']
+				let type = (format == 'tbx')? 'text/xml' : 'text/csv';
+				let fileName = title + '.' + format;
+				let text = data['text']
+				let date = new Date();
+				let file = new File([text], fileName, {type: type, lastModified: date})
+		        let fileUrl = window.URL.createObjectURL(file);
+		        let fileLink = document.createElement('a');
+		        fileLink.href = fileUrl;
+		        fileLink.setAttribute('download', fileName);
+		        document.body.appendChild(fileLink)
+		        fileLink.click();
+	        })
+	        .catch(err => (this['result'] = err))
+		  }
         },
         created: function () {
           this.wait = true;

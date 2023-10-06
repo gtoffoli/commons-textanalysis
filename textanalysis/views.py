@@ -1613,6 +1613,9 @@ def glossary_filter_terms(tbx_dict, languages=[]):
 # currently, TBX glossaries are persisted as OERs; these are defined by CommonSpaces ('commons' app)
 if 'commons' in settings.INSTALLED_APPS:
 
+    from textanalysis.tbx import tbx_dict_2_xml, tbx_dict_2_tsv
+    from textanalysis.tbx import ALL_CONCEPT_COLUMNS, ALL_LANG_COLUMNS, ALL_TERM_COLUMNS
+
     @csrf_exempt
     def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
@@ -1643,7 +1646,39 @@ if 'commons' in settings.INSTALLED_APPS:
             return JsonResponse(data)
         else:
             return render(request, 'tbx_view.html', var_dict)
-    
+
+    @csrf_exempt
+    def tbx_export(request):
+        data = json.loads(request.body.decode('utf-8'))
+        title = data['title']
+        if title.endswith('.tbx'):
+            title = '.'.join(title.split('.')[:-1])
+        format = data['format']
+        languages = data['languages']
+        concepts = data['concepts']
+        columns = data['columns']
+
+        concept_columns = [c for c in ALL_CONCEPT_COLUMNS if c in columns]
+        lang_columns = [c for c in ALL_LANG_COLUMNS if c in columns]
+        term_columns = [c for c in ALL_TERM_COLUMNS if c in columns]
+        tbx_dict = {'tbx': {'text': {'index': {'langs': languages, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concepts}}}}
+
+        if format == 'tbx':
+            xml_str = tbx_dict_2_xml(tbx_dict)
+            # response = HttpResponse(xml_str, content_type='text/xml')
+            # response['Content-Disposition'] = 'attachment; filename="{}.tbx"'.format(title)
+            data = xml_str
+        else: # format == 'csv'
+            csv_data = tbx_dict_2_tsv(tbx_dict)
+            # response = HttpResponse(csv_data, content_type='text/csv')
+            # response['Content-Disposition'] = 'attachment; filename="{}.csv"'.format(title)
+            data = csv_data
+        # return response
+        #return HttpResponse(data, content_type='text/plain')
+        body = json.dumps({ 'title': title, 'format': format, 'text': data })
+        return HttpResponse(body, content_type='application/json')
+
+ 
     def get_all_glossaries(request):
         view_states = (settings.SITE_ID==1 or not is_site_member(request.user)) and [PUBLISHED] or [RESTRICTED, PUBLISHED]
         qs = OER.objects.filter(state__in=view_states, documents__label__icontains='.tbx')
