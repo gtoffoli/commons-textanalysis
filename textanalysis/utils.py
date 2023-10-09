@@ -84,7 +84,8 @@ def get_web_resource_text(url):
         return get_google_doc_text(None, fileid=fileid)
     err = None
     try:
-        response = requests.get(url)
+        # response = requests.get(url)
+        response = requests.get(url, timeout=settings.REQUESTS_TIMEOUT)
     except ConnectionError as err:
         return '', response, err
     except requests.exceptions.RequestException as err:
@@ -210,7 +211,8 @@ def get_googledoc_name_type(document_url, fileid=None):
     params = {'key': settings.GOOGLE_KEY, }
     params['fields'] = 'name,mimeType'
     querystring = urllib.parse.urlencode(params)
-    response = requests.get('{}?{}'.format(url, querystring))
+    # response = requests.get('{}?{}'.format(url, querystring))
+    response = requests.get('{}?{}'.format(url, querystring), timeout=settings.REQUESTS_TIMEOUT)
     if response.status_code != requests.codes.ok:
         return response.status_code, _('bad response status'), ''
     data = response.json()
@@ -229,7 +231,8 @@ def get_googledoc_text(document_url, fileid=None):
     params = {'key': settings.GOOGLE_KEY, }
     params['mimeType'] = 'text/plain'
     querystring = urllib.parse.urlencode(params)
-    response = requests.get('{}?{}'.format(url, querystring))
+    # response = requests.get('{}?{}'.format(url, querystring))
+    response = requests.get('{}?{}'.format(url, querystring), timeout=settings.REQUESTS_TIMEOUT)
     if response.status_code != requests.codes.ok:
         return _('bad response status')
     text = response.content
