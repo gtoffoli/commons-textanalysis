@@ -1,0 +1,829 @@
+# SOME DESCRIPTIVE TITLE.
+# Copyright (C) YEAR THE PACKAGE'S COPYRIGHT HOLDER
+# This file is distributed under the same license as the PACKAGE package.
+# FIRST AUTHOR <EMAIL@ADDRESS>, YEAR.
+# 
+# Translators:
+# Giovanni Toffoli <toffoli@linkroma.it>, 2023
+# 
+#, fuzzy
+msgid ""
+msgstr ""
+"Project-Id-Version: PACKAGE VERSION\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2023-10-11 00:15+0200\n"
+"PO-Revision-Date: 2023-10-11 12:53+0000\n"
+"Last-Translator: Giovanni Toffoli <toffoli@linkroma.it>, 2023\n"
+"Language-Team: Italian (https://app.transifex.com/commons-erasmus-eu-project/teams/43401/it/)\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Language: it\n"
+"Plural-Forms: nplurals=3; plural=n == 1 ? 0 : n != 0 && n % 1000000 == 0 ? 1 : 2;\n"
+
+#: .\forms.py:11 .\templates\contents_dashboard.html:644
+#: .\templates\text_dependency.html:5 .\templates\text_dependency.html:56
+msgid "Dependency parse"
+msgstr "Analisi di dipendenza"
+
+#: .\forms.py:12 .\templates\contents_dashboard.html:645
+#: .\templates\context_dashboard.html:4 .\templates\context_dashboard.html:55
+msgid "Keywords In Context"
+msgstr "Parole nel contesto (KIC)"
+
+#: .\forms.py:13 .\templates\contents_dashboard.html:646
+#: .\templates\text_wordlists.html:33
+msgid "Word Lists by POS"
+msgstr "Elenchi di parole per categoria lessicale (POS)"
+
+#: .\forms.py:14 .\templates\contents_dashboard.html:647
+msgid "Annotated text"
+msgstr "Testo annotato"
+
+#: .\forms.py:15
+msgid "Entities and terms"
+msgstr "Entità e termini"
+
+#: .\forms.py:16 .\templates\contents_dashboard.html:649
+#: .\templates\text_readability.html:6 .\templates\text_readability.html:26
+msgid "Text Readability"
+msgstr "Leggibilità del testo"
+
+#: .\forms.py:17 .\templates\contents_dashboard.html:650
+msgid "Text Cohesion"
+msgstr "Coesione del testo"
+
+#: .\forms.py:18 .\templates\contents_dashboard.html:651
+msgid "Text Summarization"
+msgstr "Riassunto del testo"
+
+#: .\forms.py:19 .\templates\contents_dashboard.html:652
+#: .\templates\text_dashboard.html:5
+msgid "Text Analysis Dashboard"
+msgstr "Text Analysis Dashboard"
+
+#: .\forms.py:23
+msgid "text to analyze"
+msgstr "testo da analizzare"
+
+#: .\forms.py:23
+msgid "short text of a few paragraphs, or url of a web page"
+msgstr "breve testo o URL di pagina web"
+
+#: .\forms.py:24
+msgid "text-analysis function"
+msgstr "funzione di analisi del testo"
+
+#: .\forms.py:24
+msgid "select one"
+msgstr "scegli uno/una"
+
+#: .\forms.py:26
+msgid "glossary"
+msgstr "glossario"
+
+#: .\forms.py:26
+msgid ""
+"auto-complete search; the selected glossary, if any, is used only by a few "
+"functions"
+msgstr ""
+"ricerca a completamento automatico; il glossario eventualmente selezionato è"
+" usato solo da alcune funzioni"
+
+#: .\menus.py:9
+msgid "the Text Analysis project"
+msgstr "il progetto Text Analysis"
+
+#: .\menus.py:17
+msgid "interactive text analyzer"
+msgstr "analizzatore di testo interattivo"
+
+#: .\menus.py:22 .\templates\contents_dashboard.html:617
+msgid "corpora"
+msgstr "corpora"
+
+#: .\menus.py:30
+msgid "text analysis functions"
+msgstr "funzioni di analisi del testo"
+
+#: .\menus.py:34
+msgid "working with corpora"
+msgstr "operare con i corpora"
+
+#: .\menus.py:43
+msgid "about"
+msgstr ""
+
+#: .\menus.py:49
+msgid "my spaces"
+msgstr ""
+
+#: .\menus.py:55
+msgid "help"
+msgstr ""
+
+#: .\templates\base.html:130
+msgid "the CommonS Consortium"
+msgstr ""
+
+#: .\templates\base.html:130 .\templates\base.html:133
+msgid "and"
+msgstr ""
+
+#: .\templates\base.html:131
+msgid "built by"
+msgstr ""
+
+#: .\templates\base.html:132
+msgid "with"
+msgstr ""
+
+#: .\templates\contents_dashboard.html:4
+#: .\templates\contents_dashboard.html:314
+#: .\templates\contents_dashboard.html:317
+msgid "contents dashboard"
+msgstr "contents dashboard"
+
+#: .\templates\contents_dashboard.html:315
+msgid "show project"
+msgstr "mostra il progetto"
+
+#: .\templates\contents_dashboard.html:315
+msgid "and its sub-projects"
+msgstr "e i suoi sottoprogetti"
+
+#: .\templates\contents_dashboard.html:615
+msgid "it seems that you are not logged in"
+msgstr ""
+
+#: .\templates\contents_dashboard.html:618
+msgid "expand / collapse"
+msgstr "espandi / comprimi"
+
+#: .\templates\contents_dashboard.html:619
+msgid "selected resources"
+msgstr "risorse selezionate"
+
+#: .\templates\contents_dashboard.html:620
+msgid "corpus"
+msgstr "corpus"
+
+#: .\templates\contents_dashboard.html:621
+msgid "by"
+msgstr "per"
+
+#: .\templates\contents_dashboard.html:622
+msgid "state"
+msgstr "stato"
+
+#: .\templates\contents_dashboard.html:623
+msgid "narrower access"
+msgstr "accesso più ristretto"
+
+#: .\templates\contents_dashboard.html:624
+msgid "wider access"
+msgstr "accesso più largo"
+
+#: .\templates\contents_dashboard.html:625
+msgid "empty corpus"
+msgstr "corpus vuoto"
+
+#: .\templates\contents_dashboard.html:626
+msgid "new corpus"
+msgstr "nuovo corpus"
+
+#: .\templates\contents_dashboard.html:627
+msgid "delete corpus"
+msgstr "elimina il corpus"
+
+#: .\templates\contents_dashboard.html:628
+msgid "add item from local file to corpus"
+msgstr "aggiungi al corpus un elemento da file locale"
+
+#: .\templates\contents_dashboard.html:629
+msgid "upload a file from local device to corpus"
+msgstr "carica un file dal dispositivo locale"
+
+#: .\templates\contents_dashboard.html:630
+msgid "pick a file"
+msgstr "seleziona un file"
+
+#: .\templates\contents_dashboard.html:631
+msgid "drop a file"
+msgstr "rilascia un file"
+
+#: .\templates\contents_dashboard.html:632
+msgid "add item from web resource to corpus"
+msgstr "aggiungi al corpus un elemento da risorsa web"
+
+#: .\templates\contents_dashboard.html:633
+msgid "insert the URL of a web resource, then click on"
+msgstr "inserisci l'URL di una risorsa web e poi clicca su"
+
+#: .\templates\contents_dashboard.html:634
+msgid "add item from text box to corpus"
+msgstr "aggiungi al corpus un item da un area di testo "
+
+#: .\templates\contents_dashboard.html:635
+msgid "insert a text, then click on"
+msgstr "inserisci un testo e poi clicca su"
+
+#: .\templates\contents_dashboard.html:636
+msgid "add references to terms and synsets"
+msgstr "aggiungi riferimenti a termini e synset"
+
+#: .\templates\contents_dashboard.html:637
+msgid "remove item"
+msgstr "elimina questo elemento"
+
+#: .\templates\contents_dashboard.html:638
+msgid "show / hide corpus menu"
+msgstr "mostra /nascondi il menu del corpus"
+
+#: .\templates\contents_dashboard.html:639
+msgid "show / hide item menu"
+msgstr "mostra /nascondi il menu dell'elemento"
+
+#: .\templates\contents_dashboard.html:640
+msgid "manage associated glossaries"
+msgstr "gestisci i glossari associati"
+
+#: .\templates\contents_dashboard.html:641
+msgid "manage associated BabelNet domains"
+msgstr "gestisci i domini BabelNet associati"
+
+#: .\templates\contents_dashboard.html:642
+msgid "similarity"
+msgstr "somiglianza"
+
+#: .\templates\contents_dashboard.html:643
+#: .\templates\corpus_dashboard.html:34
+msgid "Corpus Dashboard"
+msgstr "Corpus Dashboard"
+
+#: .\templates\contents_dashboard.html:648
+msgid "Entities and Terms"
+msgstr "Entità e Termini"
+
+#: .\templates\contents_dashboard.html:653
+msgid "confirm deletion"
+msgstr "conferma l'eliminazione"
+
+#: .\templates\contents_dashboard.html:654
+msgid "confirm change"
+msgstr "conferma la modifica"
+
+#: .\templates\contents_dashboard.html:655
+msgid "enter text for new item of corpus"
+msgstr "inserisci il testo per il nuovo elemento del corpus"
+
+#: .\templates\contents_dashboard.html:656
+msgid "enter item title in this line"
+msgstr "inserisci il titolo dell'elemento in questa linea"
+
+#: .\templates\contents_dashboard.html:657
+msgid "enter text starting on second line"
+msgstr "inserisci il testo a partire dalla seconda linea"
+
+#: .\templates\contents_dashboard.html:658
+msgid "enter url here"
+msgstr "inserisci qui l'URL"
+
+#: .\templates\context_dashboard.html:4 .\templates\context_dashboard.html:55
+#: .\templates\corpus_dashboard.html:6 .\templates\tbx_view.html:5
+#: .\templates\tbx_view.html:50 .\templates\text_annotation.html:6
+#: .\templates\text_annotation.html:55 .\templates\text_cohesion.html:6
+#: .\templates\text_cohesion.html:54 .\templates\text_dependency.html:5
+#: .\templates\text_dependency.html:56 .\templates\text_nounchunks.html:5
+#: .\templates\text_nounchunks.html:97 .\templates\text_readability.html:26
+#: .\templates\text_summarization.html:5
+#: .\templates\text_summarization.html:25 .\templates\text_wordlists.html:33
+msgid "Text Analysis"
+msgstr "Analisi del Testo"
+
+#: .\templates\context_dashboard.html:116 .\templates\tbx_view.html:201
+#: .\templates\text_annotation.html:138 .\templates\text_cohesion.html:162
+#: .\templates\text_dashboard.html:305 .\templates\text_dependency.html:237
+#: .\templates\text_nounchunks.html:225 .\templates\text_readability.html:40
+#: .\templates\text_summarization.html:39 .\templates\text_wordlists.html:158
+msgid "id"
+msgstr "id"
+
+#: .\templates\context_dashboard.html:117 .\templates\tbx_view.html:202
+#: .\templates\text_annotation.html:139 .\templates\text_cohesion.html:163
+#: .\templates\text_dashboard.html:306 .\templates\text_dependency.html:238
+#: .\templates\text_nounchunks.html:226 .\templates\text_wordlists.html:159
+msgid "title"
+msgstr "titolo"
+
+#: .\templates\context_dashboard.html:118 .\templates\tbx_view.html:203
+#: .\templates\text_annotation.html:140 .\templates\text_cohesion.html:164
+#: .\templates\text_dashboard.html:307 .\templates\text_dependency.html:239
+#: .\templates\text_nounchunks.html:227 .\templates\text_readability.html:39
+#: .\templates\text_summarization.html:38 .\templates\text_wordlists.html:160
+msgid "url"
+msgstr "url"
+
+#: .\templates\context_dashboard.html:119
+#: .\templates\corpus_dashboard.html:114 .\templates\text_annotation.html:141
+#: .\templates\text_cohesion.html:165 .\templates\text_dashboard.html:308
+#: .\templates\text_dependency.html:240 .\templates\text_nounchunks.html:228
+#: .\templates\text_readability.html:41 .\templates\text_summarization.html:40
+#: .\templates\text_wordlists.html:161
+msgid "language"
+msgstr "lingua"
+
+#: .\templates\context_dashboard.html:120 .\templates\tbx_view.html:205
+#: .\templates\text_annotation.html:147 .\templates\text_cohesion.html:180
+#: .\templates\text_dashboard.html:309 .\templates\text_dependency.html:241
+#: .\templates\text_nounchunks.html:233 .\templates\text_wordlists.html:162
+msgid "please wait"
+msgstr "sei pregato di attendere"
+
+#: .\templates\corpus_dashboard.html:6 .\templates\text_cohesion.html:6
+#: .\templates\text_cohesion.html:54
+msgid "Text cohesion"
+msgstr "Coesione del testo"
+
+#: .\templates\corpus_dashboard.html:34
+msgid "Content Analysys"
+msgstr "Analisi del Contenuto"
+
+#: .\templates\corpus_dashboard.html:113
+msgid "corpus identifier"
+msgstr "identificatore del corpus"
+
+#: .\templates\corpus_dashboard.html:115
+msgid "corpus contents"
+msgstr "contenuti del corpus"
+
+#: .\templates\corpus_dashboard.html:116
+msgid "comparison of lexical lemmas among documents"
+msgstr "confronto di lemmi lessicali tra documenti"
+
+#: .\templates\ta_input.html:5
+msgid "enter input for text analyzer"
+msgstr "inserisci l'input per l'analizzatore di testo"
+
+#: .\templates\ta_input.html:15
+msgid "enter input for Text Analyzer"
+msgstr "inserisci l'input per l'Analizzatore di Testo"
+
+#: .\templates\ta_input.html:21
+msgid "language app version"
+msgstr "versione della app linguistica"
+
+#: .\templates\ta_input.html:22
+msgid "spaCy version"
+msgstr "versione di spaCy"
+
+#: .\templates\ta_input.html:35
+msgid "execute"
+msgstr "esegui"
+
+#: .\templates\tbx_view.html:5 .\templates\tbx_view.html:50
+msgid "TBX Glossary"
+msgstr "Glossario TBX"
+
+#: .\templates\tbx_view.html:200 .\templates\text_annotation.html:146
+#: .\templates\text_cohesion.html:177 .\templates\text_nounchunks.html:224
+#: .\templates\text_readability.html:71
+msgid "see"
+msgstr "vedi"
+
+#: .\templates\tbx_view.html:204
+msgid "languages"
+msgstr "lingue"
+
+#: .\templates\tbx_view.html:206
+msgid "terminology source"
+msgstr "origine della terminologia"
+
+#: .\templates\tbx_view.html:207
+msgid "source collections"
+msgstr "collezioni di origine"
+
+#: .\templates\tbx_view.html:208 .\templates\tbx_view.html:219
+msgid "subjects"
+msgstr "soggetti"
+
+#: .\templates\tbx_view.html:209
+msgid ""
+"select languages to display by toggling the buttons above; grey background "
+"means 'non-selected'"
+msgstr ""
+"seleziona le lingue da visualizzare cliccando sui pulsanti qui sopra; uno "
+"sfondo grigio significa \"non selezionata\""
+
+#: .\templates\tbx_view.html:210
+msgid "filter terms by included substring: enter 3 chars at least"
+msgstr ""
+"filtra i termini in base ad una sottostringa: inserisci almeno 3 caratteri"
+
+#: .\templates\tbx_view.html:211
+msgid "select columns to hide"
+msgstr "seleziona le colonne da nascondere"
+
+#: .\templates\tbx_view.html:212
+msgid "enter search string here"
+msgstr "digita qui la stringa di ricerca"
+
+#: .\templates\tbx_view.html:213
+msgid "export as TBX"
+msgstr "esporta come TBX"
+
+#: .\templates\tbx_view.html:214
+msgid "export as CSV"
+msgstr "esporta come CSV"
+
+#: .\templates\tbx_view.html:215
+msgid "only visible content will be exported"
+msgstr "sarà esportato solo il contenuto visibile"
+
+#: .\templates\tbx_view.html:216
+msgid "concept"
+msgstr "concetto"
+
+#: .\templates\tbx_view.html:217
+msgid "concepts and terms"
+msgstr "concetti e termini"
+
+#: .\templates\tbx_view.html:218
+msgid "filters setting"
+msgstr "impostazione dei filtri"
+
+#: .\templates\tbx_view.html:220
+msgid "definition"
+msgstr "definizione"
+
+#: .\templates\tbx_view.html:221
+msgid "def.source"
+msgstr "origine def."
+
+#: .\templates\tbx_view.html:222
+msgid "lang"
+msgstr "lingua"
+
+#: .\templates\tbx_view.html:223
+msgid "type"
+msgstr "tipo"
+
+#: .\templates\tbx_view.html:224
+msgid "POS"
+msgstr "POS"
+
+#: .\templates\tbx_view.html:225
+msgid "rel."
+msgstr "fid."
+
+#: .\templates\tbx_view.html:226
+msgid "status"
+msgstr "status"
+
+#: .\templates\tbx_view.html:227
+msgid "term"
+msgstr "termine"
+
+#: .\templates\text_annotation.html:6 .\templates\text_annotation.html:55
+msgid "Text annotations"
+msgstr "Annotazioni del testo"
+
+#: .\templates\text_annotation.html:142
+msgid "text annotated and colored by POS"
+msgstr "testo annotato e colorato in base alla POS"
+
+#: .\templates\text_annotation.html:143
+msgid ""
+"select parts of speech (POS) to highlight by toggling the buttons above; "
+"grey background means 'non-selected'"
+msgstr ""
+"seleziona le categorie lessicali (POS) da evidenziare, agendo sui pulsanti "
+"qui sopra; uno sfondo grigio significa \"non selezionata\""
+
+#: .\templates\text_annotation.html:144
+msgid "tokens colored by POS"
+msgstr "token colorati in base alla POS"
+
+#: .\templates\text_annotation.html:145 .\templates\text_cohesion.html:175
+#: .\templates\text_nounchunks.html:223
+msgid "paragraph"
+msgstr "paragrafo"
+
+#: .\templates\text_cohesion.html:134
+msgid "with reference to max 3 previous paragraphs"
+msgstr "con riferimento ai 3 paragrafi precedenti"
+
+#: .\templates\text_cohesion.html:135
+msgid "similarity is computed by spaCy using feature vectors"
+msgstr ""
+"la somiglianza è calcolata da spaCy per mezzo di vettori di caratteristiche"
+
+#: .\templates\text_cohesion.html:166
+msgid "text cohesion computed with different methods"
+msgstr "coesione del testo calcolata con diversi metodi"
+
+#: .\templates\text_cohesion.html:167
+msgid "method"
+msgstr "metodo"
+
+#: .\templates\text_cohesion.html:168
+msgid "normalized score"
+msgstr "punteggio normalizzato"
+
+#: .\templates\text_cohesion.html:169
+msgid "lexicon shared by contiguous paragraphs (see detail below)"
+msgstr "lessico condiviso da paragrafi contigui (vedi i dettagli più sotto)"
+
+#: .\templates\text_cohesion.html:170
+msgid "weighted entity graph at sentence level (from TRUNAJOD)"
+msgstr "grafo pesato di entità a livello di frase (da TRUNAJOD)"
+
+#: .\templates\text_cohesion.html:171
+msgid "similarity of contiguous paragraphs (from spaCy models)"
+msgstr "somiglianza di paragrafi contigui (dai modelli di spaCy)"
+
+#: .\templates\text_cohesion.html:172
+msgid "values are indicative and useful only for comparison"
+msgstr "i valori sono indicativi e utili solo a fini comparativi"
+
+#: .\templates\text_cohesion.html:173
+msgid "local lexical cohesion"
+msgstr "coesione lessicale locale"
+
+#: .\templates\text_cohesion.html:174
+msgid "most cohesive nominal lemmas"
+msgstr "lemmi nominali più coesivi"
+
+#: .\templates\text_cohesion.html:176
+msgid "text coherence computed with entity graph"
+msgstr "text coherence computed with entity graph"
+
+#: .\templates\text_cohesion.html:178
+msgid "text cohesion based on shared lexicon"
+msgstr "coesione del testo basata sul lessico condiviso"
+
+#: .\templates\text_cohesion.html:179
+msgid "text cohesion based on paragraphs similarity"
+msgstr "text cohesion based on paragraphs similarity"
+
+#: .\templates\text_nounchunks.html:5 .\templates\text_nounchunks.html:97
+msgid "named entities, noun chunks, glossary terms and BabelNet synsets"
+msgstr ""
+"entità nominate, nuclei di frasi nominali, termini del glossario e synset di"
+" BabelNet"
+
+#: .\templates\text_nounchunks.html:229
+msgid "span types to highlight"
+msgstr "tipi di spezzone di frase da evidenziare"
+
+#: .\templates\text_nounchunks.html:230
+msgid ""
+"select types of span by toggling the buttons above; thick border means "
+"'selected'"
+msgstr ""
+"seleziona le lingue da visualizzare usando i pulsanti qui sopra; uno sfondo "
+"grigio significa \"non selezionata\""
+
+#: .\templates\text_nounchunks.html:231
+msgid "noun chunks are noun phrases without subordinates"
+msgstr "i nuclei nominali sono frasi nominali semplici, senza subordinate"
+
+#: .\templates\text_nounchunks.html:232
+msgid "synsets are ako concepts with associated multilanguage lexicon"
+msgstr ""
+"un synset è una sorta di concetto con un lessico multilingua associato"
+
+#: .\templates\text_nounchunks.html:234
+msgid "links to BabelNet available soon"
+msgstr ""
+
+#: .\templates\text_readability.html:43
+msgid "text features"
+msgstr "caratteristiche del testo"
+
+#: .\templates\text_readability.html:46
+msgid "raw text features"
+msgstr "caratteristiche grezze del testo"
+
+#: .\templates\text_readability.html:47
+msgid "sentences"
+msgstr "frasi"
+
+#: .\templates\text_readability.html:48
+msgid "tokens"
+msgstr "token"
+
+#: .\templates\text_readability.html:48
+msgid "mean / max. tokens per sentence"
+msgstr "numero di token medio / max per frase"
+
+#: .\templates\text_readability.html:49
+msgid "characters"
+msgstr "caratteri"
+
+#: .\templates\text_readability.html:49
+msgid "mean characters per token"
+msgstr "lunghezza media dei token in caratteri"
+
+#: .\templates\text_readability.html:50
+msgid "syllables"
+msgstr "sillabe"
+
+#: .\templates\text_readability.html:50
+msgid "mean syllables per token"
+msgstr "lunghezza media dei token in sillabe"
+
+#: .\templates\text_readability.html:51
+msgid "lexical features"
+msgstr "caratteristiche lessicali"
+
+#: .\templates\text_readability.html:52
+msgid "word types (unique word forms)"
+msgstr "forme uniche (di parola)"
+
+#: .\templates\text_readability.html:52
+msgid "type-token ratio"
+msgstr "rapporto forme uniche / token"
+
+#: .\templates\text_readability.html:53
+msgid "lexical-total tokens ratio"
+msgstr "rapporto token lessicali / totali"
+
+#: .\templates\text_readability.html:53
+msgid "lexical rarity"
+msgstr "rarità lessicale"
+
+#: .\templates\text_readability.html:53
+msgid "from basic vocabulary or frequency lists"
+msgstr "da vocabolario di base o lessico di frequenza"
+
+#: .\templates\text_readability.html:54
+msgid "syntactic features"
+msgstr "caratteristiche sintattiche delle frasi"
+
+#: .\templates\text_readability.html:55
+msgid "mean / max. largest dependency depth"
+msgstr "valore medio / max della max profondità di dipendenza"
+
+#: .\templates\text_readability.html:56
+msgid "mean / max. largest dependency distance"
+msgstr "valore medio / max della max distanza di dipendenza"
+
+#: .\templates\text_readability.html:56
+msgid "mean / max. largest weighted dependency distance"
+msgstr "valore medio / max della max distanza di dipendenza pesata"
+
+#: .\templates\text_readability.html:57
+msgid "stylistic features"
+msgstr "caratteristiche stilistiche"
+
+#: .\templates\text_readability.html:58
+msgid "adverbs-adjectives ratio"
+msgstr "rapporto avverbi / aggettivi"
+
+#: .\templates\text_readability.html:58
+msgid "adjectives-pronouns ratio"
+msgstr "rapporto aggettivi / pronomi"
+
+#: .\templates\text_readability.html:62
+msgid "readability formulas"
+msgstr "formule di leggibilità"
+
+#: .\templates\text_readability.html:66
+msgid "formula"
+msgstr "formula"
+
+#: .\templates\text_readability.html:66
+msgid "value"
+msgstr "valore"
+
+#: .\templates\text_readability.html:66
+msgid "range"
+msgstr "gamma dei valori"
+
+#: .\templates\text_readability.html:66
+msgid "reference"
+msgstr "riferimento"
+
+#: .\templates\text_readability.html:77
+msgid "no readability formulas are available yet for"
+msgstr "non sono ancora disponibili formule di leggibilità per"
+
+#: .\templates\text_summarization.html:5
+#: .\templates\text_summarization.html:25
+msgid "Summarization"
+msgstr "Riassunto"
+
+#: .\templates\text_summarization.html:42
+msgid "summary"
+msgstr "riassunto"
+
+#: .\templates\text_summarization.html:43
+msgid "the result of a very simple extractive algorithm"
+msgstr "risultato di un algoritmo estrattivo molto semplice"
+
+#: .\templates\text_summarization.html:44
+msgid "original input"
+msgstr "input originale"
+
+#: .\templates\text_wordlists.html:5
+msgid "Text Analysis Dashoard"
+msgstr "Text Analysis Dashoard"
+
+#: .\utils.py:217 .\utils.py:237
+msgid "bad response status"
+msgstr "stato di risposta negativo"
+
+#: .\utils.py:228
+msgid "invalid document url"
+msgstr "URL di documento non valido"
+
+#: .\utils.py:242
+msgid "unicode decode error"
+msgstr "errore di decodifica unicode"
+
+#: .\views.py:39
+msgid "Private draft"
+msgstr "Bozza privata"
+
+#: .\views.py:40
+msgid "Published internally"
+msgstr "Pubblicato all'interno"
+
+#: .\views.py:41
+msgid "Submitted for publication"
+msgstr "Sottoposto per la pubblicazione"
+
+#: .\views.py:42
+msgid "Published for all"
+msgstr "Pubblicato per tutti"
+
+#: .\views.py:43
+msgid "Un-published"
+msgstr "Ritirato"
+
+#: .\views.py:71
+msgid "commonspaces project"
+msgstr "progetto commonspaces"
+
+#: .\views.py:72
+msgid "document file"
+msgstr "file di documento"
+
+#: .\views.py:73
+msgid "google document"
+msgstr "documento google"
+
+#: .\views.py:74
+msgid "open educational resource"
+msgstr "risorsa educativa aperta"
+
+#: .\views.py:75
+msgid "node of learning path"
+msgstr "nodo di percorso di apprendimento"
+
+#: .\views.py:76
+msgid "learning path"
+msgstr "percorso di apprendimento"
+
+#: .\views.py:77
+msgid "remote web resource"
+msgstr "risorsa web remota"
+
+#: .\views.py:78
+msgid "manually input text"
+msgstr "testo inserito manualmente"
+
+#: .\views.py:79
+msgid "uploaded file"
+msgstr "file caricato"
+
+#: .\views.py:80 .\views.py:573
+msgid "text corpus"
+msgstr "corpus testuale"
+
+#: .\views.py:304
+msgid "noun chunks"
+msgstr "nuclei di frasi nominali"
+
+#: .\views.py:305
+msgid "glossary terms"
+msgstr "termini di glossario"
+
+#: .\views.py:306
+msgid "babenet synsets"
+msgstr "synset di babelnet"
+
+#: .\views.py:482
+msgid "sorry, it looks like the language processing service is off"
+msgstr ""
+"purtroppo sembra che il servizio di elaborazione del linguaggio non sia "
+"attivo"
+
+#: .\views.py:908
+msgid "anonymous"
+msgstr ""
+
+#: .\views.py:1365
+msgid "unknown"
+msgstr ""
