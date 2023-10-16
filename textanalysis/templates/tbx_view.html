@@ -60,10 +60,8 @@ select, select option {
     <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
     <template v-if="error===null && !wait">
 
-    <div>
-      <span v-if="obj_type_label"><label>{{ obj_type_label }}</label></span>
-      <span v-if="title || label">: <i>{{ title }}{{ label }}</i> ({{ obj_id }})</span>
-    </div>
+    <div><label>{{ obj_type_label }}</label>: {{ label }} ({{ obj_id }})</div>
+    <div v-if="title"><label>{{ label_title }}</label>: {{ title }}</div>
     <div v-if="url"><label>{{ label_url }}</label>: <a :href="url" target="_blank">{{ url }}</a></div>
     <div v-if="source"><label>{{ label_source }}</label>: {{ source }}</div>
     <div v-if="languages"><label>{{ label_languages }}</label>: 
@@ -180,10 +178,11 @@ select, select option {
           obj_type: '{{ obj_type }}',
           obj_id: '{{ obj_id }}',
           obj_type_label: '{{ obj_type_label }}',
+          label: '{{ label }}',
           title: '{{ title }}',
+          source: '{{ source }}',
           url: '{{ url }}',
           languages: [],
-          label: null,
           color_dict: null,
 		  language_map: null,
           text_filter: '',
@@ -294,7 +293,7 @@ select, select option {
             return filtered;
 		  },
 		  export_glossary: function(format) {
-	        let data = {format: format, title: this.title, languages: this.selected_languages(), concepts: this.filtered_concepts, columns: this.columns};
+	        let data = {format: format, title: this.title, source: this.source, languages: this.selected_languages(), concepts: this.filtered_concepts, columns: this.columns};
 	        fetch('/textanalysis/tbx_export/', {
 	          method: 'POST',
 	          headers: { "Content-Type": "application/json", "X-Requested-With": "XMLHttpRequest" },

@@ -1625,11 +1625,15 @@ if 'commons' in settings.INSTALLED_APPS:
         if is_ajax(request):
             data = var_dict
             document = get_object_or_404(Document, id=obj_id)
-            data['title'] = document.label
+            data['label'] = document.label
+            title = document.label.replace('.csv', '').replace('.tbx', '')
             f = document.open()
             xml_str = f.read()
             tbx_dict = tbx_xml_2_dict(xml_str, split_subjects=True)
             tbx = tbx_dict['tbx']
+            header = tbx.get('header', {})
+            data['title'] = title or header.get('title', '')
+            data['source'] = header.get('source', '')
             concepts = tbx['text']['body']['conceptEntry']
             data['concepts'] = concepts
             data['languages'] = tbx_languages(concepts)
@@ -1651,8 +1655,7 @@ if 'commons' in settings.INSTALLED_APPS:
     def tbx_export(request):
         data = json.loads(request.body.decode('utf-8'))
         title = data['title']
-        if title.endswith('.tbx'):
-            title = '.'.join(title.split('.')[:-1])
+        source = data['source']
         format = data['format']
         languages = data['languages']
         concepts = data['concepts']
@@ -1661,7 +1664,7 @@ if 'commons' in settings.INSTALLED_APPS:
         concept_columns = [c for c in ALL_CONCEPT_COLUMNS if c in columns]
         lang_columns = [c for c in ALL_LANG_COLUMNS if c in columns]
         term_columns = [c for c in ALL_TERM_COLUMNS if c in columns]
-        tbx_dict = {'tbx': {'text': {'index': {'langs': languages, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concepts}}}}
+        tbx_dict = {'tbx': {'header': {'title': title, 'source': source}, 'text': {'index': {'langs': languages, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concepts}}}}
 
         if format == 'tbx':
             xml_str = tbx_dict_2_xml(tbx_dict)

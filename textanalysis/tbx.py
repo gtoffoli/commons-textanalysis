@@ -117,6 +117,11 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
 
     py_dict = json.loads(json_str)
 
+    fileDesc = py_dict['tbx'].get('tbxHeader', {}).get('fileDesc', {})
+    title = fileDesc.get('titleStmt', {}).get('title', '')
+    source = fileDesc.get('sourceDesc', '')
+    header = {'title': title, 'source': source}
+
     langs = set()
     columns = set(['id', 'lang', 'term',])
     concepts = py_dict['tbx']['text']['body']['conceptEntry']
@@ -238,13 +243,17 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     concept_columns = [c for c in ALL_CONCEPT_COLUMNS if c in columns]
     lang_columns = [c for c in ALL_LANG_COLUMNS if c in columns]
     term_columns = [c for c in ALL_TERM_COLUMNS if c in columns]
-    return {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+    # return {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+    return {'tbx': {'header': header, 'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
 
 def tbx_dict_2_tsv(tbx_dict: dict) -> str:
     """
     Takes a Python dict representing an xml-tbx document parsed with tbx_xml_2_dict, simpliflied but enriched with an 'index' section.
     Produces a text file in TSV format (tab-separated values), whose columns are specified by the 'index' section.
     """
+    header = tbx_dict['tbx'].get('header', {})
+    title = header.get('title', '')
+    source = header.get('source', '')
     text = tbx_dict['tbx']['text']
     index = text['index']
     concept_columns = index['conceptColumns']
@@ -252,10 +261,12 @@ def tbx_dict_2_tsv(tbx_dict: dict) -> str:
     lang_columns = index['langColumns']
     lang_blanks = ['' for key in lang_columns]
     term_columns = index['termColumns']
-    # builds the heading row
+    # build the signature and headings row
+    signature = '\t'.join(['TBX', title, source])
     col_names = concept_columns + lang_columns + term_columns
     headings = '\t'.join(col_names).replace('def_source', 'source').replace('term_source', 'source')
-    lines = [headings]
+    # lines = [headings]
+    lines = [signature, headings]
     # loops on the concept list
     for concept_dict in text['body']['conceptEntry']:
         concept_values = []
@@ -289,18 +300,26 @@ def tbx_dict_2_tsv(tbx_dict: dict) -> str:
     csv_data = '\n'.join(lines)
     return csv_data
 
-def tbx_tsv_2_dict(tsv_data: str) -> dict:
+# def tbx_tsv_2_dict(tsv_data: str) -> dict:
+def tbx_tsv_2_dict(tsv_data: str, title='', source='') -> dict:
     lines = tsv_data.splitlines()
     reader = csv.reader(lines, delimiter='\t')
     parsed_tsv = list(reader)
-    columns = parsed_tsv[0]
+    i_row = 0
+    columns = parsed_tsv[i_row]
+    if columns[0] == 'TBX':
+        title = columns[1]
+        source = columns[2]
+        i_row += 1
+        columns = parsed_tsv[i_row]
     i_term = None
     for index, col in enumerate(columns):
         if col == 'term':
             i_term = index
         elif col == 'source':
             columns[index] = i_term and 'term_source' or 'def_source'
-    rows = parsed_tsv[1:]
+    i_row += 1
+    rows = parsed_tsv[i_row:]
     row_dicts = []
     for row in rows:
         row_dicts.append(dict(zip(columns, row)))
@@ -344,7 +363,8 @@ def tbx_tsv_2_dict(tsv_data: str) -> dict:
             lang_dicts = []
             concept_dicts.append(concept_dict)
     concept_dicts.reverse()
-    tbx_dict = {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+    # tbx_dict = {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
+    tbx_dict = {'tbx': {'header': {'title': title, 'source': source}, 'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
     return tbx_dict
 
 def add_key_val_to_xml(parent, key, val):
@@ -393,8 +413,19 @@ def tbx_dict_2_xml(tbx_dict: dict) -> str:
     Build in memory an etree (XML) object by converting a Python dict
     which represents a TBX document with simplified syntax 
     """
+    header = tbx_dict['tbx'].get('header', {})
+    title = header and header.get('title', '') or ''
+    source = header and header.get('source', '') or ''
     xml_str = """<?xml version="1.0" encoding="utf-8"?>
 <tbx type="TBX-Basic" style="dca" xml:lang="en" xmlns="urn:iso:std:iso:30042:ed-2">
+    <tbxHeader>
+        <fileDesc>
+            <titleStmt>
+                <title>{}</title>
+            </titleStmt>
+            <sourceDesc>{}</sourceDesc>
+        </fileDesc>
+    </tbxHeader>
     <text>
         {}
     </text>
@@ -406,7 +437,8 @@ def tbx_dict_2_xml(tbx_dict: dict) -> str:
         add_key_val_to_xml(body, 'conceptEntry', concept_entry)
     xml_block = tostring(body, encoding="unicode")
     block_list.append(xml_block)
-    return xml_str.format('\n'.join(block_list))
+    # return xml_str.format('\n'.join(block_list))
+    return xml_str.format(title, source, '\n'.join(block_list))
 
 def tbx_xml_to_json_file(path: str, filename: str) -> None:
     """ tbx_xml_to_json_file
