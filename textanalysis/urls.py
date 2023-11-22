@@ -61,6 +61,9 @@ urlpatterns = [
     url(r"^corpus_update/$", views.ajax_corpus_update, name="ajax_corpus_update"),
     url(r"^compare_resources/$", views.ajax_compare_resources, name="ajax_compare_resources"),
 
+    url(r"^glossaries/$", views.tbx_edit, name="tbx_edit"),
+    url(r"^tbx_upload/$", views.tbx_upload, name="tbx_upload"),
+
     url(r"^test_vue$", TemplateView.as_view(template_name="test_vue.html"), name="test_vue"),
 ]
 
@@ -70,6 +73,7 @@ if 'commons' in settings.INSTALLED_APPS:
         url(r"^tbx_view/(?P<obj_type>[\w\.-]+)/(?P<obj_id>[\w\d-]+)/$", views.tbx_view, name="tbx_view_2"),
         url(r"^tbx_export/$", views.tbx_export, name="tbx_export"),
         url('glossary-autocomplete/$', views.glossary_autocomplete, name='glossary-autocomplete',),
+        url(r"^corpora/$", views.corpora, name="corpora"),
     ]
 
 urlpatterns += [

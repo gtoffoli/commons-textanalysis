@@ -1,0 +1,195 @@
+{% extends "base.html" %}
+{% load staticfiles %}
+{% load i18n %}
+
+{% block head_title %}{% trans "Text Analysis" %} - {% trans "load/create glossary" %}{% endblock %}
+
+{% block extra_style %}
+<link rel="shortcut icon" href="{% static "commons/img/ta_dashboard.ico" %}" type="image/x-icon">
+<link rel="apple-touch-icon" href="{% static "commons/img/ta_dashboard_icon.png" %}" type="image/png">
+<link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
+<link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
+<style>
+	label { vertical-align: top;}
+</style>
+{% endblock extra_style %}
+
+{% block extra_head %}
+    <script src="{% static "nlp/js/jquery.min.js" %}"></script>
+    <script src="{% static "nlp/js/scripts.js" %}"></script>
+    <script src='https://unpkg.com/vue@2.2.6'></script>
+{% endblock extra_head %}
+
+{% block user %}{% endblock user %}
+
+{% block nav_vue %}
+  {% include "_header_bar.html" %}
+  <div class="navbar">
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "load/create glossary" %}</h3>
+  </div>
+{% endblock nav_vue %}
+
+{% block body_class %}glossaries{% endblock %}
+
+{% block body_base %}
+<div class="container-fluid">
+  <div id="app" class='components-container'>
+    <div style="text-align: center;">
+
+    {% verbatim %}
+    <template v-if="error===null">
+
+	<div class="padding510">
+	  <h3>{{ heading_upload }}</h3>
+	</div>
+    <div style="margin: 5px; padding: 5px;">
+    <form enctype="multipart/form-data" novalidate>
+        <!-- <input type="file" multiple name="upload" :disabled="isSaving" @change="upload_filesChange($event.target.name, $event.target.files)" accept="*" class="input-file"> -->
+        <input type="file" name="upload" :disabled="isSaving" @change="handleFileUpload($event)" accept=".tbx,.csv" class="input-file">
+    </form>
+    </div>
+
+    </template>
+    {% endverbatim %}
+
+	<div style="text-align: center;" class="padding1020">
+	  <h3>{% trans "create a glossary stub"|capfirst %}</h3>
+	{% if error %}
+	  <div style="text-color: red;">{{ error }}</div>
+	{% else %}
+	  <div>
+	  <form method="post" action="" target="_blank" id="glossary_edit_form">{% csrf_token %}
+	    {% for field in form.hidden_fields %}{{ field }}{% endfor %}
+        {% for field in form.visible_fields %}{% with i=forloop.counter %}
+          <div class="form-group" style="margin-top: 10px;">
+            <label for="{{ field.name }}">{{ field.label|capfirst}}</label>
+            <br>{{ field }}
+            {% if field.help_text %}<br><small id="{{ field.name }}helpBlock" class="help-block">{{ field.help_text }}</small>{% endif %}
+          </div>
+        {% endwith %}{% endfor %}
+	    <div class="panel-footer-c4 padding1020" style="clear: both;">
+	      <button type="submit" name="submit" id="submit" value="submit" class="btn btn-default">{% trans "create and save"|capfirst %}</button>&nbsp;
+	    </div>
+	  </form>
+	  </div>
+	{% endif %}
+	</div>
+
+  </div>
+</div>
+{% endblock %}
+
+{% block footer_base %}{% endblock footer_base %}
+
+{% block script_base %}
+<script type="module">
+	// https://v2.vuejs.org/v2/guide/forms.html#Select
+	// https://stackoverflow.com/questions/66503268/why-doesn-t-vuejs-natively-support-multiple-select
+
+      const STATUS_INITIAL = 0, STATUS_SAVING = 1, STATUS_SUCCESS = 2, STATUS_FAILED = 3;
+	
+      var app = new Vue({
+        name: 'tbx_view',
+        el: '#app',
+        data: {
+          error: null,
+          form: null,
+          hidden_columns: [],
+          uploadedFiles: [],
+          uploadError: null,
+          currentStatus: null,
+          
+          label_see: `{% trans "see"|capfirst %}`,
+          heading_upload: `{% trans "load a glossary from local device"|capfirst %}`,
+          label_new: `{% trans "in memory"|capfirst %}`,
+          label_initialize_new: `{% trans "new glossary"|capfirst %}`,
+          label_concept: `{% trans "concept" %}`,
+          label_concepts_terms: `{% trans "concepts and terms"|capfirst %}`,
+          label_filters: `{% trans "filters setting"|capfirst %}`,
+          label_subjects: `{% trans "subjects" %}`,
+          label_definition: `{% trans "definition" %}`,
+          label_definition_source: `{% trans "def.source" %}`,
+          label_language: `{% trans "lang" %}`,
+          label_type: `{% trans "type" %}`,
+          label_pos: `{% trans "POS" %}`,
+          label_reliability: `{% trans "rel." %}`,
+          label_status: `{% trans "status" %}`,
+          label_term: `{% trans "term" %}`,
+        },
+	    computed: {
+	      filtered_columns: function () {
+	        return this.columns.filter((col) => !this.hidden_columns.includes(col));
+	      }
+	  },
+        methods: {
+          resize() {
+            console.log('resize')
+          },
+          // https://marketsplash.com/tutorials/vue-js/vue-js-form-submit/
+          handleSave: function() {
+          },
+		  // https://www.freecodecamp.org/news/upload-files-with-javascript/
+		  // https://www.digitalocean.com/community/tutorials/how-to-handle-file-uploads-in-vue-2
+		  // https://stackoverflow.com/questions/36067767/how-do-i-upload-a-file-with-the-js-fetch-api
+	      upload_reset() {
+	        // reset form to initial state
+	        this.currentStatus = STATUS_INITIAL;
+	        this.uploadedFiles = [];
+	        this.uploadError = null;
+	      },
+	      handleFileUpload(event) {
+			let fileInputElement = event.target;
+			let files = fileInputElement.files
+			if (!files)
+				return;
+			let file = files[0]
+			let formData = new FormData();
+			formData.append('upload', file);
+	        // upload data to the server
+	        this.currentStatus = STATUS_SAVING;
+	        fetch('/textanalysis/tbx_upload/', {
+	          method: 'POST',
+	          headers: {
+				"Accept": ".tbx,.csv",
+			  },
+	          body: formData
+	       	})
+	        .then(response => response.json())
+	        .then(data => {
+              this.currentStatus = STATUS_SUCCESS;
+	          // this.$forceUpdate();
+	          let obj_type = data['obj_type'];
+	          console.log(data['result'], obj_type);
+	          if (obj_type=='file') {
+				let url = '/textanalysis/tbx_view/file/0/';
+				// window.location.href = url;
+				window.open(url);
+			  }
+	        })
+	        .catch(err => (this['result'] = err))
+
+	      },
+		  new_glossary: function() {
+			  document.location.href = '/textanalysis/glossaries/';
+		  }
+        },
+	    computed: {
+	      isInitial() {
+	        return this.currentStatus === STATUS_INITIAL;
+	      },
+	      isSaving() {
+	        return this.currentStatus === STATUS_SAVING;
+	      },
+	      isSuccess() {
+	        return this.currentStatus === STATUS_SUCCESS;
+	      },
+	      isFailed() {
+	        return this.currentStatus === STATUS_FAILED;
+	      }
+	    },
+	    mounted() {
+	      this.upload_reset();
+	    },
+      });
+ </script>
+{% endblock script_base %}
