@@ -6,11 +6,13 @@ import hashlib
 from collections import defaultdict, OrderedDict
 from operator import itemgetter
 
-from django.http import HttpRequest, HttpResponse, HttpResponseForbidden, JsonResponse
+from django.http import HttpRequest, HttpResponse, HttpResponseRedirect, HttpResponseForbidden, JsonResponse
 from django.shortcuts import render, get_object_or_404
 from django.conf import settings
+from django.utils.decorators import method_decorator
 from django.utils.translation import gettext_lazy as _
 from django.utils.text import capfirst
+from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.contrib.sites.shortcuts import get_current_site
 from django.contrib.auth.models import User
@@ -44,7 +46,7 @@ else:
     PUBLICATION_STATE_DICT = dict(PUBLICATION_STATE_CHOICES)
 
 from textanalysis.tbx import tbx_dict_2_xml, tbx_dict_2_tsv
-from textanalysis.tbx import ALL_CONCEPT_COLUMNS, ALL_LANG_COLUMNS, ALL_TERM_COLUMNS
+from textanalysis.tbx import BASIC_COLUMNS, ALL_CONCEPT_COLUMNS, ALL_LANG_COLUMNS, ALL_TERM_COLUMNS
 
 def track_analysis(request, verb, obj_type='', obj_id='', activity_id='text', function=''):
     if 'commons' in settings.INSTALLED_APPS:
@@ -53,7 +55,7 @@ def track_analysis(request, verb, obj_type='', obj_id='', activity_id='text', fu
         root_project = settings.SITE_ROOT and Project.objects.get(slug=settings.SITE_ROOT) or None
         track_action(request, request.user, verb, obj, activity_id=activity_id, target=root_project)
 
-from textanalysis.forms import TextAnalysisInputForm, GlossaryForm
+from textanalysis.forms import TextAnalysisInputForm, GlossaryUploadForm, GlossaryCreateForm
 from textanalysis.forms import INITIAL_LANGUAGES_SELECTION, INITIAL_FIELDS_SELECTION
 from textanalysis.readability import readability_indexes, readability_indexes_keys, readability_level
 from textanalysis.readability import compute_lexical_rarity, cs_readability_01
@@ -1719,13 +1721,16 @@ if 'commons' in settings.INSTALLED_APPS:
         return render(request, 'contents_dashboard.html', {'project_id': 0, 'VUE': True,})
 
 @csrf_exempt
-def tbx_upload(request):
+def tbx_upload(request, uploaded_file=None):
     """ Called from tbx_edit view/template to upload from local file and visualize a TBX glossary. """
-    formData = request.body # bytes
-    print(len(formData)) # 90827
-    data = request.POST
-    files = request.FILES
-    file = request.FILES.get('upload')
+    if uploaded_file:
+        file = uploaded_file
+    else:
+        formData = request.body # bytes
+        print(len(formData)) # 90827
+        data = request.POST
+        files = request.FILES
+        file = request.FILES.get('upload')
     print(len(file)) # 90607
     filename = file.name
     print(filename) # Glossary_Course_Rosa Esteban.tbx
@@ -1740,6 +1745,8 @@ def tbx_upload(request):
         data['obj_type'] = 'file'
     else:
         data = { 'result': 'no data' }
+    if uploaded_file:
+        return HttpResponseRedirect('/textanalysis/tbx_view/file/0/')
     body = json.dumps(data)
     return HttpResponse(body, content_type='application/json')
 
@@ -1753,3 +1760,40 @@ def tbx_edit(request):
 A first dummy concept with code 'cid-0000' works as a template using all languages (and domains, if used),
 with dummy or typical values for the mandatory fields and the other used fields."""
     return render(request, 'tbx_edit.html', var_dict)
+
+@method_decorator(csrf_exempt, name='dispatch')
+class TbxNew(View):
+    upload_form_class = GlossaryUploadForm
+    create_form_class = GlossaryCreateForm
+    template_name = 'tbx_new.html'
+
+    def get(self, request, *args, **kwargs):
+        upload_form = self.upload_form_class()
+        initial = {'languages': INITIAL_LANGUAGES_SELECTION, 'optional_fields': INITIAL_FIELDS_SELECTION}
+        create_form = self.create_form_class(initial=initial)
+        return render(request, self.template_name, {'upload_form': upload_form, 'create_form': create_form,})
+
+    def post(self, request, *args, **kwargs):
+        if request.POST.get('upload', ''):
+            form = self.upload_form_class(request.POST, request.FILES)
+            uploaded_file = request.FILES.get('glossary')
+            return tbx_upload(request, uploaded_file=uploaded_file)
+        else:
+            form = self.create_form_class(request.POST)
+            if form.is_valid():
+                data = form.cleaned_data
+                header = {}
+                header['title'] = data['title']
+                header['source'] = data['source']
+                index = {}
+                index['languages'] = data['languages']
+                index['subjects'] = data['domains']
+                optional_fields = data['optional_fields']
+                index['conceptColumns'] = [col for col in ALL_CONCEPT_COLUMNS if col in BASIC_COLUMNS or col in optional_fields]
+                index['langColumns'] = [col for col in ALL_LANG_COLUMNS if col in BASIC_COLUMNS or col in optional_fields]
+                index['termColumns'] = [col for col in ALL_TERM_COLUMNS if col in BASIC_COLUMNS or col in optional_fields]
+                tbx_dict = {'tbx': {'header': header, 'text': {'index': index, 'body': {'conceptEntry': []}}}}
+                csv_data = tbx_dict_2_tsv(tbx_dict)
+                request.session['text'] = csv_data
+                request.session['filename'] = 'temp.csv'
+                return HttpResponseRedirect('/textanalysis/tbx_view/file/0/')

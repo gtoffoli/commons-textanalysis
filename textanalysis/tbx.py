@@ -10,6 +10,7 @@ from .utils import read_input_file, write_output_file, join_blankspaces
 ALL_CONCEPT_COLUMNS = ['id', 'subjects',]
 ALL_LANG_COLUMNS = ['lang', 'definition', 'def_source',]
 ALL_TERM_COLUMNS = ['term', 'type', 'POS', 'status', 'reliability', 'term_source', 'context',]
+BASIC_COLUMNS = ['id', 'lang', 'term',]
 
 TBX_DICT_2_XML_MAP = {
     'conceptEntry': 'conceptEntry',
@@ -408,16 +409,8 @@ def add_key_val_to_xml(parent, key, val):
             child.text = val
             parent.append(child)
 
-def tbx_dict_2_xml(tbx_dict: dict) -> str:
-    """
-    Build in memory an etree (XML) object by converting a Python dict
-    which represents a TBX document with simplified syntax 
-    """
-    header = tbx_dict['tbx'].get('header', {})
-    title = header and header.get('title', '') or ''
-    source = header and header.get('source', '') or ''
-    xml_str = """<?xml version="1.0" encoding="utf-8"?>
-<tbx type="TBX-Basic" style="dca" xml:lang="en" xmlns="urn:iso:std:iso:30042:ed-2">
+TBX_XML_SKELETON = """<?xml version="1.0" encoding="utf-8"?>
+<tbx type="TBX-IATE" style="dca" xml:lang="en" xmlns="urn:iso:std:iso:30042:ed-2">
     <tbxHeader>
         <fileDesc>
             <titleStmt>
@@ -431,14 +424,22 @@ def tbx_dict_2_xml(tbx_dict: dict) -> str:
     </text>
 </tbx>
 """
+
+def tbx_dict_2_xml(tbx_dict: dict) -> str:
+    """
+    Build in memory an etree (XML) object by converting a Python dict
+    which represents a TBX document with simplified syntax 
+    """
+    header = tbx_dict['tbx'].get('header', {})
+    title = header and header.get('title', '') or ''
+    source = header and header.get('source', '') or ''
     block_list = []
     body = Element('body')
     for concept_entry in tbx_dict['tbx']['text']['body']['conceptEntry']:
         add_key_val_to_xml(body, 'conceptEntry', concept_entry)
     xml_block = tostring(body, encoding="unicode")
     block_list.append(xml_block)
-    # return xml_str.format('\n'.join(block_list))
-    return xml_str.format(title, source, '\n'.join(block_list))
+    return TBX_XML_SKELETON.format(title, source, '\n'.join(block_list))
 
 def tbx_xml_to_json_file(path: str, filename: str) -> None:
     """ tbx_xml_to_json_file

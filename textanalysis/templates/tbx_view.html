@@ -299,7 +299,7 @@ select, select option {
 	       	})
 	        .then(response => response.json())
 	        .then(data => {
-				let title = data['title']
+				let title = data['title'].replace('.tbx', '').replace('.csv', '')
 				let format = data['format']
 				let type = (format == 'tbx')? 'text/xml' : 'text/csv';
 				let fileName = title + '.' + format;

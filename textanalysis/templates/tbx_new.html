@@ -1,0 +1,65 @@
+{% extends "base.html" %}
+
+{% load static i18n%}
+
+{% block head_title %}{% trans "new in-memory glossary"|capfirst %}{% endblock %}
+
+{% block extra_style %}
+{% endblock %}
+
+{% block body_class %}glossaries{% endblock %}
+
+{% block body %}
+<div class="panel panel-c4 text-left marginTB30">
+
+    <div class="panel-heading-c4 padding1020">
+      <h2 class="marginTB5">{% trans "new in-memory glossary"|capfirst %}</h2>
+    </div>
+
+	<div class="padding510">
+	  <h3>{% trans "load a glossary from local device"|capfirst %}</h3>
+
+    <div style="margin: 5px; padding: 5px;">
+      <form method="post" enctype="multipart/form-data" target="_blank">
+        {% for field in upload_form.visible_fields %}
+	    <div class="form-group">
+          {{ field }}
+          <small id="{{ upload_form.visible_fields.0.name }}helpBlock" class="help-block">{{ field.help_text }}</small>
+        </div>
+        {% endfor %}
+	    <div class="form-group" style="clear: both;">
+          <button type="submit" name="upload" id="upload" class="btn btn-default" value="upload">{% trans "upload and view in new tab"|capfirst %}</button>
+		</div>
+      </form>
+    </div>
+
+	<h3>{% trans "create a glossary stub"|capfirst %}</h3>
+	{% if error %}
+	<div style="text-color: red;">{{ error }}</div>
+	{% else %}
+	<div>
+	  <form method="post" action="" target="_blank" id="glossary_edit_form">{% csrf_token %}
+	    {% for field in create_form.hidden_fields %}{{ field }}{% endfor %}
+        {% for field in create_form.visible_fields %}{% with i=forloop.counter %}
+          <div class="form-group" style="margin-top: 10px; float: left; padding-right: 15px;">
+            <label for="{{ field.name }}">{{ field.label|capfirst}}</label>
+            {{ field }}
+            {% if field.help_text %}<small id="{{ field.name }}helpBlock" class="help-block">{{ field.help_text }}</small>{% endif %}
+          </div>
+        {% endwith %}{% endfor %}
+	    <div class="form-group" style="clear: both;">
+	      <button type="submit" name="create" id="create" class="btn btn-default" value="create">{% trans "create and view in new tab"|capfirst %}</button>&nbsp;
+	    </div>
+	  </form>
+	</div>
+	{% endif %}
+	</div>
+</div>
+{% endblock %}
+
+<!--
+document.getElementById('mybutton').addEventListener('click', function(){
+  window.open('Upload.cfm', 'result', 'width=300,height=300');
+  document.getElementById('myform').submit();
+});
+-->
