@@ -18,6 +18,16 @@ th, td {
   text-align: center;
 }
 
+button {
+  display: inline-block;
+  margin: 0 4px 0 0;
+  border-radius: 5px;
+  cursor: pointer;
+}
+button.edit {
+  background-color: LightGray;
+  border: 4px solid black;
+}
 li.language {
   display: inline-block;
 }
@@ -74,6 +84,14 @@ select, select option {
 
     <h4>{{ label_filters }}</h4>
 
+
+    <div v-if="can_edit" style="display: inline-block; margin: 10px;">
+       <div style="margin: 15px;"><button class="edit" :style="'background-color:' + (edit==true?'White;':'LightGray;')"
+          v-on:click.stop="toggle_edit();"><span v-if="edit">{{ label_editing }}</span><span v-if="!edit">{{ label_viewing }}</span></button></div>
+      <div style="font-size: x-small; font-style: italic; text-align: center;">{{ help_editing_1 }}<br>{{ help_editing_2 }}
+      	<br>( <span style="color: red;">{{ help_editing_3 }}</span> )</div>
+    </div>
+
     <div style="display: inline-block; margin-right: 10px;">
       <ul>
         <li class="language" v-for="language in languages">
@@ -87,12 +105,12 @@ select, select option {
     </div>
 
     <div style="display: inline-block; margin: 10px;">
-      <div style="margin: 15px;"><input type="text" v-model="text_filter" v-on:input="filter_terms()" :placeholder="label_enter_text_here" size="30" maxlength="32" /></div>
+      <div style="margin: 15px;"><input type="text" v-model="text_filter" v-on:input="filter_terms()" ref="text_filter" :placeholder="label_enter_text_here" size="30" maxlength="32" /></div>
       <div style="font-size: x-small; font-style: italic;">{{ label_filter }}</div>
     </div>
 
     <div style="display: inline-block; margin: 10px;">
-	  <select v-model="hidden_columns" multiple style="width: 100px;">
+	  <select v-model="hidden_columns" multiple ref="select_columns" style="width: 100px;">
 		<option v-for="column in hideable_columns" :value="column">{{column}}</option>
 	  </select>
       <div style="font-size: x-small; font-style: italic;">{{ label_hide_columns }}</div>
@@ -175,11 +193,12 @@ select, select option {
           obj_type: '{{ obj_type }}',
           obj_id: '{{ obj_id }}',
           obj_type_label: '{{ obj_type_label }}',
+          can_edit: false,
+          edit: false,
           label: '{{ label }}',
           title: '{{ title }}',
           source: '{{ source }}',
           url: '{{ url }}',
-          languages: [],
           color_dict: null,
 		  language_map: null,
           text_filter: '',
@@ -188,15 +207,25 @@ select, select option {
           invalid: null,
           source: '',
           concepts: [],
+          languages: [],
           subjects: [],
           columns: [],
           hideable_columns: [],
           hidden_columns: [],
+          term_types: [],
+          term_poses: [],
+          term_statuses: [],
+          term_reliabilities: [],
           
           label_see: `{% trans "see"|capfirst %}`,
           label_id: `{% trans "id" %}`,
           label_title: `{% trans "title"|capfirst %}`,
           label_url: `{% trans "url"|capfirst %}`,
+          label_viewing: `{% trans "VIEWING"|capfirst %}`,
+          label_editing: `{% trans "EDITING"|capfirst %}`,
+          help_editing_1: `{% trans "toggle to enable/disable editing; in edit mode all filters are inactive;"|capfirst %}`,
+          help_editing_2: `{% trans "editing works in memory: you can save the glossary to local device" %}`,
+          help_editing_3: `{% trans "FEATURE UNDER DEVELOPMENT" %}`,
           label_languages: `{% trans "languages"|capfirst %}`,
           label_source: `{% trans "terminology source"|capfirst %}`,
           label_source_collections: `{% trans "source collections"|capfirst %}`,
@@ -225,6 +254,8 @@ select, select option {
         },
 	    computed: {
 	      filtered_columns: function () {
+			if (this.edit)
+			  return this.columns;
 	        return this.columns.filter((col) => !this.hidden_columns.includes(col));
 	      }
 	  },
@@ -232,11 +263,27 @@ select, select option {
           resize() {
             console.log('resize')
           },
-          toggle_language: function(language) {
-            Vue.set(this.language_map[language], 'selected', !this.language_map[language].selected);
+          toggle_edit: function() {
+            this.edit = !this.edit;
+            if (this.edit) {
+              Vue.set(this.$refs['select_columns'], 'disabled', true);
+              Vue.set(this.$refs['text_filter'], 'disabled', true);
+            }
+            else {
+              Vue.set(this.$refs['select_columns'], 'disabled', false);
+              Vue.set(this.$refs['text_filter'], 'disabled', false);
+            }
             this.$forceUpdate();
           },
+          toggle_language: function(language) {
+			if (!this.edit) {
+              Vue.set(this.language_map[language], 'selected', !this.language_map[language].selected);
+              this.$forceUpdate();
+            }
+          },
           filter_languages: function(langSec) {
+			if (this.edit)
+			  return langSec;
 			var selected_items = [];
             langSec.forEach(function(item) {
               if (app.language_map[item['lang']]['selected'])
@@ -245,6 +292,8 @@ select, select option {
             return selected_items;
           },
           selected_languages: function() {
+			if (this.edit)
+			  return this.languages;
 			var selected_items = [];
 			this.languages.forEach(function(language) {
 			  if (app.language_map[language].selected)
@@ -265,6 +314,8 @@ select, select option {
 			}
           },
           filter_concepts: function(original, pattern) {
+			if (this.edit)
+			  return original;
 			var filtered = [];
             for (let i = 0; i < original.length; i++) {
               let concept = original[i];
@@ -328,8 +379,9 @@ select, select option {
              for (var key in data) {
               this[key] = data[key];
              };
-             this['filtered_concepts'] = data['concepts']
-             this['filtered_columns'] = data['columns']
+             this['filtered_concepts'] = data['concepts'];
+             this['filtered_columns'] = data['columns'];
+             this.can_edit = (this.obj_type == 'file');
            })
           .catch(err => (this['error'] = err));
         },

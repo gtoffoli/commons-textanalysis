@@ -11,6 +11,10 @@ ALL_CONCEPT_COLUMNS = ['id', 'subjects',]
 ALL_LANG_COLUMNS = ['lang', 'definition', 'def_source',]
 ALL_TERM_COLUMNS = ['term', 'type', 'POS', 'status', 'reliability', 'term_source', 'context',]
 BASIC_COLUMNS = ['id', 'lang', 'term',]
+TBX_TERM_TYPES = ['fullForm', 'acronym', 'abbreviation',]
+TBX_TERM_POSES = ['noun', 'verb', 'adjective',]
+TBX_TERM_STATUSES = ['preferred', 'admitted', 'deprecated',]
+TBX_TERM_RELIABILITIES = ['10', '9', '8', '7', '6', '5',]
 
 TBX_DICT_2_XML_MAP = {
     'conceptEntry': 'conceptEntry',

@@ -61,7 +61,6 @@ urlpatterns = [
     url(r"^corpus_update/$", views.ajax_corpus_update, name="ajax_corpus_update"),
     url(r"^compare_resources/$", views.ajax_compare_resources, name="ajax_compare_resources"),
 
-    # url(r"^glossaries/$", views.tbx_edit, name="tbx_edit"),
     url(r"^glossaries/$", views.TbxNew.as_view(), name="tbx_new"),
     url(r"^tbx_upload/$", views.tbx_upload, name="tbx_upload"),
 

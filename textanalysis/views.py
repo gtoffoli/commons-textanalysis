@@ -47,6 +47,8 @@ else:
 
 from textanalysis.tbx import tbx_dict_2_xml, tbx_dict_2_tsv
 from textanalysis.tbx import BASIC_COLUMNS, ALL_CONCEPT_COLUMNS, ALL_LANG_COLUMNS, ALL_TERM_COLUMNS
+from textanalysis.tbx import TBX_TERM_TYPES, TBX_TERM_POSES, TBX_TERM_STATUSES, TBX_TERM_RELIABILITIES
+
 
 def track_analysis(request, verb, obj_type='', obj_id='', activity_id='text', function=''):
     if 'commons' in settings.INSTALLED_APPS:
@@ -1624,10 +1626,14 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict['VUE'] = True
     if is_ajax(request):
         data = var_dict
+        extension = None
         if obj_type == 'file':
-            title = request.session.get('filename', '')
+            session = request.session 
+            title = session.get('filename', '')
             extension = title[-3:]
-            text = request.session.get('text', 'session error')
+            text = session.get('text', 'session error')
+            data['languages'] = session.get('languages', [])
+            data['subjects'] = session.get('subjects', [])
         else:
             document = get_object_or_404(Document, id=obj_id)
             data['label'] = document.label
@@ -1649,19 +1655,23 @@ def tbx_view(request, file_key='', obj_type='', obj_id='', url=''):
         data['source'] = header.get('source', '')
         concepts = tbx['text']['body']['conceptEntry']
         data['concepts'] = concepts
-        data['languages'] = tbx_languages(concepts)
+        if not obj_type == 'file':
+            data['languages'] = tbx_languages(concepts)
+            data['subjects'] = tbx_subjects(concepts)
         language_map = settings.LANGUAGE_MAPPING
         for language_code in language_map.keys():
             language_map[language_code]['selected'] = True
         data['language_map'] = language_map
-        data['subjects'] = tbx_subjects(concepts)
         index = tbx['text']['index']
         columns = index['conceptColumns'] + index['langColumns'] + index['termColumns']
         data['columns'] = columns
         hideable_columns = index['conceptColumns'][1:] + index['langColumns'][1:] + index['termColumns'][1:]
         data['hideable_columns'] = hideable_columns
+        data['term_types'] = TBX_TERM_TYPES
+        data['term_poses'] = TBX_TERM_POSES
+        data['term_statuses'] = TBX_TERM_STATUSES
+        data['term_reliabilities'] = TBX_TERM_RELIABILITIES
         return JsonResponse(data)
-        tbx_ajax_return(request, data, tbx_dict)
     else:
         return render(request, 'tbx_view.html', var_dict)
 
@@ -1722,25 +1732,27 @@ if 'commons' in settings.INSTALLED_APPS:
 
 @csrf_exempt
 def tbx_upload(request, uploaded_file=None):
-    """ Called from tbx_edit view/template to upload from local file and visualize a TBX glossary. """
+    """ Called from tbx_new view/template to upload from local file and visualize a TBX glossary. """
     if uploaded_file:
         file = uploaded_file
     else:
-        formData = request.body # bytes
-        print(len(formData)) # 90827
+        formData = request.body
         data = request.POST
         files = request.FILES
         file = request.FILES.get('upload')
-    print(len(file)) # 90607
     filename = file.name
-    print(filename) # Glossary_Course_Rosa Esteban.tbx
-    print(file.size, file.content_type, file.charset) # 90607 application/octet-stream None
     text = file.read().decode('utf-8')
-    print(len(text)) # 90353
-    print(len(text.splitlines())) # 1747
-    if filename.endswith('.tbx') or filename.endswith('.csv'):
+    extension = filename[-3:]
+    if extension == 'tbx' or extension == 'csv':
         request.session['text'] = text
         request.session['filename'] = filename
+        if extension == 'tbx':
+            tbx_dict = tbx_xml_2_dict(text, split_subjects=True)
+        elif extension == 'csv':
+            tbx_dict = tbx_tsv_2_dict(tsv_data=text)
+        concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
+        request.session['languages'] = tbx_languages(concepts)
+        request.session['subjects'] = tbx_subjects(concepts)
         data = { 'result': 'ok' }
         data['obj_type'] = 'file'
     else:
@@ -1749,17 +1761,6 @@ def tbx_upload(request, uploaded_file=None):
         return HttpResponseRedirect('/textanalysis/tbx_view/file/0/')
     body = json.dumps(data)
     return HttpResponse(body, content_type='application/json')
-
-@csrf_exempt
-def tbx_edit(request):
-    var_dict = {}
-    var_dict['VUE'] = True
-    form = GlossaryForm(initial={'languages': INITIAL_LANGUAGES_SELECTION, 'optional_fields': INITIAL_FIELDS_SELECTION})
-    var_dict['form'] = form
-    var_dict['note'] = """The TBX header, or the first row of the CSV document, store glossary title and source.
-A first dummy concept with code 'cid-0000' works as a template using all languages (and domains, if used),
-with dummy or typical values for the mandatory fields and the other used fields."""
-    return render(request, 'tbx_edit.html', var_dict)
 
 @method_decorator(csrf_exempt, name='dispatch')
 class TbxNew(View):
@@ -1786,8 +1787,9 @@ class TbxNew(View):
                 header['title'] = data['title']
                 header['source'] = data['source']
                 index = {}
-                index['languages'] = data['languages']
-                index['subjects'] = data['domains']
+                languages = [language.code for language in data['languages']]
+                request.session['languages'] = languages
+                request.session['subjects'] = data['domains']
                 optional_fields = data['optional_fields']
                 index['conceptColumns'] = [col for col in ALL_CONCEPT_COLUMNS if col in BASIC_COLUMNS or col in optional_fields]
                 index['langColumns'] = [col for col in ALL_LANG_COLUMNS if col in BASIC_COLUMNS or col in optional_fields]
