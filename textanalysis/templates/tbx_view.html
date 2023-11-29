@@ -39,9 +39,18 @@ button.language {
   margin: 0 4px 0 0;
   cursor: pointer;
 }
-
 select, select option {
   width: 100px;
+}
+
+input[type=text] {
+  width: 100%;
+  /* border: none; */
+  box-sizing: border-box;
+}
+select.edit {
+  width: 100%;
+  size: 3;
 }
 </style>
 {% endblock extra_style %}
@@ -158,6 +167,37 @@ select, select option {
         </tr>
         </template>
         </template>
+        <tr v-if="edit==true">
+			<td><button class="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
+                 v-on:click.stop="add_row();">{{ label_add }}</button>
+			</td>
+			<template v-for="c in columns">
+				<td v-if="c=='id'"><input type='text' v-model="concept_id"></td>
+				<td v-if="c=='subjects'"><select multiple class="edit" v-model="concept_subjects">
+		            <option v-for="subject in subjects" :value="subject">{{subject}}</option>
+	                </select></td>
+				<td v-if="c=='def_source'"><input type='text' v-model="concept_source"></td>
+				<td v-if="c=='lang'"><select class="edit" v-model="terms_language">
+		            <option v-for="lang in languages" :value="lang">{{lang}}</option>
+	                </select></td>
+				<td v-if="c=='definition'"><input type='text' v-model="concept_definition"></td>
+				<td v-if="c=='term'"><input type='text' v-model="term"></td>
+				<td v-if="c=='term_source'"><input type='text' v-model="term_source"></td>
+				<td v-if="c=='type'"><select class="edit" v-model="term_type">
+		            <option v-for="type in term_types" :value="type">{{type}}</option>
+	                </select></td>
+				<td v-if="c=='POS'"><select class="edit" v-model="term_pos">
+		            <option v-for="pos in term_poses" :value="pos">{{pos}}</option>
+	                </select></td>
+				<td v-if="c=='status'"><select class="edit" v-model="term_status">
+		            <option v-for="status in term_statuses" :value="status">{{status}}</option>
+	                </select></td>
+				<td v-if="c=='reliability'">rel</td>
+				<td v-if="c=='reliability'"><select class="edit" v-model="term_reliability">
+		            <option v-for="reliability in term_reliabilities" :value="reliability">{{reliability}}</option>
+	                </select></td>
+			</template>
+		</tr>
       </tbody>
     </table>
 
@@ -195,6 +235,7 @@ select, select option {
           obj_type_label: '{{ obj_type_label }}',
           can_edit: false,
           edit: false,
+          ready: false,
           label: '{{ label }}',
           title: '{{ title }}',
           source: '{{ source }}',
@@ -216,6 +257,18 @@ select, select option {
           term_poses: [],
           term_statuses: [],
           term_reliabilities: [],
+          
+          concept_id: '',
+          concept_subjects: [],
+          terms_language: '',
+          concept_definition: '',
+          concept_source: '',
+          term: '',
+          term_source: '',
+          term_type: '',
+          term_pos: '',
+          term_status: '',
+          term_reliability: '',
           
           label_see: `{% trans "see"|capfirst %}`,
           label_id: `{% trans "id" %}`,
@@ -251,6 +304,7 @@ select, select option {
           label_reliability: `{% trans "rel." %}`,
           label_status: `{% trans "status" %}`,
           label_term: `{% trans "term" %}`,
+          label_add: `{% trans "add"|capfirst %}`,
         },
 	    computed: {
 	      filtered_columns: function () {
@@ -258,7 +312,7 @@ select, select option {
 			  return this.columns;
 	        return this.columns.filter((col) => !this.hidden_columns.includes(col));
 	      }
-	  },
+	    },
         methods: {
           resize() {
             console.log('resize')
@@ -280,6 +334,8 @@ select, select option {
               Vue.set(this.language_map[language], 'selected', !this.language_map[language].selected);
               this.$forceUpdate();
             }
+          },
+          add_row: function() {
           },
           filter_languages: function(langSec) {
 			if (this.edit)
