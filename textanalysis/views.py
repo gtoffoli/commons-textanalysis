@@ -1572,7 +1572,8 @@ def ta(request, function, obj_type='', obj_id='', file_key='', url='', text='', 
         var_dict['obj_type_label'] = obj_type_label_dict[obj_type]
         if obj_type == 'text':
                 var_dict['obj_id'] = 0
-    track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
+    if not request.user.is_anonymous:
+        track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function=function)
     if function == 'corpus':
         return render(request, 'corpus_dashboard.html', var_dict)
     elif function == 'dashboard':
