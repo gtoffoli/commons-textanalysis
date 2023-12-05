@@ -133,9 +133,6 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     concept_dicts = []
     for concept in concepts:
         concept_dict = {'id': concept['@id']}
-        lang = type(concept['langSec']) is dict and concept['langSec'].get('lang', None)
-        if lang:
-            concept['langSec'] = [{'lang': lang, 'termSec': concept['langSec']['termSec']}]
         subjectField = concept.get('descrip', '')
         subjects = subjectField and subjectField.get('subjectField', '') or ''
         if subjects:
@@ -144,8 +141,11 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
                 subjects = subjects.split(';') or []
         concept_dict['subjects'] = subjects
         # each conceptEntry can contain one or more langSec
+        lang_items = concept['langSec']
+        if not type(lang_items) == list:
+            lang_items = [lang_items]
         lang_dicts = []
-        for lang_item in concept['langSec']:
+        for lang_item in lang_items:
             lang = lang_item['lang']
             langs.add(lang)
             lang_dict = {'lang': lang}
@@ -248,7 +248,6 @@ def tbx_xml_2_dict(tbx_str: str, split_subjects=False) -> dict:
     concept_columns = [c for c in ALL_CONCEPT_COLUMNS if c in columns]
     lang_columns = [c for c in ALL_LANG_COLUMNS if c in columns]
     term_columns = [c for c in ALL_TERM_COLUMNS if c in columns]
-    # return {'tbx': {'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
     return {'tbx': {'header': header, 'text': {'index': {'langs': langs, 'conceptColumns': concept_columns, 'langColumns': lang_columns, 'termColumns': term_columns,}, 'body': {'conceptEntry': concept_dicts}}}}
 
 def tbx_dict_2_tsv(tbx_dict: dict) -> str:

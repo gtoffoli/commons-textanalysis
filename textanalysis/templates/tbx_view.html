@@ -28,6 +28,14 @@ button.edit {
   background-color: LightGray;
   border: 4px solid black;
 }
+button.small {
+  background-color: white;
+  border: 2px solid black;
+  border-radius: 2px;
+  margin: 2px;
+  padding: 2px 4px 0px 4px;
+  vertical-align: middle;
+}
 li.language {
   display: inline-block;
 }
@@ -43,14 +51,13 @@ select, select option {
   width: 100px;
 }
 
-input[type=text] {
+input[type=text], textarea {
   width: 100%;
-  /* border: none; */
+  resize: vertical;
   box-sizing: border-box;
 }
 select.edit {
   width: 100%;
-  size: 3;
 }
 </style>
 {% endblock extra_style %}
@@ -96,7 +103,7 @@ select.edit {
 
     <div v-if="can_edit" style="display: inline-block; margin: 10px;">
        <div style="margin: 15px;"><button class="edit" :style="'background-color:' + (edit==true?'White;':'LightGray;')"
-          v-on:click.stop="toggle_edit();"><span v-if="edit">{{ label_editing }}</span><span v-if="!edit">{{ label_viewing }}</span></button></div>
+          v-on:click.stop="toggle_edit()"><span v-if="edit">{{ label_editing }}</span><span v-if="!edit">{{ label_viewing }}</span></button></div>
       <div style="font-size: x-small; font-style: italic; text-align: center;">{{ help_editing_1 }}<br>{{ help_editing_2 }}
       	<br>( <span style="color: red;">{{ help_editing_3 }}</span> )</div>
     </div>
@@ -105,7 +112,7 @@ select.edit {
       <ul>
         <li class="language" v-for="language in languages">
           <button class="language" :title="language_map[language]['label_en']"
-          v-on:click.stop="toggle_language(language);"
+          v-on:click.stop="toggle_language(language)"
           :style="'border-color:'+language_map[language]['color']+'; background-color:'+(language_map[language]['selected']==1?'White;':'LightGray;')">
           {{ language_map[language]['label'] }}</button>
          </li>
@@ -144,7 +151,8 @@ select.edit {
       <tbody>
         <template v-for="(c, c_index) in filtered_concepts">
         <template v-for="(l, l_index) in filter_languages(c['langSec'])">
-        <tr v-for="(t, t_index) in l['termSec']">
+        <template v-for="(t, t_index) in l['termSec']">
+		  <tr>
 			<template v-if="l_index===0 && t_index===0">
 	          <td>{{ c_index+1 }}</td>
 	          <td>{{ c['id'] }}</td>
@@ -159,28 +167,34 @@ select.edit {
 		      <td v-if="filtered_columns.includes('definition')"></td>
 		      <td v-if="filtered_columns.includes('def_source')">{{ l['def_source'] }}</td>
 		    </template>
-		    <td>{{ t['term'] }}</td>
-		    <td v-if="filtered_columns.includes('type')"><template v-if="t['type']">{{ t['type'] }}</template></td v-if="filtered_columns.includes('type')">
-		    <td v-if="filtered_columns.includes('POS')"><template v-if="t['POS']">{{ t['POS'] }}</template></td v-if="filtered_columns.includes('pos')">
-		    <td v-if="filtered_columns.includes('status')"><template v-if="t['status']">{{ t['status'] }}</template></td v-if="filtered_columns.includes('status')">
+		    <td>{{ t['term'] }}
+			  <span v-if="edit && (t_index==(l['termSec'].length)-1)"><br><button v-on:click.stop="add_item(c_index, l_index, t_index)" class="small" :title="label_add+' '+l['lang']+' '+label_term">+</button></span>
+			</td>
+		    <td v-if="filtered_columns.includes('type')"><template v-if="t['type']">{{ t['type'] }}</template></td>
+		    <td v-if="filtered_columns.includes('POS')"><template v-if="t['POS']">{{ t['POS'] }}</template></td>
+		    <td v-if="filtered_columns.includes('status')"><template v-if="t['status']">{{ t['status'] }}</template></td>
 		    <td v-if="filtered_columns.includes('reliability')"><template v-if="t['reliability']">{{ t['reliability'] }}</template></td>
-        </tr>
+          </tr>
+		  <tr v-if="(new_item) && (c_index==new_c_index) && (l_index==new_l_index) && (t_index==new_t_index)">
+			<td v-for="col in columns"></td>
+		  </tr>
+        </template>
         </template>
         </template>
         <tr v-if="edit==true">
-			<td><button class="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
-                 v-on:click.stop="add_row();">{{ label_add }}</button>
+			<td><button class="add" ref="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
+                 v-on:click.stop="add_row()">{{ label_add_concept }}</button>
 			</td>
 			<template v-for="c in columns">
 				<td v-if="c=='id'"><input type='text' v-model="concept_id"></td>
-				<td v-if="c=='subjects'"><select multiple class="edit" v-model="concept_subjects">
+				<td v-if="c=='subjects'"><select multiple class="edit" v-model="concept_subjects" :size="Math.min(subjects.length,3)">
 		            <option v-for="subject in subjects" :value="subject">{{subject}}</option>
 	                </select></td>
 				<td v-if="c=='def_source'"><input type='text' v-model="concept_source"></td>
 				<td v-if="c=='lang'"><select class="edit" v-model="terms_language">
 		            <option v-for="lang in languages" :value="lang">{{lang}}</option>
 	                </select></td>
-				<td v-if="c=='definition'"><input type='text' v-model="concept_definition"></td>
+				<td v-if="c=='definition'"><textarea v-model="concept_definition"></textarea></td>
 				<td v-if="c=='term'"><input type='text' v-model="term"></td>
 				<td v-if="c=='term_source'"><input type='text' v-model="term_source"></td>
 				<td v-if="c=='type'"><select class="edit" v-model="term_type">
@@ -205,11 +219,12 @@ select.edit {
     <div style="margin: 5px; padding: 5px;">
     <form @submit.prevent="handleSave">
 		<label>{{ label_export }}</label> &nbsp;
-	    <button type="submit" name="export_tbx" id="export_tbx" class="btn btn-default"
+	    <button type="submit" ref="export_tbx" class="btn btn-default"
 	    	v-on:click.stop="export_glossary('tbx');">{{ label_export_tbx }}</button>&nbsp;&nbsp;
-	    <button type="submit" name="export_csv" id="export_csv" class="btn btn-default"
+	    <button type="submit" ref="export_csv" class="btn btn-default"
 	    	v-on:click.stop="export_glossary('csv');">{{ label_export_csv }}</button>
     </form>
+    </div>
     </div>
 
     </template>
@@ -234,7 +249,6 @@ select.edit {
           obj_id: '{{ obj_id }}',
           obj_type_label: '{{ obj_type_label }}',
           can_edit: false,
-          edit: false,
           ready: false,
           label: '{{ label }}',
           title: '{{ title }}',
@@ -246,6 +260,7 @@ select.edit {
           filtered_concepts: [],
           error: null,
           invalid: null,
+          base_id: 'id-',
           source: '',
           concepts: [],
           languages: [],
@@ -257,6 +272,13 @@ select.edit {
           term_poses: [],
           term_statuses: [],
           term_reliabilities: [],
+
+          id_serial: 0,
+          edit: false,
+          new_item: false,
+          new_c_index: null,
+          new_l_index: null,
+          new_t_index: null,
           
           concept_id: '',
           concept_subjects: [],
@@ -305,37 +327,102 @@ select.edit {
           label_status: `{% trans "status" %}`,
           label_term: `{% trans "term" %}`,
           label_add: `{% trans "add"|capfirst %}`,
+          label_add_concept: `{% trans "add\nconcept"|capfirst %}`,
         },
 	    computed: {
 	      filtered_columns: function () {
 			if (this.edit)
 			  return this.columns;
 	        return this.columns.filter((col) => !this.hidden_columns.includes(col));
-	      }
+	      },
 	    },
         methods: {
-          resize() {
-            console.log('resize')
-          },
           toggle_edit: function() {
             this.edit = !this.edit;
             if (this.edit) {
               Vue.set(this.$refs['select_columns'], 'disabled', true);
               Vue.set(this.$refs['text_filter'], 'disabled', true);
+              Vue.set(this.$refs['export_tbx'], 'disabled', true);
+              Vue.set(this.$refs['export_csv'], 'disabled', true);
             }
             else {
               Vue.set(this.$refs['select_columns'], 'disabled', false);
               Vue.set(this.$refs['text_filter'], 'disabled', false);
+              Vue.set(this.$refs['export_tbx'], 'disabled', false);
+              Vue.set(this.$refs['export_csv'], 'disabled', false);
             }
             this.$forceUpdate();
           },
           toggle_language: function(language) {
 			if (!this.edit) {
+              console.log('toggle_language');
               Vue.set(this.language_map[language], 'selected', !this.language_map[language].selected);
               this.$forceUpdate();
             }
           },
+          next_id_serial: function() {
+			this.id_serial += 1;
+		  },
+		  invalid_row: function() {
+			Vue.set(this.$refs['add'], 'disabled', false);
+			return;
+		  },
+		  add_item: function(c_index, l_index, t_index) {
+			this.new_c_index = c_index;
+			this.new_l_index = l_index;
+			this.new_t_index = t_index;
+			this.new_item = true;
+		  },
           add_row: function() {
+			Vue.set(this.$refs['add'], 'disabled', true);
+			let concept = {};
+			// id
+			if (this.concept_id.length>0)
+			  concept['id'] = this.concept_id;
+			else
+			  concept.id = this.base_id + String(this.id_serial+1).padStart(3, '0');
+			// subjects
+			if (this.concept_subjects.length>0)
+			  concept['subjects'] = this.concept_subjects;
+			// language
+			if (this.terms_language=='')
+			  this.terms_language = this.languages[0];
+			let lang_item = {lang: this.terms_language};
+			// definition
+			if (this.concept_definition.length>0)
+			  lang_item['definition'] = this.concept_definition;
+			// source
+			if (this.concept_source.length>0)
+			  lang_item['def_source'] = this.concept_source;
+			// term
+			if (this.term=='')
+			  return this.invalid_row();
+			let term_item = {term: this.term};
+			// type
+			if (this.term_type.length>0)
+			  term_item['type'] = this.term_type;
+			else
+			  term_item['type'] = this.term_types[0];
+			// POS
+			if (this.term_pos.length>0)
+			  term_item['POS'] = this.term_pos;
+			else
+			  term_item['POS'] = this.term_poses[0];
+			// status
+			if (this.term_status.length>0)
+			  term_item['status'] = this.term_status;
+			// reliability
+			if (this.term_reliability.length>0)
+			  term_item['reliability'] = this.term_reliability;
+			lang_item['termSec'] = [term_item];
+			concept['langSec'] = [lang_item];
+			this.concepts.push(concept);
+			this.next_id_serial();
+			this.terms_language = '';
+			this.concept_definition = '';
+			this.term = '';
+			Vue.set(this.$refs['add'], 'disabled', false);
+            this.$forceUpdate();
           },
           filter_languages: function(langSec) {
 			if (this.edit)
@@ -441,6 +528,8 @@ select.edit {
            })
           .catch(err => (this['error'] = err));
         },
+		watch: {
+		},
       });
  </script>
 {% endblock script_base %}
