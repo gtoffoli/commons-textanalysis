@@ -10,6 +10,9 @@
 <link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/4.7.0/css/font-awesome.min.css">
 <style>
+::-webkit-scrollbar-thumb {
+  background: darkgrey;
+}
 table, th, td {
   border: 1px solid #ccc;
 }
@@ -194,7 +197,7 @@ select.edit {
             <td>
                 <button v-on:click.stop="discard_new_language()" class="check" style="color: orangered" title="language_discard">
                  <i class="fa fa-trash"></i></button>
-                <button v-if="term" ref="add_new_term" v-on:click.stop="add_new_language(c_index)" class="check" :title="title_add_new_language">
+                <button v-if="(terms_language && term)" ref="add_new_term" v-on:click.stop="add_new_language(c_index)" class="check" :title="title_add_new_language">
                  <i class="fa fa-check"></i><br>
             </td>
             <td v-for="col in columns">
@@ -249,12 +252,12 @@ select.edit {
         </template>
         </template>
         <tr v-if="edit==true && (!new_term) && (!new_language)">
-            <td><button class="add" ref="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
-                 v-on:click.stop="add_row()">{{ label_add_concept }}</button>
+            <td><button v-if="concept_id && concept_definition && term" class="add" ref="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
+                 v-on:click.stop="add_concept()">{{ label_add_concept }}</button>
             </td>
             <template v-for="col in columns">
                 <td v-if="col=='id'"><input type='text' v-model="concept_id"></td>
-                <td v-if="col=='subjects'"><select multiple class="edit" v-model="concept_subjects" :size="Math.min(subjects.length,3)">
+                <td v-if="col=='subjects'"><select multiple class="edit" v-model="concept_subjects" :size="3">
                     <option v-for="subject in subjects" :value="subject">{{subject}}</option>
                     </select></td>
                 <td v-if="col=='def_source'"><input type='text' v-model="concept_source"></td>
@@ -335,6 +338,8 @@ select.edit {
           columns: [],
           hideable_columns: [],
           hidden_columns: [],
+          default_base_id: 'id-',
+          default_serial_digits: 4,
           term_types: [],
           term_poses: [],
           term_statuses: [],
@@ -399,7 +404,8 @@ select.edit {
           label_add: `{% trans "add"|capfirst %}`,
           label_add_term: `{% trans "add term variant"|capfirst %}`,
           label_add_concept: `{% trans "add\nconcept"|capfirst %}`,
-          label_add_language: `{% trans "add new language"|capfirst %}`,
+          label_add_language: `{% trans "add language"|capfirst %}`,
+          title_add_new_language: `{% trans "add new language to glossary"|capfirst %}`,
           title_add_new_term: `{% trans "add term to glossary"|capfirst %}`,
           title_discard: `{% trans "discard"|capfirst %}`,
         },
@@ -437,9 +443,32 @@ select.edit {
           next_id_serial: function() {
             this.id_serial += 1;
           },
-          invalid_row: function() {
-            Vue.set(this.$refs['add'], 'disabled', false);
-            return;
+          build_concept_id: function() {
+            this.serial_digits = this.default_serial_digits;
+            this.base_id = this.default_base_id;
+			if (!this.concepts)
+              this.id_serial = 0;
+            else {
+              let last_id = this.concepts.slice(-1)[0]['id'];
+              if (last_id.startsWith(this.default_base_id)) {
+                this.id_serial = (last_id.replace(this.default_base_id, '')).toString();
+              } else {
+                let numeric_trailers = last_id.match(/\d+$/g);
+                if (numeric_trailers) {
+				  let serial = numeric_trailers[0];
+				  this.serial_digits = serial.length;
+				  this.base_id = last_id.replace(serial, '');
+				  this.id_serial = Number(serial);
+                }
+                else { // ?
+                  this.base_id = last_id;
+                  this.id_serial = 0;
+                }
+              }
+            }
+            this.concept_id = this.base_id + String(this.id_serial+1).padStart(this.serial_digits, '0');
+          },
+          next_concept_id: function() {
           },
           create_new_term: function(c_index, l_index, t_index) {
             this.new_c_index = c_index;
@@ -460,6 +489,8 @@ select.edit {
             this.new_term = false;
           },
           build_new_term: function() {
+            if (!this.term)
+              return false;
             let term_item = {term: this.term};
             let columns = this.columns;
             if (columns.includes('term_source') && this.term_source)
@@ -488,10 +519,12 @@ select.edit {
               else
                 term_item['reliability'] = this.term_reliabilities[0];
             }
+            return term_item;
           },
           add_new_term: function(c_index, l_index) {
-			term_item = this.buil_new_term()
+			let term_item = this.build_new_term()
             this.concepts[c_index].langSec[l_index].termSec.push(term_item);
+            this.clear_term();
             this.new_term = false;
           },
           create_new_language: function(c_index, l_index) {
@@ -500,72 +533,59 @@ select.edit {
             this.new_language = true;
           },
           clear_language: function() {
-            this.lang = '';
-            this.definition = '';
-            this.def_source = '';
+            this.terms_language = '';
+            this.concept_definition = '';
+            this.concept_source = '';
+            this.clear_term();
           },
           discard_new_language: function() {
-            this.clear_term();
+            this.discard_new_term();
             this.clear_language();
             this.new_language = false;
           },
-          add_new_language: function(c_index) {
+          build_new_language: function() {
+            if (!this.terms_language)
+              return false;
+            let term_item = this.build_new_term();
+            if (!term_item)
+              return false;
             let language_item = {lang: this.terms_language, definition: this.concept_definition};
             if (this.columns.includes('def_source') && this.concept_source)
               language_item['def_source'] = this.concept_source;
-            language_item['termSec'] = [this.build_new_term()];
+            language_item['termSec'] = [term_item];
+            return language_item;
+          },
+          add_new_language: function(c_index) {
+			let language_item = this.build_new_language();
+			if (!language_item)
+			  return;
             this.concepts[c_index].langSec.push(language_item);
+            this.clear_language();
             this.new_language = false;
           },
-          add_row: function() {
-            Vue.set(this.$refs['add'], 'disabled', true);
+          clear_concept: function() {
+            this.concept_subjects = [];
+            this.clear_language();
+          },
+          add_concept: function() {
+            let language_item = this.build_new_language();
+            if (!language_item)
+              return false
+            // Vue.set(this.$refs['add'], 'disabled', true);
             let concept = {};
             // id
-            if (this.concept_id.length>0)
-              concept['id'] = this.concept_id;
-            else
-              concept.id = this.base_id + String(this.id_serial+1).padStart(3, '0');
+            if (!this.concept_id)
+              this.build_concept_id();
+            concept['id'] = this.concept_id;
             // subjects
             if (this.concept_subjects.length>0)
               concept['subjects'] = this.concept_subjects;
-            // language
-            if (this.terms_language=='')
-              this.terms_language = this.languages[0];
-            let lang_item = {lang: this.terms_language};
-            // definition
-            if (this.concept_definition.length>0)
-              lang_item['definition'] = this.concept_definition;
-            // source
-            if (this.concept_source.length>0)
-              lang_item['def_source'] = this.concept_source;
-            // term
-            if (this.term=='')
-              return this.invalid_row();
-            let term_item = {term: this.term};
-            // type
-            if (this.term_type.length>0)
-              term_item['type'] = this.term_type;
-            else
-              term_item['type'] = this.term_types[0];
-            // POS
-            if (this.term_pos.length>0)
-              term_item['POS'] = this.term_pos;
-            else
-              term_item['POS'] = this.term_poses[0];
-            // status
-            if (this.term_status.length>0)
-              term_item['status'] = this.term_status;
-            // reliability
-            if (this.term_reliability.length>0)
-              term_item['reliability'] = this.term_reliability;
-            lang_item['termSec'] = [term_item];
-            concept['langSec'] = [lang_item];
+            // language and term
+            concept['langSec'] = [language_item];
             this.concepts.push(concept);
-            this.next_id_serial();
-            this.terms_language = '';
-            this.concept_definition = '';
-            this.term = '';
-            Vue.set(this.$refs['add'], 'disabled', false);
+            this.id_serial += 1;
+            this.clear_concept();
+            // Vue.set(this.$refs['add'], 'disabled', false);
             this.$forceUpdate();
           },
           filter_languages: function(langSec) {
