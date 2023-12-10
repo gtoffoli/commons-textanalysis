@@ -39,6 +39,9 @@ button.small {
   padding: 2px 4px 0px 4px;
   vertical-align: middle;
 }
+button.edit_item {
+  border: none;
+}
 button.check {
   background-color: transparent;
   color: grey;
@@ -131,12 +134,12 @@ select.edit {
     </div>
 
     <div v-if="!edit" style="display: inline-block; margin: 10px;">
-      <div style="margin: 15px;"><input type="text" v-model="text_filter" v-on:input="filter_terms()" ref="text_filter" :placeholder="label_enter_text_here" size="30" maxlength="32" /></div>
+      <div style="margin: 15px;"><input type="text" v-model="text_filter" v-on:input="filter_terms()" :placeholder="label_enter_text_here" size="30" maxlength="32" /></div>
       <div style="font-size: x-small; font-style: italic;">{{ label_filter }}</div>
     </div>
 
     <div v-if="!edit" style="display: inline-block; margin: 10px;">
-      <select v-model="hidden_columns" multiple ref="select_columns" style="width: 100px;">
+      <select v-model="hidden_columns" multiple style="width: 100px;">
         <option v-for="column in hideable_columns" :value="column">{{column}}</option>
       </select>
       <div style="font-size: x-small; font-style: italic;">{{ label_hide_columns }}</div>
@@ -162,13 +165,52 @@ select.edit {
         <template v-for="(c, c_index) in filtered_concepts">
         <template v-for="(l, l_index) in filter_languages(c['langSec'])">
         <template v-for="(t, t_index) in l['termSec']">
-          <tr>
+          <tr v-if="edit_item && (c_edit==c_index) && (l_edit==l_index) && (t_edit==t_index)">
+            <td>
+				<span v-if="l_index==0 && t_index==0">{{ c_index+1 }}</span>
+                <button v-on:click.stop="discard_edit_item()" class="check" :title="title_discard_edit">
+                 <i class="fa fa-stop"></i></button><br>
+                <button v-on:click.stop="confirm_edit_item(c_index, l_index, t_index)" class="check" :title="title_confirm_edit">
+                 <i class="fa fa-check"></i></button>
+            </td>
+            <td v-for="col in columns">
+				<span v-if="col=='id' && l_index==0 && t_index==0">{{ c['id'] }}</span>
+				<span v-if="col=='subjects' && l_index==0 && t_index==0">
+					<select multiple class="edit" v-model="concept_subjects" :size="4">
+                      <option v-for="subject in subjects" :value="subject">{{subject}}</option>
+                    </select></span>
+				<span v-if="col=='lang' && t_index==0">{{ l['lang'] }}</span>
+				<span v-if="col=='definition' && t_index==0"><textarea v-model="concept_definition"></textarea></span>
+				<span v-if="col=='def_source' && t_index==0"><input type='text' v-model="concept_source"></span>
+				<span v-if="col=='term'"><input type='text' v-model="term"></span>
+                <span v-if="col=='type'"><select class="edit" v-model="term_type">
+                    <option v-for="type in term_types" :value="type">{{type}}</option>
+                    </select></span>
+                <span v-if="col=='POS'"><select class="edit" v-model="term_pos">
+                    <option v-for="pos in term_poses" :value="pos">{{pos}}</option>
+                    </select></span>
+                <span v-if="col=='status'"><select class="edit" v-model="term_status">
+	                    <option v-for="status in term_statuses" :value="status">{{status}}</option>
+                    </select></span>
+                <span v-if="col=='reliability'"><select class="edit" v-model="term_reliability">
+                    <option v-for="reliability in term_reliabilities" :value="reliability">{{reliability}}</option>
+                    </select></span>
+            </td>
+		  </tr>
+          <tr v-else>
             <template v-if="l_index===0 && t_index===0">
-              <td>{{ c_index+1 }}</td>
+              <td>{{ c_index+1 }}
+                <span v-if="edit && (!new_language) && (!new_term) && (!edit_item)">
+                  <br><button v-on:click.stop="enter_edit_item(c_index, l_index, t_index)" class="small edit_item" :title="label_edit_item"><i class="fa fa-edit"></i></button></span>
+              </td>
+			  </td>
               <td>{{ c['id'] }}</td>
               <td v-if="filtered_columns.includes('subjects')"><span v-for="(s, s_index) in c['subjects']">{{ s }}<span v-if="s_index+1 < c['subjects'].length">, </span> </td>
             </template>
-            <template v-else> <td></td> <td></td> <td v-if="filtered_columns.includes('subjects')"></td> </template>
+            <template v-else> <td>
+                <span v-if="edit && (!new_language) && (!new_term) && (!edit_item)">
+                  <br><button v-on:click.stop="enter_edit_item(c_index, l_index, t_index)" class="small edit_item" :title="label_edit_item"><i class="fa fa-edit"></i></button></span>
+			</td> <td></td> <td v-if="filtered_columns.includes('subjects')"></td> </template>
             <template v-if="t_index===0">
               <td>{{ l['lang'] }}
                 <span v-if="edit && (!new_language) && (!new_term) && (c['langSec'].length<languages.length) && (l_index==(c['langSec'].length)-1) && (t_index==(c['langSec'][l_index]['termSec'].length)-1)">
@@ -251,13 +293,13 @@ select.edit {
         </template>
         </template>
         </template>
-        <tr v-if="edit==true && (!new_term) && (!new_language)">
+        <tr v-if="edit==true && (!new_term) && (!new_language) &&(!edit_item)">
             <td><button v-if="concept_id && concept_definition && term" class="add" ref="add" :style="'background-color:' + (ready==true?'LightGray;':'White;')"
                  v-on:click.stop="add_concept()">{{ label_add_concept }}</button>
             </td>
             <template v-for="col in columns">
                 <td v-if="col=='id'"><input type='text' v-model="concept_id"></td>
-                <td v-if="col=='subjects'"><select multiple class="edit" v-model="concept_subjects" :size="3">
+                <td v-if="col=='subjects'"><select multiple class="edit" v-model="concept_subjects" :size="4">
                     <option v-for="subject in subjects" :value="subject">{{subject}}</option>
                     </select></td>
                 <td v-if="col=='def_source'"><input type='text' v-model="concept_source"></td>
@@ -276,7 +318,6 @@ select.edit {
                 <td v-if="col=='status'"><select class="edit" v-model="term_status">
                     <option v-for="status in term_statuses" :value="status">{{status}}</option>
                     </select></td>
-                <td v-if="col=='reliability'">rel</td>
                 <td v-if="col=='reliability'"><select class="edit" v-model="term_reliability">
                     <option v-for="reliability in term_reliabilities" :value="reliability">{{reliability}}</option>
                     </select></td>
@@ -352,6 +393,10 @@ select.edit {
           new_c_index: null,
           new_l_index: null,
           new_t_index: null,
+          edit_item: false,
+          c_edit: null,
+          l_edit: null,
+          t_edit: null,
           
           concept_id: '',
           concept_subjects: [],
@@ -405,9 +450,12 @@ select.edit {
           label_add_term: `{% trans "add term variant"|capfirst %}`,
           label_add_concept: `{% trans "add\nconcept"|capfirst %}`,
           label_add_language: `{% trans "add language"|capfirst %}`,
+          label_edit_item: `{% trans "edit item"|capfirst %}`,
           title_add_new_language: `{% trans "add new language to glossary"|capfirst %}`,
           title_add_new_term: `{% trans "add term to glossary"|capfirst %}`,
           title_discard: `{% trans "discard"|capfirst %}`,
+          title_discard_edit: `{% trans "discard changes"|capfirst %}`,
+          title_confirm_edit: `{% trans "confirm changes"|capfirst %}`,
         },
         computed: {
           filtered_columns: function () {
@@ -420,18 +468,75 @@ select.edit {
           toggle_edit: function() {
             this.edit = !this.edit;
             if (this.edit) {
-              Vue.set(this.$refs['select_columns'], 'disabled', true);
-              Vue.set(this.$refs['text_filter'], 'disabled', true);
               Vue.set(this.$refs['export_tbx'], 'disabled', true);
               Vue.set(this.$refs['export_csv'], 'disabled', true);
-            }
-            else {
-              Vue.set(this.$refs['select_columns'], 'disabled', false);
-              Vue.set(this.$refs['text_filter'], 'disabled', false);
+            } else {
               Vue.set(this.$refs['export_tbx'], 'disabled', false);
               Vue.set(this.$refs['export_csv'], 'disabled', false);
             }
             this.$forceUpdate();
+          },
+          enter_edit_item: function(c_index, l_index, t_index) {
+			this.c_edit = c_index;
+			this.l_edit = l_index;
+			this.t_edit = t_index;
+            let columns = this.columns;
+            let c = this.concepts[c_index];
+            if (columns.includes('subjects'))
+              this.concept_subjects = c['subjects'];
+            let l = c['langSec'][l_index];
+			this.terms_language = l['lang'];
+            if (columns.includes('definition'))
+              this.concept_definition = l['definition'];
+            if (columns.includes('def_source'))
+			  this.concept_source = l['def_source'];
+            let t = l['termSec'][t_index]
+			this.term = t['term'];
+            if (columns.includes('type'))
+			  this.term_type = t['type'];
+            if (columns.includes('POS'))
+			  this.term_pos = t['POS'];
+            if (columns.includes('status'))
+			  this.term_status = t['status'];
+            if (columns.includes('reliability'))
+			  this.term_reliability = t['reliability'];
+			this.edit_item = true;
+          },
+          discard_edit_item: function() {
+			this.c_edit = null;
+			this.l_edit = null;
+			this.t_edit = null;
+			this.concept_subjects = [];
+			this.clear_language();
+			this.edit_item = false;
+          },
+          confirm_edit_item: function(c_index, l_index, t_index) {
+            let columns = this.columns;
+            let c = this.concepts[c_index];
+            if (l_index==0 && t_index==0)
+              if (columns.includes('subjects'))
+                c['subjects'] = this.concept_subjects;
+            let l = c['langSec'][l_index];
+              if (t_index==0) {
+                if (columns.includes('definition'))
+                  l['definition'] = this.concept_definition;
+                if (columns.includes('def_source'))
+                  l['def_source'] = this.concept_source;
+			  }
+            let t = l['termSec'][t_index]
+            t['term'] = this.term;
+            if (columns.includes('type'))
+			  t['type'] = this.term_type;
+            if (columns.includes('POS'))
+              t['POS'] = this.term_pos;
+            if (columns.includes('status'))
+              t['status'] = this.term_status;
+            if (columns.includes('reliability'))
+              t['reliability'] = this.term_reliability;
+            l['termSec'][t_index] = t
+            c['langSec'][l_index] = l
+            this.concepts[c_index] = c
+            this.discard_edit_item();
           },
           toggle_language: function(language) {
             if (!this.edit) {

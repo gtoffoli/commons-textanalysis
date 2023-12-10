@@ -36,6 +36,8 @@ class GlossaryUploadForm(forms.Form):
     glossary = forms.FileField(required=True,
         label=_('select a file'),
         widget=forms.FileInput(attrs={'class': 'btn btn-default', 'data-buttonText':_("choose file"), 'accept': '.tbx,.csv'}), help_text=_("select a .tbx file in TBX-IATE format; a TAB-separated .csv file can also work for simple cases"))
+    languages = forms.ModelMultipleChoiceField(required=False, label=_('languages'), queryset=Language.objects.all(), widget=forms.SelectMultiple(attrs={'class':'form-control', 'size': 3,}), help_text=_('select/deselect languages: needed only for new languages when editing the glossary'))
+    domains = forms.MultipleChoiceField(required=False, choices=bn_domains, label=_('Wikipedia/Babelnet domains'), widget=forms.SelectMultiple(attrs={'class':'form-control', 'size': 4,}), help_text=_('select/deselect domains: needed only for new domains when editing the glossary'))
 
 class GlossaryCreateForm(forms.Form):
     title = forms.CharField(required=True, label=_('title'), widget=forms.TextInput(attrs={'class':'form-control', 'style':'width: 50ch;',}), help_text=_("glossary title"),)

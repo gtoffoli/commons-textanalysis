@@ -1732,7 +1732,7 @@ if 'commons' in settings.INSTALLED_APPS:
         return render(request, 'contents_dashboard.html', {'project_id': 0, 'VUE': True,})
 
 @csrf_exempt
-def tbx_upload(request, uploaded_file=None):
+def tbx_upload(request, uploaded_file=None, languages=[], subjects=[]):
     """ Called from tbx_new view/template to upload from local file and visualize a TBX glossary. """
     if uploaded_file:
         file = uploaded_file
@@ -1752,8 +1752,8 @@ def tbx_upload(request, uploaded_file=None):
         elif extension == 'csv':
             tbx_dict = tbx_tsv_2_dict(tsv_data=text)
         concepts = tbx_dict['tbx']['text']['body']['conceptEntry']
-        request.session['languages'] = tbx_languages(concepts)
-        request.session['subjects'] = tbx_subjects(concepts)
+        request.session['languages'] = tbx_languages(concepts)+languages
+        request.session['subjects'] = tbx_subjects(concepts)+subjects
         data = { 'result': 'ok' }
         data['obj_type'] = 'file'
     else:
@@ -1779,7 +1779,11 @@ class TbxNew(View):
         if request.POST.get('upload', ''):
             form = self.upload_form_class(request.POST, request.FILES)
             uploaded_file = request.FILES.get('glossary')
-            return tbx_upload(request, uploaded_file=uploaded_file)
+            if form.is_valid():
+                data = form.cleaned_data
+                languages = [language.code for language in data['languages']]
+                subjects = data['domains']
+                return tbx_upload(request, uploaded_file=uploaded_file, languages=languages, subjects=subjects)
         else:
             form = self.create_form_class(request.POST)
             if form.is_valid():
