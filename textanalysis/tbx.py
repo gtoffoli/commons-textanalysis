@@ -27,7 +27,8 @@ TBX_DICT_2_XML_MAP = {
     'type': 'termNote-termType',
     'POS': 'termNote-partOfSpeech',
     'status': 'termNote-administrativeStatus',
-    'reliability': 'termNote-reliabilityCode',
+    # 'reliability': 'termNote-reliabilityCode',
+    'reliability': 'descrip-reliabilityCode',
     'term_source': 'descripGrp admin-source',
     'context': 'descripGrp descrip-context',
 }
