@@ -142,5 +142,7 @@ def load_vocabulary (file_name=''):
 
 load_vocabulary(file_name)
 
+"""
 for i, entry in enumerate(voc_ar):
     print(i, entry)
+"""

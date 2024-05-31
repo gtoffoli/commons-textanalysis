@@ -113,6 +113,7 @@ pos_table = (
     ('ADP', {'label': 'adposition', 'color': 'Grey', 'selected': 0,},),
     ('CCONJ', {'label': 'coordinating conjunction', 'color': 'Brown', 'selected': 0,},),
     ('SCONJ', {'label': 'subordinating conjunction', 'color': 'Maroon', 'selected': 0,},),
+    ('X', {'label': 'unknown', 'color': 'Pink', 'selected': 0,},),
 )
 pos_map = dict(pos_table)
 pos_list = [pos[0] for pos in pos_table]
@@ -128,7 +129,7 @@ POS_MAPPING = {
 }
 
 EMPTY_POS = [
-    'SPACE', 'PUNCT', 'CCONJ', 'SCONJ', 'DET', 'PRON', 'ADP', 'AUX', 'PART', 'SYM',
+    'SPACE', 'PUNCT', 'CCONJ', 'SCONJ', 'DET', 'PRON', 'ADP', 'AUX', 'PART', 'SYM', 'X',
 ]
 
 postag_color = 'CornflowerBlue'
@@ -571,6 +572,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
     doc = analyze_dict['doc']
+    print('doc', doc)
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]['label']
     map_token_pos_to_level(language_code)
@@ -1347,9 +1349,9 @@ def text_dependency(request, file_key='', obj_type='', obj_id='', url=''):
                 'collData', 'docData',
                 'obj_type_label', 'language', 'title', 'label', 'url']
         data = var_dict
-        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, dependency=True)
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='dependency')
-        data.update([[key, dashboard_dict[key]] for key in keys])
+        # data.update([[key, dashboard_dict[key]] for key in keys])
+        data.update([[key, dashboard_dict.get(key, [])] for key in keys])
         return JsonResponse(data)
     else:
         track_analysis(request, 'Analyze', obj_type=obj_type, obj_id=obj_id, function='dependency')
