@@ -485,6 +485,7 @@ language_code_dict = {
     'hrvatski': 'hr',
     'lithuanian': 'lt',
     'lietuvių': 'lt',
+    'arabic': 'ar',
 }
 
 off_error = _('sorry, it looks like the language processing service is off')
@@ -589,12 +590,14 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
     var_dict['tokens'] = tokens
     var_dict['n_tokens'] = n_tokens = len(tokens)
     var_dict['mean_sentence_length'] = mean_sentence_length = n_tokens/n_sentences
-    entities = analyze_dict['doc']['ents']
-    var_dict['entities'] = entities
-    entitiy_dict = defaultdict(list)
-    index_entities(entities, tokens, entitiy_dict)
-    entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
-    var_dict['entity_lists'] = entity_lists,
+    # entities = analyze_dict['doc']['ents']
+    entities = analyze_dict['doc'].get('ents', [])
+    if entities:
+        var_dict['entities'] = entities
+        entitiy_dict = defaultdict(list)
+        index_entities(entities, tokens, entitiy_dict)
+        entity_lists = [{'key': key, 'entities': entities} for key, entities in entitiy_dict.items()]
+        var_dict['entity_lists'] = entity_lists,
 
     if function=='summarization':
         return var_dict
