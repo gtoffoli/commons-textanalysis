@@ -572,7 +572,7 @@ def text_dashboard(request, obj_type='', obj_id='', file_key='', label='', url='
         return text_dashboard_return(request, {})
     analyze_dict = response.json()
     doc = analyze_dict['doc']
-    print('doc', doc)
+    # print('doc', doc)
     language_code = analyze_dict['language']
     language = settings.LANGUAGE_MAPPING[language_code]['label']
     map_token_pos_to_level(language_code)
@@ -1789,6 +1789,8 @@ class TbxNew(View):
                 languages = [language.code for language in data['languages']]
                 subjects = data['domains']
                 return tbx_upload(request, uploaded_file=uploaded_file, languages=languages, subjects=subjects)
+            else:
+                return render(request, self.template_name, {'upload_form': form, 'create_form': create_form, 'error': _('invalid form data'),})
         else:
             form = self.create_form_class(request.POST)
             if form.is_valid():
@@ -1809,3 +1811,5 @@ class TbxNew(View):
                 request.session['text'] = csv_data
                 request.session['filename'] = 'temp.csv'
                 return HttpResponseRedirect('/textanalysis/tbx_view/file/0/')
+            else:
+                return render(request, self.template_name, {'upload_form': upload_form, 'create_form': form, 'error': _('invalid form data'),})

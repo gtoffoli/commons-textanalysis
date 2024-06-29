@@ -17,7 +17,7 @@
     </div>
 
 	<div class="padding510">
-	  <h3>{% trans "load a glossary from local device"|capfirst %}</h3>
+	<h3>{% trans "load a glossary from local device"|capfirst %}</h3>
 
     <div style="margin: 5px; padding: 5px;">
       <form method="post" enctype="multipart/form-data" target="_blank">
@@ -36,7 +36,7 @@
 	<h3>{% trans "create a glossary stub"|capfirst %}</h3>
 	{% if error %}
 	<div style="text-color: red;">{{ error }}</div>
-	{% else %}
+	{% endif %}
 	<div>
 	  <form method="post" action="" target="_blank" id="glossary_edit_form">{% csrf_token %}
 	    {% for field in create_form.hidden_fields %}{{ field }}{% endfor %}
@@ -52,7 +52,6 @@
 	    </div>
 	  </form>
 	</div>
-	{% endif %}
 	</div>
 </div>
 {% endblock %}
