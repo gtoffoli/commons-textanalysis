@@ -14,15 +14,15 @@ INITIAL_LANGUAGES_SELECTION = ('en',)
 INITIAL_FIELDS_SELECTION = ('subjects', 'definition', 'POS', 'type',)
 
 TA_FUNCTION_CHOICES = (
-    ('dependency', _('Dependency parse')),
-    ('context', _('Keywords In Context')),
-    ('wordlists', _('Word Lists by POS')),
+    # ('context', _('Keywords In Context')),
+    ('wordlists', _('Words by POS and frequency, with contexts')),
     ('annotations', _('Annotated text')),
     ('nounchunks', _('Entities and terms')),
     ('readability', _('Text Readability')),
     ('cohesion', _('Text Cohesion')),
-    ('summarization', _('Text Summarization')),
-    ('dashboard', _('Text Analysis Dashboard')),
+    ('dependency', _('Dependency parse')),
+    # ('summarization', _('Text Summarization')),
+    # ('dashboard', _('Text Analysis Dashboard')),
 )
 
 class TextAnalysisInputForm(forms.Form):

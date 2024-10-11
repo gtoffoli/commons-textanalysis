@@ -1284,11 +1284,11 @@ def text_wordlists(request, file_key='', obj_type='', obj_id='', url=''):
     var_dict = {'file_key': file_key, 'obj_type': obj_type, 'obj_id': obj_id, 'url': url}
     var_dict['VUE'] = True
     if is_ajax(request):
-        keys = ['verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
-                'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',
-                'obj_type_label', 'language', 'title', 'label', 'url',]
+        keys = ['obj_type_label', 'language', 'title', 'label', 'url',
+                'tokens',
+                'verb_frequencies', 'noun_frequencies', 'adjective_frequencies', 'adverb_frequencies', 
+                'propn_frequencies', 'cconj_frequencies', 'sconj_frequencies',]
         data = var_dict
-        # dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, wordlists=True)
         dashboard_dict = text_dashboard(request, file_key=file_key, obj_type=obj_type, obj_id=obj_id, function='wordlists')
         data.update([[key, dashboard_dict[key]] for key in keys])
         return JsonResponse(data)

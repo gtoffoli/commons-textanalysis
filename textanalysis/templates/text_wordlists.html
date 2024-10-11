@@ -10,6 +10,32 @@
 <link rel="stylesheet" href="{% static "vue_apps/src/assets/index.css" %}">
 <link rel="stylesheet" href="{% static "commons/css/commons_vue.css" %}">
 <style>
+.btn-outline-dark {
+  color: #333;
+  background-color: #fff;
+  /* border-color: #B2B2B2; */
+  border: 1px solid #ccc;
+  padding: 6px 12px;
+  font-weight: normal;
+  font-size: 13px;
+}
+.btn-outline-dark:hover {
+  color: #fff;
+  background-color: #B2B2B2;
+  /* border-color: #B2B2B2; */
+}
+.context {
+  padding: 3px 10px;
+  display: grid;
+  grid-template-columns: 40% 15% auto;
+  font-size:85%;
+  background: #fff;
+  border 1px dotted #B2B2B2;
+  border-top-width: 0;
+}
+.context:hover {
+  background-color: #F4F4F4;
+}
 </style>
 {% endblock extra_style %}
 
@@ -23,6 +49,7 @@
     <script src='https://unpkg.com/vue@2.2.6'></script>
     <!-- <script src="../dist/vue-split-pane.min.js"></script> -->
     <script src="{% static "vue_apps/src/assets/vue-split-pane.min.js" %}"></script>
+{% include "_vue-js-modal.html" %}
 {% endblock extra_head %}
 
 {% block user %}{% endblock user %}
@@ -30,7 +57,7 @@
 {% block nav_vue %}
   {% include "_header_bar.html" %}
   <div class="navbar">
-    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Word Lists by POS" %}</h3>
+    <h3 class="text-center">{% trans "Text Analysis" %} - {% trans "Words by POS and frequency, with contexts" %}</h3>
   </div>
 {% endblock nav_vue %}
 
@@ -51,12 +78,14 @@
             <div v-else><span v-if="obj_id != '0'"><label>{{ label_id }}</label>: {{ obj_id }}</span></div>
             <div v-if="language"><label>{{ label_language }}</label>: {{ language }}</div>
 
+            <div style="font-size: x-small; font-style: italic; margin-bottom: 5px; text-align: center;">{{ label_show_contexts }}</div>
+
             <split-pane v-on:resize="resize" split="vertical" :default-percent='14'>
               <template slot="paneL">
                 <h4 style="text-align: center;">Verb lemmas</h4>
                 <div v-for="item in verb_frequencies">
                   <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                    {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                    {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'VERB');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                 </div>
               </template>
               <template slot="paneR">
@@ -65,7 +94,7 @@
                     <h4 style="text-align: center;">Noun lemmas</h4>
                     <div v-for="item in noun_frequencies">
                       <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                        {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                        {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'NOUN');" href="#">{{item.freq }}</a>) {{ item.level }}</div>
                     </div>
                   </template>
                   <template slot="paneR">
@@ -74,7 +103,7 @@
                         <h4 style="text-align: center;">Adjective lemmas</h4>
                         <div v-for="item in adjective_frequencies">
                           <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                            {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                            {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'ADJ');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                         </div>
                       </template>
 
@@ -84,7 +113,7 @@
                             <h4 style="text-align: center;">Adverbs</h4>
                             <div v-for="item in adverb_frequencies">
                               <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                                {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                                {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'ADV');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                             </div>
                           </template>
 
@@ -94,7 +123,7 @@
                                 <h4 style="text-align: center;">Proper nouns and OOV tokens</h4>
                                 <div v-for="item in propn_frequencies">
                                   <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                                    {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                                    {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'other');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                                 </div>
                               </template>
                               <template slot="paneR">
@@ -103,14 +132,14 @@
                                     <h4 style="text-align: center;">Coordinating conjunctions</h4>
                                     <div v-for="item in cconj_frequencies">
                                       <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                                        {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                                        {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'CCONJ');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                                     </div>
                                   </template>
                                   <template slot="paneR">
                                     <h4 style="text-align: center;">Subordinating conjunctions</h4>
                                     <div v-for="item in sconj_frequencies">
                                       <div style="margin-inline-start: 5px; margin-inline-end: 5px;"><span v-bind:class="{'a': item.a, 'b': item.b, 'c': item.c}">
-                                        {{ item.key }}</span> ({{ item.freq }}) {{ item.level }}</div>
+                                        {{ item.key }}</span> (<a v-on:click.stop="show_contexts(item.key, 'SCONJ');" href="#">{{ item.freq }}</a>) {{ item.level }}</div>
                                     </div>
                                   </template>
                                 </split-pane>
@@ -126,6 +155,17 @@
                 </split-pane>
               </template>
             </split-pane>
+		    <modal v-bind="modal_props" ref="contexts_dialog" :name="label_contexts">
+			<div style="display: block; text-align: center; width: 100%; margin-bottom: 3px;">
+    			<h3 class="text-center">{{ label_contexts_for }}: &nbsp; <i>{{ lemma }} / {{ pos }}</i></h3>
+		        <div class="context" v-for="context in contexts">
+		            <div class="text-right">{{ context[0] }}</div><div class="text-center"><span class="demiBold" style="letter-spacing:-1px">{{ context[1] }}</span></div><div class="text-left">{{ context[2] }}</div class="text-left">
+		        </div>
+				<div>
+					<button class="btn" @click="hide_contexts()">Close</button>
+				</div>
+			</div>
+		    </modal>
       </template>
     </template>
     <template v-else>
@@ -140,10 +180,27 @@
 {% endblock footer_base %}
 
 {% block script_base %}
-  <script>
+<script type="module">
+	// Register globally
+	import VueJsModal from '/static/vue-js-modal/components/Modal.js';
+
       var app = new Vue({
         name: 'test',
+        el: '#app',
+        components: {
+          'modal': VueJsModal,
+        },
         data: {
+          modal_props: { 
+            adaptive: false, // ?
+            resizable: true, // ok
+            draggable: true, // ok
+            scrollable: true,
+            clickToClose: false, // ok
+            focusTrap: true, // ?
+            width: 640,
+            height: 'auto',
+          },
           file_key: '{{ file_key }}',
           obj_type: '{{ obj_type }}',
           obj_id: '{{ obj_id }}',
@@ -151,24 +208,59 @@
           title: '{{ title }}',
           language: '{{ language }}',
           label: null, url: null,
-          n_tokens: null, n_sentences: null,
-          verb_frequencies: null, noun_frequencies: null, adjective_frequencies: null, adverb_frequencies: null, propn_frequencies: null, cconj_frequencies: null, sconj_frequencies: null,
           error: null,
           wait: null,
+          left_window: 8, right_window: 8,
           label_id: '{% trans "id"|capfirst %}',
           label_title: '{% trans "title"|capfirst %}',
           label_url: '{% trans "url"|capfirst %}',
           label_language: '{% trans "language"|capfirst %}',
           label_wait: "{% trans "please wait"|capfirst %}",
+          label_contexts: "{% trans "contexts"|capfirst %}",
+          label_contexts_for: "{% trans "contexts for lemma / POS"|capfirst %}",
+          label_show_contexts: "{% trans "click on the frequency, in parentheses, to the right of each lemma to view its occurrences in context"|capfirst %}",
+          tokens: null,
+          verb_frequencies: null, noun_frequencies: null, adjective_frequencies: null, adverb_frequencies: null, propn_frequencies: null, cconj_frequencies: null, sconj_frequencies: null,
+          lemma: null, pos: null,
+          contexts: null,
 		},
-        el: '#app',
         methods: {
           resize() {
             console.log('resize')
-          }
+          },
+          show_contexts: function(lemma, pos) {
+            console.log('show_contexts', lemma, pos);
+            this.lemma = lemma; this.pos = pos;
+            this.contexts = [];
+            for (let i = 0; i < this.tokens.length; i++) {
+			  let token = this.tokens[i];
+              if (token.lemma == lemma && (token.pos == pos || (pos == 'other' && (token.pos == 'PROPN' || token.oov)))) {
+				if (pos == 'other') {
+				  if (token.oov)
+				    this.pos = 'OOV';
+				  else
+				    this.pos = 'PROPN';
+				}
+                // console.log(token);
+                let context = [];
+                let start = Math.max(token.sent_start, i-this.left_window);
+                let end = Math.min(i+1+this.right_window, token.sent_end);
+                context.push(this.tokens.slice(start, i).map((x) => x.text).join(' '));
+                context.push(token.text);
+                context.push(this.tokens.slice(i+1, end).map((x) => x.text).join(' '));
+                this.contexts.push(context);
+              }
+            }
+            let contexts_dialog = this.$refs['contexts_dialog'];
+		    contexts_dialog.open();
+		  },
+          hide_contexts: function() {
+            console.log('hide_contexts');
+            let contexts_dialog = this.$refs['contexts_dialog'];
+		    contexts_dialog.close();
+		  },
         },
         mounted: function () {
-          $this = this;
           this.wait = true;
           if (! this['obj_id'])
             this['obj_id'] = 0;
@@ -186,5 +278,5 @@
           .catch(err => (this['error'] = err))
 		},
       });
-  </script>
+  </script type="module">
 {% endblock script_base %}
