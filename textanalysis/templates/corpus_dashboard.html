@@ -41,14 +41,15 @@ th, td {
 <div class="container-fluid">
   <div id="app" class='components-container'>
   {% verbatim %}
-    <template v-if="error===null">
+    <div v-if="wait" style="width:100%; text-align:center;"> <span class="wait">{{ label_wait }}</span> </div>
+    <template v-if="error===null && !wait">
     <div class="marginB10">
       <span v-if="file_key"><label>{{ label_corpus_identifier }}</label> {{ file_key }}</span>
     </div>
     <div v-if="language"><label>{{ label_language }}</label> {{ language }}</div>
 
     <div style="text-align: center">
-    <h5>{{ label_corpus_contents }}</h5>
+    <h4>{{ label_corpus_contents }}</h4>
     <table class="table table-responsive table-bordered table-striped" style="margin: 0 auto; border-collapse: collapse;">
       <thead><tr>
         <th>#</th><th>id</th><th>label</th><th>type</th><th>n. tokens</th>
@@ -64,7 +65,10 @@ th, td {
       </tbody>
     </table>
 
-    <h5>{{ label_lexical_comparison }}</h5>
+    <h4>{{ label_lexical_comparison }}</h4>
+    <div style="font-size: x-small; color: green;">{{ label_unique_lemmas }}</div>
+    <div style="font-size: x-small; color: red;">{{ label_new_lemmas }}</div>
+
     <table class="table table-responsive table-bordered table-striped" style="margin: 0 auto; border-collapse: collapse;">
       <thead><tr>
         <th></th>
@@ -115,10 +119,14 @@ th, td {
           docs: null,
           cross_table: null,
           error: null,
+	      wait: false,
           label_corpus_identifier: "{% trans "corpus identifier"|capfirst %}",
           label_language: "{% trans "language"|capfirst %}",
           label_corpus_contents: "{% trans "corpus contents"|capfirst %}",
-          label_lexical_comparison: "{% trans "comparison of lexical lemmas among documents"|capfirst %}"
+          label_lexical_comparison: "{% trans "comparison of lexical lemmas among documents"|capfirst %}",
+          label_unique_lemmas: "{% trans "count of unique lemmas, not present in other items, is in green color"|capfirst %}",
+          label_new_lemmas: "{% trans "count of new lemmas, not present in previous items, is in red color"|capfirst %}",
+	      label_wait: "{% trans "please wait"|capfirst %}",
         },
         el: '#app',
         methods: {
@@ -127,6 +135,7 @@ th, td {
           }
         },
         mounted: function () {
+          this.wait = true;
           $this = this;
           fetch('/textanalysis/corpus_dashboard/'+this['file_key']+'/', {
             method: 'GET',
@@ -137,6 +146,7 @@ th, td {
              for (var key in data) {
               this[key] = data[key];
              };
+             this.wait = false;
            })
           .catch(err => (this['error'] = err))
         },
