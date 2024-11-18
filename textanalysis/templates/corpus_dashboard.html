@@ -78,14 +78,19 @@ th, td {
             <td v-for="(cell, i_col) in row" style="text-align: center;">
               <template v-for="(count, k) in cell">
                 <span v-if="k === 0">
-                  <span v-if="i_col === i_row" style="font-weight: bold;">{{ count }} lemmas</span>
+                  <span v-if="i_col === i_row" style="font-weight: bold;">{{ count }}</span>
                   <span v-else>in {{ i_row+1 }} and not in {{ i_col+1 }}: <span style="font-weight: bold;">{{ count }}</span></span>
                 </span>
                 <span v-if="k === 1"><br>
                   <span v-if="cell.length === 2">{{ count }}%</span>
-                  <span v-if="cell.length === 3" style="font-style: italic;">unique {{ count }}</span>
+                  <span v-if="cell.length === 5" style="font-weight: bold; color: green;">{{ count }}</span>
                 </span>
-                <span v-if="k === 2" style="font-style: italic;">({{ count }}%)</span>
+                <span v-if="k === 2">
+                  <span v-if="cell.length === 2">{{ count }}%</span>
+                  <span v-if="cell.length === 5" style="font-style: italic; color: green;">({{ count }}%)</span>
+                </span>
+                <span v-if="k === 3" style="font-weight: bold; color: red;">{{ count }}</span>
+                <span v-if="k === 4" style="font-style: italic; color: red;">({{ count }}%)</span>
               </template>
             </td>
           </tr>

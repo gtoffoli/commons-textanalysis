@@ -1262,12 +1262,15 @@ def corpus_dashboard(request, file_key=''):
         counts_i = lemma_pos_dict.get_counts(i)
         count_self = counts_i['n_self']
         count_unique = counts_i['n_diff_1']
+        count_new = counts_i['n_diff_3']
         for j in range(n_docs):
             col = []
             if j == i:
                 col.append(count_self)
                 col.append(count_unique)
                 col.append(int((count_unique * 100)/count_self))
+                col.append(count_new)
+                col.append(int((count_new * 100)/count_self))
             else:
                 counts_i_j = lemma_pos_dict.get_counts(i, [j])
                 diff_i_j = counts_i_j['n_diff_1']

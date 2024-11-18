@@ -388,6 +388,7 @@ class LemmaPosDict():
         - n_union is the no. of lemmas occurring in the i-th doc and at least in one doc in the other set
         - n_diff_1 is the no. of lemmas occurring in the i-th doc and not in any doc of the other set
         - n_diff_2 is the no. of lemmas occurring at least on doc of the other set and not in the i-th doc
+        - n_diff_3 is the no. of lemmas occurring in the i-th doc and not in any previous doc in the set
         input:
             i is a document index in doc_dicts
             j is a list of doc indexes; if empty, it stays for all documents but i-th
@@ -401,7 +402,7 @@ class LemmaPosDict():
             # load basic voabulary for language
             pass
         pos_list = pos_list or self.pos_list
-        n_self = n_union = n_diff_1 = n_diff_2 = 0
+        n_self = n_union = n_diff_1 = n_diff_2 = n_diff_3 = 0
         for key, counts in self.lemma_dict.items():
             pos = key.split('_')[-1]
             if not pos_list or pos in pos_list:
@@ -412,9 +413,14 @@ class LemmaPosDict():
                     if counts[i]:
                         n_self += 1
                         if not count_others:
-                            n_diff_1 +=1
+                            n_diff_1 += 1
                     elif count_others:
-                        n_diff_2 +=1
+                        n_diff_2 += 1
+                    if i > 0:
+                        if counts[i]:
+                            count_previous = sum([counts[k] for k in range(i)])
+                            if not count_previous:
+                                n_diff_3 += 1
                 else:
                     count_others = sum([counts[k] for k in j])
                     if counts[i] or count_others:
@@ -426,7 +432,9 @@ class LemmaPosDict():
                         else:
                             n_self += 1
                             n_diff_1 +=1
-        return {'n_self': n_self, 'n_union': n_union, 'n_diff_1': n_diff_1, 'n_diff_2': n_diff_2}
+        if i == 0:
+            n_diff_3 = n_self
+        return {'n_self': n_self, 'n_union': n_union, 'n_diff_1': n_diff_1, 'n_diff_2': n_diff_2, 'n_diff_3': n_diff_3}
 
 def read_input_file(filepath: str) -> str:
     """ read_input_file
