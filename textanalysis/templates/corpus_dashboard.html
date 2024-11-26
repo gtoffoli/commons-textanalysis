@@ -24,6 +24,9 @@ th, td {
     <script src="{% static "nlp/js/jquery.min.js" %}"></script>
     <script src="{% static "nlp/js/scripts.js" %}"></script>
     <script src='https://unpkg.com/vue@2.2.6'></script>
+    <!-- see: https://www.jsdelivr.com/package/npm/vue-chart-js * Works with Vue 2.* -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/2.7.0/Chart.min.js"></script>
+    <script src="https://unpkg.com/vue-chart-js"></script>
 {% endblock extra_head %}
 
 {% block user %}{% endblock user %}
@@ -65,6 +68,11 @@ th, td {
       </tbody>
     </table>
 
+    <h4>{{ label_trend_lines }}</h4>
+	<template>
+	  <vue-chart type="line" :data="line_data" :options="line_options"></vue-chart>
+	</template>
+
     <h4>{{ label_lexical_comparison }}</h4>
     <div style="font-size: x-small; color: green;">{{ label_unique_lemmas }}</div>
     <div style="font-size: x-small; color: red;">{{ label_new_lemmas }}</div>
@@ -87,11 +95,11 @@ th, td {
                 </span>
                 <span v-if="k === 1"><br>
                   <span v-if="cell.length === 2">{{ count }}%</span>
-                  <span v-if="cell.length === 5" style="font-weight: bold; color: green;">{{ count }}</span>
+                  <span v-if="cell.length >= 5" style="font-weight: bold; color: green;">{{ count }}</span>
                 </span>
                 <span v-if="k === 2">
                   <span v-if="cell.length === 2">{{ count }}%</span>
-                  <span v-if="cell.length === 5" style="font-style: italic; color: green;">({{ count }}%)</span>
+                  <span v-if="cell.length >= 5" style="font-style: italic; color: green;">({{ count }}%)</span>
                 </span>
                 <span v-if="k === 3" style="font-weight: bold; color: red;">{{ count }}</span>
                 <span v-if="k === 4" style="font-style: italic; color: red;">({{ count }}%)</span>
@@ -111,45 +119,71 @@ th, td {
 {% block footer_base %}{% endblock footer_base %}
 
 {% block script_base %}
-  <script>
-      var app = new Vue({
-        data: {
-          file_key: '{{ file_key }}',
-          language: null,
-          docs: null,
-          cross_table: null,
-          error: null,
-	      wait: false,
-          label_corpus_identifier: "{% trans "corpus identifier"|capfirst %}",
-          label_language: "{% trans "language"|capfirst %}",
-          label_corpus_contents: "{% trans "corpus contents"|capfirst %}",
-          label_lexical_comparison: "{% trans "comparison of lexical lemmas among documents"|capfirst %}",
-          label_unique_lemmas: "{% trans "count of unique lemmas, not present in other items, is in green color"|capfirst %}",
-          label_new_lemmas: "{% trans "count of new lemmas, not present in previous items, is in red color"|capfirst %}",
-	      label_wait: "{% trans "please wait"|capfirst %}",
-        },
-        el: '#app',
-        methods: {
-          resize() {
-            console.log('resize')
-          }
-        },
-        mounted: function () {
-          this.wait = true;
-          $this = this;
-          fetch('/textanalysis/corpus_dashboard/'+this['file_key']+'/', {
-            method: 'GET',
-            headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
-          })
-          .then(response => response.json())
-          .then(data => {
-             for (var key in data) {
-              this[key] = data[key];
-             };
-             this.wait = false;
-           })
-          .catch(err => (this['error'] = err))
-        },
-      });
- </script>
+<script type="module">
+  // see: https://www.jsdelivr.com/package/npm/vue-chart-js (Works with Vue 2)
+  // see: https://www.chartjs.org/docs/latest/charts/line.html
+  Vue.use(VueChart.default);
+
+  var app = new Vue({
+    data: {
+      file_key: '{{ file_key }}',
+      language: null,
+      docs: null,
+      cross_table: null,
+      error: null,
+      wait: false,
+      label_corpus_identifier: "{% trans "corpus identifier"|capfirst %}",
+      label_language: "{% trans "language"|capfirst %}",
+      label_corpus_contents: "{% trans "corpus contents"|capfirst %}",
+      label_trend_lines: "{% trans "trend of occurrence of unique/new lexical lemmas"|capfirst %}",
+      label_lexical_comparison: "{% trans "comparison of lexical lemmas among documents"|capfirst %}",
+      label_unique_lemmas: "{% trans "count of unique lemmas, not present in other items, is in green color"|capfirst %}",
+      label_new_lemmas: "{% trans "count of new lemmas, not present in previous items, is in red color"|capfirst %}",
+      label_unique:  "{% trans "% of unique lemmas" %}",
+      label_new: "{% trans "% of new lemmas" %}",
+      label_wait: "{% trans "please wait"|capfirst %}",
+      line_data: null,
+      line_options: null,
+    },
+    el: '#app',
+    methods: {
+      resize() {
+        console.log('resize')
+      }
+    },
+    mounted: function () {
+      this.wait = true;
+      // $this = this;
+      fetch('/textanalysis/corpus_dashboard/'+this['file_key']+'/', {
+        method: 'GET',
+        headers: {"X-Requested-With": "XMLHttpRequest"}, // this is just a patch
+      })
+      .then(response => response.json())
+      .then(data => {
+         for (var key in data) {
+          this[key] = data[key];
+         };
+         this.line_data = this.get_line_data();
+         this.line_options = {'aspectRatio': 4.0};
+         this.wait = false;
+       })
+      .catch(err => (this['error'] = err))
+    },
+    methods: {
+      get_line_data: function() {
+        let labels = [];
+        let values_new = [];
+        let values_unique = [];
+        for (let i=0; i<this.cross_table.length; i++) {
+          labels.push(i+1);
+          values_new.push(this.cross_table[i][i][4]);
+          values_unique.push(this.cross_table[i][i][2]);
+        }
+        let dataset_new = {'label': this.label_new, 'data': values_new, 'fill': false, 'borderWidth': 2, 'borderColor': 'red', 'tension': 0.05};
+        let dataset_unique = {'label': this.label_unique, 'data': values_unique, 'fill': false, 'borderWidth': 2, 'borderColor': 'green', 'tension': 0.05};
+        return {'labels': labels, 'datasets': [dataset_unique, dataset_new]};
+      },
+    },
+  });
+</script>
 {% endblock script_base %}
